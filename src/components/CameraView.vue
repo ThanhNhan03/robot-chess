@@ -58,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onBeforeUnmount } from 'vue'
 
 const videoElement = ref<HTMLVideoElement | null>(null)
 const videoStream = ref<MediaStream | null>(null)

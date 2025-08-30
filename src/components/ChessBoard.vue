@@ -3,12 +3,12 @@
     <div class="board-container">
       <div class="board-grid">
         <div
-          v-for="(row, rowIndex) in 8"
+          v-for="(_row, rowIndex) in 8"
           :key="rowIndex"
           class="board-row"
         >
           <div
-            v-for="(col, colIndex) in 8"
+            v-for="(_col, colIndex) in 8"
             :key="colIndex"
             :class="[
               'chess-square',
@@ -19,7 +19,7 @@
           >
             <img
               v-if="getPieceImage(rowIndex, colIndex)"
-              :src="getPieceImage(rowIndex, colIndex)"
+              :src="getPieceImage(rowIndex, colIndex) || ''"
               :alt="getPieceAlt(rowIndex, colIndex)"
               class="chess-piece"
             />
@@ -76,10 +76,6 @@ const pieceNames: { [key: string]: string } = {
 }
 
 const selectedSquare = ref<{row: number, col: number} | null>(null)
-
-const getPiece = (row: number, col: number) => {
-  return initialBoard.value[row][col]
-}
 
 const getPieceImage = (row: number, col: number) => {
   const piece = initialBoard.value[row][col]
