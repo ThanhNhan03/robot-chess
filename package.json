@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/chess.js": "^0.13.7",
+    "chess.js": "^1.4.0",
     "vue": "^3.5.18"
   },
   "devDependencies": {

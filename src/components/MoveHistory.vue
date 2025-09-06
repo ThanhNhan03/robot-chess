@@ -4,7 +4,7 @@
       <h3>Lịch sử nước đi</h3>
       <div class="game-info">
         <span class="move-count">Nước: {{ moveHistory.length }}</span>
-        <span class="current-turn">Lượt: {{ currentTurn === 'white' ? 'Trắng' : 'Đen' }}</span>
+        <span class="current-turn">Lượt: {{ gameState.turn === 'w' ? 'Trắng' : 'Đen' }}</span>
       </div>
     </div>
     
@@ -20,22 +20,41 @@
           :class="['move-item', { 'active': index === selectedMoveIndex }]"
           @click="selectMove(index)"
         >
-          <div class="move-number">{{ Math.floor(index / 2) + 1 }}.</div>
-          <div class="move-notation">{{ move.notation }}</div>
-          <div class="move-time">{{ formatTime(move.timestamp) }}</div>
-          <div v-if="move.capture" class="capture-indicator">×</div>
-          <div v-if="move.check" class="check-indicator">+</div>
-          <div v-if="move.checkmate" class="checkmate-indicator">#</div>
+          <div class="move-number">
+            <span v-if="index % 2 === 0">{{ Math.floor(index / 2) + 1 }}.</span>
+          </div>
+          <div class="move-notation">{{ move.san }}</div>
+          <div class="move-details">
+            <span class="move-from-to">{{ move.from }}-{{ move.to }}</span>
+          </div>
+          <div v-if="move.captured" class="capture-indicator">×</div>
+          <div v-if="move.flags.includes('+')" class="check-indicator">+</div>
+          <div v-if="move.flags.includes('#')" class="checkmate-indicator">#</div>
         </div>
       </div>
     </div>
     
+    <div class="game-status-info" v-if="gameState">
+      <div class="status-row" v-if="gameState.isCheck">
+        <span class="status-label">🔥 Chiếu bí!</span>
+      </div>
+      <div class="status-row" v-if="gameState.isCheckmate">
+        <span class="status-label">👑 Chiếu hết!</span>
+      </div>
+      <div class="status-row" v-if="gameState.isStalemate">
+        <span class="status-label">🤝 Hòa - Bí quân</span>
+      </div>
+      <div class="status-row" v-if="gameState.isDraw">
+        <span class="status-label">🤝 Hòa</span>
+      </div>
+    </div>
+    
     <div class="history-controls">
-      <button @click="undoLastMove" :disabled="moveHistory.length === 0" class="control-btn">
+      <button @click="$emit('undo-move')" :disabled="moveHistory.length === 0" class="control-btn">
         ↶ Hoàn tác
       </button>
-      <button @click="clearHistory" :disabled="moveHistory.length === 0" class="control-btn danger">
-        🗑️ Xóa hết
+      <button @click="$emit('reset-game')" :disabled="moveHistory.length === 0" class="control-btn danger">
+        � Reset
       </button>
       <button @click="exportPGN" :disabled="moveHistory.length === 0" class="control-btn">
         📄 Xuất PGN
@@ -44,123 +63,72 @@
     
     <div class="game-stats">
       <div class="stat-item">
-        <span class="stat-label">Thời gian trò chơi:</span>
-        <span class="stat-value">{{ formatGameTime(gameStartTime) }}</span>
+        <span class="stat-label">Tổng nước đi:</span>
+        <span class="stat-value">{{ moveHistory.length }}</span>
       </div>
       <div class="stat-item">
         <span class="stat-label">Số lần bắt quân:</span>
         <span class="stat-value">{{ captureCount }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Nước đi khả thi:</span>
+        <span class="stat-value">{{ gameState?.moves.length || 0 }}</span>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
+import type { GameMove, GameState } from '../chess/ChessGame'
 
-interface ChessMove {
-  notation: string
-  from: string
-  to: string
-  piece: string
-  capture: boolean
-  check: boolean
-  checkmate: boolean
-  timestamp: Date
-  player: 'white' | 'black'
-}
+// Props
+const props = defineProps<{
+  moveHistory: GameMove[]
+  gameState: GameState
+  pgn: string
+}>()
 
-const moveHistory = ref<ChessMove[]>([])
+// Emits
+const emit = defineEmits<{
+  'undo-move': []
+  'reset-game': []
+}>()
+
 const selectedMoveIndex = ref(-1)
-const currentTurn = ref<'white' | 'black'>('white')
-const gameStartTime = ref<Date>(new Date())
-
-// Sample moves for demonstration
-const sampleMoves: ChessMove[] = [
-  {
-    notation: 'e4',
-    from: 'e2',
-    to: 'e4',
-    piece: 'pawn',
-    capture: false,
-    check: false,
-    checkmate: false,
-    timestamp: new Date(Date.now() - 120000),
-    player: 'white'
-  },
-  {
-    notation: 'e5',
-    from: 'e7',
-    to: 'e5',
-    piece: 'pawn',
-    capture: false,
-    check: false,
-    checkmate: false,
-    timestamp: new Date(Date.now() - 110000),
-    player: 'black'
-  },
-  {
-    notation: 'Nf3',
-    from: 'g1',
-    to: 'f3',
-    piece: 'knight',
-    capture: false,
-    check: false,
-    checkmate: false,
-    timestamp: new Date(Date.now() - 100000),
-    player: 'white'
-  },
-  {
-    notation: 'Nc6',
-    from: 'b8',
-    to: 'c6',
-    piece: 'knight',
-    capture: false,
-    check: false,
-    checkmate: false,
-    timestamp: new Date(Date.now() - 90000),
-    player: 'black'
-  }
-]
 
 const captureCount = computed(() => {
-  return moveHistory.value.filter(move => move.capture).length
+  return props.moveHistory.filter(move => move.captured).length
 })
 
 const selectMove = (index: number) => {
   selectedMoveIndex.value = index
 }
 
-const undoLastMove = () => {
-  if (moveHistory.value.length > 0) {
-    moveHistory.value.pop()
-    currentTurn.value = currentTurn.value === 'white' ? 'black' : 'white'
-  }
-}
-
-const clearHistory = () => {
-  if (confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử nước đi?')) {
-    moveHistory.value = []
-    selectedMoveIndex.value = -1
-    currentTurn.value = 'white'
-    gameStartTime.value = new Date()
-  }
-}
-
 const exportPGN = () => {
+  if (!props.pgn) {
+    alert('Không có dữ liệu PGN để xuất!')
+    return
+  }
+
   let pgn = '[Event "Robot Chess Game"]\n'
+  pgn += '[Site "Robot Chess App"]\n'
   pgn += '[Date "' + new Date().toISOString().split('T')[0] + '"]\n'
+  pgn += '[Round "1"]\n'
   pgn += '[White "Player"]\n'
-  pgn += '[Black "Robot"]\n\n'
+  pgn += '[Black "Robot"]\n'
+  pgn += '[Result "*"]\n\n'
   
-  for (let i = 0; i < moveHistory.value.length; i += 2) {
-    const moveNumber = Math.floor(i / 2) + 1
-    pgn += `${moveNumber}. ${moveHistory.value[i].notation}`
-    
-    if (i + 1 < moveHistory.value.length) {
-      pgn += ` ${moveHistory.value[i + 1].notation}`
-    }
-    pgn += ' '
+  pgn += props.pgn
+  
+  // Add game result
+  if (props.gameState.isCheckmate) {
+    const winner = props.gameState.turn === 'w' ? '0-1' : '1-0'
+    pgn += ` ${winner}`
+  } else if (props.gameState.isDraw || props.gameState.isStalemate) {
+    pgn += ' 1/2-1/2'
+  } else {
+    pgn += ' *'
   }
   
   const blob = new Blob([pgn], { type: 'text/plain' })
@@ -168,30 +136,11 @@ const exportPGN = () => {
   const a = document.createElement('a')
   a.href = url
   a.download = `chess-game-${new Date().getTime()}.pgn`
+  document.body.appendChild(a)
   a.click()
+  document.body.removeChild(a)
   URL.revokeObjectURL(url)
 }
-
-const formatTime = (timestamp: Date) => {
-  return timestamp.toLocaleTimeString('vi-VN', { 
-    hour: '2-digit', 
-    minute: '2-digit', 
-    second: '2-digit' 
-  })
-}
-
-const formatGameTime = (startTime: Date) => {
-  const now = new Date()
-  const diff = Math.floor((now.getTime() - startTime.getTime()) / 1000)
-  const minutes = Math.floor(diff / 60)
-  const seconds = diff % 60
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`
-}
-
-// Add sample moves on mount
-onMounted(() => {
-  moveHistory.value = [...sampleMoves]
-})
 </script>
 
 <style scoped>
@@ -244,7 +193,7 @@ onMounted(() => {
 
 .move-item {
   display: grid;
-  grid-template-columns: 35px 1fr 50px auto auto auto;
+  grid-template-columns: 35px 1fr 60px auto auto auto;
   gap: 6px;
   padding: 6px 15px;
   cursor: pointer;
@@ -274,9 +223,29 @@ onMounted(() => {
   font-size: clamp(13px, 2.5vw, 16px);
 }
 
-.move-time {
+.move-details {
   font-size: clamp(10px, 2vw, 12px);
   color: #7f8c8d;
+}
+
+.move-from-to {
+  font-family: 'Courier New', monospace;
+}
+
+.game-status-info {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  padding: 8px 15px;
+  margin: 0;
+}
+
+.status-row {
+  margin: 2px 0;
+}
+
+.status-label {
+  font-weight: bold;
+  color: #856404;
 }
 
 .capture-indicator {

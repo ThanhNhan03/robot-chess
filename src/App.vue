@@ -1,7 +1,51 @@
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
 import CameraView from './components/CameraView.vue'
 import ChessBoard from './components/ChessBoard.vue'
 import MoveHistory from './components/MoveHistory.vue'
+import { ChessGame } from './chess/ChessGame'
+
+// Chess game instance - shared between components
+const chessGame = new ChessGame()  // Use direct instance, not ref
+const gameState = ref(chessGame.getGameState())
+const moveHistory = ref(chessGame.getMoveHistory())
+const pgn = ref(chessGame.getPgn())
+
+// Update all reactive data
+const updateGameData = () => {
+  gameState.value = chessGame.getGameState()
+  moveHistory.value = chessGame.getMoveHistory()
+  pgn.value = chessGame.getPgn()
+  console.log('App: updateGameData called', {
+    gameState: gameState.value,
+    moveHistory: moveHistory.value.length
+  })
+}
+
+// Event handlers
+const handleGameUpdated = () => {
+  console.log('App: handleGameUpdated called')
+  updateGameData()
+}
+
+const handleUndoMove = () => {
+  console.log('App: handleUndoMove called')
+  const undoneMove = chessGame.undoMove()
+  if (undoneMove) {
+    updateGameData()
+  }
+}
+
+const handleResetGame = () => {
+  console.log('App: handleResetGame called')
+  chessGame.reset()
+  updateGameData()
+}
+
+// Initialize
+onMounted(() => {
+  updateGameData()
+})
 </script>
 
 <template>
@@ -19,12 +63,18 @@ import MoveHistory from './components/MoveHistory.vue'
 
         <!-- Chess Board Section -->
         <div class="board-section">
-          <ChessBoard />
+          <ChessBoard :shared-game="chessGame" @game-updated="handleGameUpdated" />
         </div>
 
         <!-- Move History Sidebar -->
         <aside class="history-sidebar">
-          <MoveHistory />
+          <MoveHistory 
+            :move-history="moveHistory"
+            :game-state="gameState"
+            :pgn="pgn"
+            @undo-move="handleUndoMove"
+            @reset-game="handleResetGame"
+          />
         </aside>
       </div>
     </main>
