@@ -2,6 +2,7 @@
 import CameraView from './components/CameraView.vue'
 import ChessBoard from './components/ChessBoard.vue'
 import MoveHistory from './components/MoveHistory.vue'
+import MQTTLog from './components/MQTTLog.vue'
 </script>
 
 <template>
@@ -22,9 +23,14 @@ import MoveHistory from './components/MoveHistory.vue'
           <ChessBoard />
         </div>
 
-        <!-- Move History Sidebar -->
-        <aside class="history-sidebar">
-          <MoveHistory />
+        <!-- Right Sidebar with History and MQTT Log -->
+        <aside class="right-sidebar">
+          <div class="sidebar-section">
+            <MoveHistory />
+          </div>
+          <div class="sidebar-section">
+            <MQTTLog />
+          </div>
         </aside>
       </div>
     </main>
@@ -77,8 +83,15 @@ import MoveHistory from './components/MoveHistory.vue'
   min-height: fit-content;
 }
 
-.history-sidebar {
+.right-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
   min-height: 600px;
+}
+
+.sidebar-section {
+  flex: 1;
 }
 
 /* Responsive Design */
@@ -88,9 +101,10 @@ import MoveHistory from './components/MoveHistory.vue'
     grid-template-rows: auto auto;
   }
   
-  .history-sidebar {
+  .right-sidebar {
     grid-column: 1 / -1;
     min-height: 400px;
+    flex-direction: row;
   }
 }
 
@@ -100,8 +114,9 @@ import MoveHistory from './components/MoveHistory.vue'
     gap: 15px;
   }
   
-  .history-sidebar {
+  .right-sidebar {
     min-height: 350px;
+    flex-direction: column;
   }
 }
 

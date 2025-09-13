@@ -45,10 +45,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import mqttService from '../services/mqttService'
 
 // Initial chess board setup with piece codes
-const initialBoard = ref([
+const initialBoard = ref([  
   ['br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br'],
   ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],
   ['', '', '', '', '', '', '', ''],
@@ -58,6 +59,11 @@ const initialBoard = ref([
   ['wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp'],
   ['wr', 'wn', 'wb', 'wq', 'wk', 'wb', 'wn', 'wr']
 ])
+
+// Game state
+const selectedSquare = ref<{row: number, col: number} | null>(null)
+const currentTurn = ref<'white' | 'black'>('white')
+const isConnected = ref(false)
 
 // Piece name mapping for alt text
 const pieceNames: { [key: string]: string } = {
@@ -75,7 +81,22 @@ const pieceNames: { [key: string]: string } = {
   'bp': 'Black Pawn'
 }
 
-const selectedSquare = ref<{row: number, col: number} | null>(null)
+// Convert row,col to chess notation (e.g., 0,4 -> e8)
+const toChessNotation = (row: number, col: number): string => {
+  const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+  const rank = 8 - row
+  return `${files[col]}${rank}`
+}
+
+// Convert chess notation to row,col (e.g., e8 -> [0,4])
+const fromChessNotation = (notation: string): [number, number] => {
+  const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+  const file = notation.charAt(0)
+  const rank = parseInt(notation.charAt(1))
+  const col = files.indexOf(file)
+  const row = 8 - rank
+  return [row, col]
+}
 
 const getPieceImage = (row: number, col: number) => {
   const piece = initialBoard.value[row][col]
@@ -94,10 +115,32 @@ const onSquareClick = (row: number, col: number) => {
   if (selectedSquare.value) {
     // Move piece if different square is selected
     if (selectedSquare.value.row !== row || selectedSquare.value.col !== col) {
-      // Simple move logic (without validation for now)
       const piece = initialBoard.value[selectedSquare.value.row][selectedSquare.value.col]
+      const fromNotation = toChessNotation(selectedSquare.value.row, selectedSquare.value.col)
+      const toNotation = toChessNotation(row, col)
+      
+      // Perform the move locally
       initialBoard.value[selectedSquare.value.row][selectedSquare.value.col] = ''
       initialBoard.value[row][col] = piece
+      
+      // Send MQTT message
+      if (isConnected.value && piece) {
+        const success = mqttService.sendMove(fromNotation, toNotation, piece)
+        if (success) {
+          console.log(`📤 Sent move: ${piece} from ${fromNotation} to ${toNotation}`)
+          
+          // Send updated board status
+          mqttService.sendStatus(initialBoard.value, currentTurn.value)
+          
+          // Toggle turn
+          currentTurn.value = currentTurn.value === 'white' ? 'black' : 'white'
+        } else {
+          console.error('❌ Failed to send move via MQTT')
+          // Revert move if MQTT failed
+          initialBoard.value[selectedSquare.value.row][selectedSquare.value.col] = piece
+          initialBoard.value[row][col] = ''
+        }
+      }
     }
     selectedSquare.value = null
   } else {
@@ -111,6 +154,88 @@ const onSquareClick = (row: number, col: number) => {
 const isSquareSelected = (row: number, col: number) => {
   return selectedSquare.value?.row === row && selectedSquare.value?.col === col
 }
+
+// Reset board to initial position
+const resetBoard = () => {
+  initialBoard.value = [
+    ['br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br'],
+    ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp'],
+    ['wr', 'wn', 'wb', 'wq', 'wk', 'wb', 'wn', 'wr']
+  ]
+  currentTurn.value = 'white'
+  selectedSquare.value = null
+  
+  // Send reset command via MQTT
+  if (isConnected.value) {
+    mqttService.sendReset()
+    mqttService.sendStatus(initialBoard.value, currentTurn.value)
+  }
+}
+
+// Handle incoming MQTT messages
+const handleMqttMove = (data: any) => {
+  try {
+    if (data.type === 'move') {
+      const [fromRow, fromCol] = fromChessNotation(data.from)
+      const [toRow, toCol] = fromChessNotation(data.to)
+      
+      // Update board with received move
+      initialBoard.value[fromRow][fromCol] = ''
+      initialBoard.value[toRow][toCol] = data.piece
+      
+      console.log(`📥 Received move: ${data.piece} from ${data.from} to ${data.to}`)
+    } else if (data.type === 'reset') {
+      resetBoard()
+      console.log('📥 Received reset command')
+    }
+  } catch (error) {
+    console.error('❌ Error handling MQTT message:', error)
+  }
+}
+
+// Initialize MQTT connection
+onMounted(async () => {
+  try {
+    isConnected.value = await mqttService.connect()
+    if (isConnected.value) {
+      console.log('✅ MQTT connected successfully')
+      
+      // Subscribe to chess topics
+      const topics = mqttService.getTopics()
+      mqttService.subscribe(topics.CHESS_MOVES, handleMqttMove)
+      mqttService.subscribe(topics.CHESS_CONTROL, handleMqttMove)
+      
+      // Send initial board status
+      mqttService.sendStatus(initialBoard.value, currentTurn.value)
+    } else {
+      console.error('❌ Failed to connect to MQTT')
+    }
+  } catch (error) {
+    console.error('❌ MQTT connection error:', error)
+  }
+})
+
+// Cleanup on component unmount
+onBeforeUnmount(() => {
+  if (isConnected.value) {
+    const topics = mqttService.getTopics()
+    mqttService.unsubscribe(topics.CHESS_MOVES, handleMqttMove)
+    mqttService.unsubscribe(topics.CHESS_CONTROL, handleMqttMove)
+  }
+})
+
+// Expose methods for external use
+defineExpose({
+  resetBoard,
+  getCurrentTurn: () => currentTurn.value,
+  getBoard: () => initialBoard.value,
+  isConnected: () => isConnected.value
+})
 </script>
 
 <style scoped>
