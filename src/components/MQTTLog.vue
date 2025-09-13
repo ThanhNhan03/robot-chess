@@ -187,11 +187,12 @@ onBeforeUnmount(() => {
   background: #2c3e50;
   border-radius: 6px;
   padding: 15px;
-  flex: 1;
-  overflow-y: auto;
   font-family: 'Courier New', monospace;
   font-size: 13px;
-  min-height: 300px;
+  max-height: 300px;
+  min-height: 150px;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .log-message {
