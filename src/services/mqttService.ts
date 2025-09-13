@@ -9,31 +9,10 @@ interface MqttClient {
   connected: boolean
 }
 
-// Định nghĩa message types cho điều khiển quân cờ
-export interface ChessMoveMessage {
-  type: 'move'
-  from: string      // Ví dụ: 'e2'
-  to: string        // Ví dụ: 'e4'
-  piece: string     // Ví dụ: 'wp' (white pawn)
-  timestamp: number
-  gameId?: string
+// Định nghĩa message type cho FEN
+export interface ChessFenMessage {
+  fen_str: string
 }
-
-export interface ChessResetMessage {
-  type: 'reset'
-  timestamp: number
-  gameId?: string
-}
-
-export interface ChessStatusMessage {
-  type: 'status'
-  board: string[][]  // Trạng thái bàn cờ hiện tại
-  turn: 'white' | 'black'
-  timestamp: number
-  gameId?: string
-}
-
-export type ChessMessage = ChessMoveMessage | ChessResetMessage | ChessStatusMessage
 
 class MQTTService {
   private client: MqttClient | null = null
@@ -43,10 +22,10 @@ class MQTTService {
 
   // Cấu hình RabbitMQ MQTT
   private config = {
-    host: 'localhost',
+    host: '100.99.22.52',
     port: 15675,  // WebSocket port for RabbitMQ MQTT (default: 15675)
-    username: 'guest',
-    password: 'guest',
+    username: 'admin',
+    password: '123456',
     clientId: `chess_client_${Math.random().toString(16).substr(2, 8)}`,
     protocol: 'ws' as const  // Use WebSocket for browser
   }
@@ -58,11 +37,9 @@ class MQTTService {
     { ...this.config, port: 8080 },   // Common alternative
   ]
 
-  // Topics cho chess game
+  // Topic cho chess game  
   private topics = {
-    CHESS_MOVES: 'chess/moves',
-    CHESS_STATUS: 'chess/status', 
-    CHESS_CONTROL: 'chess/control'
+    CHESS_FEN: 'chess/fen'
   }
 
   async connect(): Promise<boolean> {
@@ -176,14 +153,12 @@ class MQTTService {
   private subscribeToChessTopics() {
     if (!this.client) return
 
-    Object.values(this.topics).forEach(topic => {
-      this.client?.subscribe(topic, (err) => {
-        if (err) {
-          console.error(`❌ Failed to subscribe to ${topic}:`, err)
-        } else {
-          console.log(`📡 Subscribed to ${topic}`)
-        }
-      })
+    this.client?.subscribe(this.topics.CHESS_FEN, (err) => {
+      if (err) {
+        console.error(`❌ Failed to subscribe to ${this.topics.CHESS_FEN}:`, err)
+      } else {
+        console.log(`📡 Subscribed to ${this.topics.CHESS_FEN}`)
+      }
     })
   }
 
@@ -200,71 +175,26 @@ class MQTTService {
     }
   }
 
-  // Gửi nước di chuyển quân cờ
-  sendMove(from: string, to: string, piece: string, gameId?: string): boolean {
-    const message: ChessMoveMessage = {
-      type: 'move',
-      from,
-      to,
-      piece,
-      timestamp: Date.now(),
-      gameId
+  // Gửi FEN string
+  sendFen(fen_str: string): boolean {
+    const message: ChessFenMessage = {
+      fen_str
     }
 
     if (this.mockMode) {
-      console.log(`🎭 Mock MQTT - Send move: ${piece} from ${from} to ${to}`)
+      console.log(`🎭 Mock MQTT - Send FEN: ${fen_str}`)
       // Simulate message reception after small delay
       setTimeout(() => {
-        this.handleMessage(this.topics.CHESS_MOVES, JSON.stringify(message))
+        this.handleMessage(this.topics.CHESS_FEN, JSON.stringify(message))
       }, 100)
       return true
     }
 
-    return this.publish(this.topics.CHESS_MOVES, message)
-  }
-
-  // Gửi lệnh reset bàn cờ
-  sendReset(gameId?: string): boolean {
-    const message: ChessResetMessage = {
-      type: 'reset',
-      timestamp: Date.now(),
-      gameId
-    }
-
-    if (this.mockMode) {
-      console.log('🎭 Mock MQTT - Send reset')
-      setTimeout(() => {
-        this.handleMessage(this.topics.CHESS_CONTROL, JSON.stringify(message))
-      }, 100)
-      return true
-    }
-
-    return this.publish(this.topics.CHESS_CONTROL, message)
-  }
-
-  // Gửi trạng thái bàn cờ
-  sendStatus(board: string[][], turn: 'white' | 'black', gameId?: string): boolean {
-    const message: ChessStatusMessage = {
-      type: 'status',
-      board,
-      turn,
-      timestamp: Date.now(),
-      gameId
-    }
-
-    if (this.mockMode) {
-      console.log('🎭 Mock MQTT - Send status')
-      setTimeout(() => {
-        this.handleMessage(this.topics.CHESS_STATUS, JSON.stringify(message))
-      }, 100)
-      return true
-    }
-
-    return this.publish(this.topics.CHESS_STATUS, message)
+    return this.publish(this.topics.CHESS_FEN, message)
   }
 
   // Generic publish method
-  private publish(topic: string, message: ChessMessage): boolean {
+  private publish(topic: string, message: ChessFenMessage): boolean {
     if (!this.client || !this.isConnected) {
       console.warn('⚠️ MQTT client not connected, falling back to mock mode')
       this.mockMode = true

@@ -12,10 +12,8 @@
             :key="colIndex"
             :class="[
               'chess-square',
-              (rowIndex + colIndex) % 2 === 0 ? 'light' : 'dark',
-              { 'selected': isSquareSelected(rowIndex, colIndex) }
+              (rowIndex + colIndex) % 2 === 0 ? 'light' : 'dark'
             ]"
-            @click="onSquareClick(rowIndex, colIndex)"
           >
             <img
               v-if="getPieceImage(rowIndex, colIndex)"
@@ -61,8 +59,6 @@ const initialBoard = ref([
 ])
 
 // Game state
-const selectedSquare = ref<{row: number, col: number} | null>(null)
-const currentTurn = ref<'white' | 'black'>('white')
 const isConnected = ref(false)
 
 // Piece name mapping for alt text
@@ -81,21 +77,41 @@ const pieceNames: { [key: string]: string } = {
   'bp': 'Black Pawn'
 }
 
-// Convert row,col to chess notation (e.g., 0,4 -> e8)
-const toChessNotation = (row: number, col: number): string => {
-  const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
-  const rank = 8 - row
-  return `${files[col]}${rank}`
-}
-
-// Convert chess notation to row,col (e.g., e8 -> [0,4])
-const fromChessNotation = (notation: string): [number, number] => {
-  const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
-  const file = notation.charAt(0)
-  const rank = parseInt(notation.charAt(1))
-  const col = files.indexOf(file)
-  const row = 8 - rank
-  return [row, col]
+// Parse FEN string to board array
+const parseFenToBoard = (fen: string): string[][] => {
+  // FEN format: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+  // We only need the board part (first section before space)
+  const boardFen = fen.split(' ')[0]
+  const ranks = boardFen.split('/')
+  
+  const board: string[][] = []
+  
+  // FEN notation piece mapping
+  const fenToPiece: { [key: string]: string } = {
+    'r': 'br', 'n': 'bn', 'b': 'bb', 'q': 'bq', 'k': 'bk', 'p': 'bp', // Black pieces
+    'R': 'wr', 'N': 'wn', 'B': 'wb', 'Q': 'wq', 'K': 'wk', 'P': 'wp'  // White pieces
+  }
+  
+  for (let rank of ranks) {
+    const row: string[] = []
+    
+    for (let char of rank) {
+      if (fenToPiece[char]) {
+        // It's a piece
+        row.push(fenToPiece[char])
+      } else if ('12345678'.includes(char)) {
+        // It's a number indicating empty squares
+        const emptySquares = parseInt(char)
+        for (let i = 0; i < emptySquares; i++) {
+          row.push('')
+        }
+      }
+    }
+    
+    board.push(row)
+  }
+  
+  return board
 }
 
 const getPieceImage = (row: number, col: number) => {
@@ -111,90 +127,18 @@ const getPieceAlt = (row: number, col: number) => {
   return piece ? pieceNames[piece] || piece : ''
 }
 
-const onSquareClick = (row: number, col: number) => {
-  if (selectedSquare.value) {
-    // Move piece if different square is selected
-    if (selectedSquare.value.row !== row || selectedSquare.value.col !== col) {
-      const piece = initialBoard.value[selectedSquare.value.row][selectedSquare.value.col]
-      const fromNotation = toChessNotation(selectedSquare.value.row, selectedSquare.value.col)
-      const toNotation = toChessNotation(row, col)
-      
-      // Perform the move locally
-      initialBoard.value[selectedSquare.value.row][selectedSquare.value.col] = ''
-      initialBoard.value[row][col] = piece
-      
-      // Send MQTT message
-      if (isConnected.value && piece) {
-        const success = mqttService.sendMove(fromNotation, toNotation, piece)
-        if (success) {
-          console.log(`📤 Sent move: ${piece} from ${fromNotation} to ${toNotation}`)
-          
-          // Send updated board status
-          mqttService.sendStatus(initialBoard.value, currentTurn.value)
-          
-          // Toggle turn
-          currentTurn.value = currentTurn.value === 'white' ? 'black' : 'white'
-        } else {
-          console.error('❌ Failed to send move via MQTT')
-          // Revert move if MQTT failed
-          initialBoard.value[selectedSquare.value.row][selectedSquare.value.col] = piece
-          initialBoard.value[row][col] = ''
-        }
-      }
-    }
-    selectedSquare.value = null
-  } else {
-    // Select square if it has a piece
-    if (initialBoard.value[row][col]) {
-      selectedSquare.value = { row, col }
-    }
-  }
-}
-
-const isSquareSelected = (row: number, col: number) => {
-  return selectedSquare.value?.row === row && selectedSquare.value?.col === col
-}
-
-// Reset board to initial position
-const resetBoard = () => {
-  initialBoard.value = [
-    ['br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br'],
-    ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],
-    ['', '', '', '', '', '', '', ''],
-    ['', '', '', '', '', '', '', ''],
-    ['', '', '', '', '', '', '', ''],
-    ['', '', '', '', '', '', '', ''],
-    ['wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp'],
-    ['wr', 'wn', 'wb', 'wq', 'wk', 'wb', 'wn', 'wr']
-  ]
-  currentTurn.value = 'white'
-  selectedSquare.value = null
-  
-  // Send reset command via MQTT
-  if (isConnected.value) {
-    mqttService.sendReset()
-    mqttService.sendStatus(initialBoard.value, currentTurn.value)
-  }
-}
-
-// Handle incoming MQTT messages
-const handleMqttMove = (data: any) => {
+// Handle incoming FEN messages
+const handleMqttFen = (data: any) => {
   try {
-    if (data.type === 'move') {
-      const [fromRow, fromCol] = fromChessNotation(data.from)
-      const [toRow, toCol] = fromChessNotation(data.to)
+    if (data.fen_str) {
+      const newBoard = parseFenToBoard(data.fen_str)
+      initialBoard.value = newBoard
       
-      // Update board with received move
-      initialBoard.value[fromRow][fromCol] = ''
-      initialBoard.value[toRow][toCol] = data.piece
-      
-      console.log(`📥 Received move: ${data.piece} from ${data.from} to ${data.to}`)
-    } else if (data.type === 'reset') {
-      resetBoard()
-      console.log('📥 Received reset command')
+      console.log(`📥 Received FEN: ${data.fen_str}`)
+      console.log('📋 Board updated from FEN')
     }
   } catch (error) {
-    console.error('❌ Error handling MQTT message:', error)
+    console.error('❌ Error handling FEN message:', error, data)
   }
 }
 
@@ -205,13 +149,9 @@ onMounted(async () => {
     if (isConnected.value) {
       console.log('✅ MQTT connected successfully')
       
-      // Subscribe to chess topics
+      // Subscribe to FEN topic
       const topics = mqttService.getTopics()
-      mqttService.subscribe(topics.CHESS_MOVES, handleMqttMove)
-      mqttService.subscribe(topics.CHESS_CONTROL, handleMqttMove)
-      
-      // Send initial board status
-      mqttService.sendStatus(initialBoard.value, currentTurn.value)
+      mqttService.subscribe(topics.CHESS_FEN, handleMqttFen)
     } else {
       console.error('❌ Failed to connect to MQTT')
     }
@@ -224,15 +164,12 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   if (isConnected.value) {
     const topics = mqttService.getTopics()
-    mqttService.unsubscribe(topics.CHESS_MOVES, handleMqttMove)
-    mqttService.unsubscribe(topics.CHESS_CONTROL, handleMqttMove)
+    mqttService.unsubscribe(topics.CHESS_FEN, handleMqttFen)
   }
 })
 
 // Expose methods for external use
 defineExpose({
-  resetBoard,
-  getCurrentTurn: () => currentTurn.value,
   getBoard: () => initialBoard.value,
   isConnected: () => isConnected.value
 })
