@@ -70,9 +70,10 @@ import MQTTLog from './components/MQTTLog.vue'
 
 .main-content {
   display: grid;
-  grid-template-columns: 1fr 1fr 350px;
-  gap: 20px;
+  grid-template-columns: 1fr 1.2fr 350px;
+  gap: 18px;
   align-items: start;
+  min-height: calc(100vh - 140px);
 }
 
 .camera-section,
@@ -80,7 +81,7 @@ import MQTTLog from './components/MQTTLog.vue'
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: fit-content;
+  min-height: 520px;
 }
 
 .right-sidebar {
@@ -97,7 +98,7 @@ import MQTTLog from './components/MQTTLog.vue'
 /* Responsive Design */
 @media (max-width: 1400px) {
   .main-content {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1.3fr;
     grid-template-rows: auto auto;
   }
   
@@ -117,6 +118,10 @@ import MQTTLog from './components/MQTTLog.vue'
   .right-sidebar {
     min-height: 350px;
     flex-direction: column;
+  }
+  
+  .board-section {
+    min-height: 480px;
   }
 }
 
