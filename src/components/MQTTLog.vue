@@ -108,23 +108,18 @@ const formatTime = (timestamp: Date) => {
 const setupMqttListeners = () => {
   const topics = mqttService.getTopics()
   
-  // Listen to all chess topics
-  const handleMessage = (data: any) => {
-    const messageText = `${data.type}: ${data.from || ''}${data.to ? ' → ' + data.to : ''} ${data.piece || ''}`
-    addLogMessage('received', messageText)
-  }
-  
-  mqttService.subscribe(topics.CHESS_MOVES, handleMessage)
-  mqttService.subscribe(topics.CHESS_STATUS, handleMessage)
-  mqttService.subscribe(topics.CHESS_CONTROL, handleMessage)
+  // Listen to FEN topic only
+  mqttService.subscribe(topics.CHESS_FEN, (data: any) => {
+    addLogMessage('received', `FEN: ${data.fen_str || ''}`)
+  })
 }
 
 onMounted(() => {
   // Auto-connect on startup
   autoConnect()
   
-  addLogMessage('info', 'MQTT Log started - listening for external messages')
-  addLogMessage('info', 'Topics: chess/moves, chess/control, chess/status')
+  addLogMessage('info', 'MQTT Log started - listening for FEN messages')
+  addLogMessage('info', 'Topic: chess/fen')
 })
 
 onBeforeUnmount(() => {

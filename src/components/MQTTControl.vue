@@ -38,67 +38,26 @@
         </div>
       </div>
 
-      <!-- Manual Move Controls -->
-      <div class="manual-controls" v-if="isConnected">
-        <h4>Manual Move</h4>
-        <div class="move-inputs">
+      <!-- FEN Input Controls -->
+      <div class="fen-controls" v-if="isConnected">
+        <h4>FEN Input</h4>
+        <div class="fen-inputs">
           <div class="input-group">
-            <label>From:</label>
+            <label>FEN String:</label>
             <input 
-              v-model="manualFrom" 
-              placeholder="e.g., e2" 
-              maxlength="2"
-              class="move-input"
+              v-model="fenString" 
+              placeholder="e.g., rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
+              class="fen-input"
             />
-          </div>
-          <div class="input-group">
-            <label>To:</label>
-            <input 
-              v-model="manualTo" 
-              placeholder="e.g., e4" 
-              maxlength="2"
-              class="move-input"
-            />
-          </div>
-          <div class="input-group">
-            <label>Piece:</label>
-            <select v-model="manualPiece" class="piece-select">
-              <option value="">Select piece</option>
-              <option value="wp">White Pawn</option>
-              <option value="wr">White Rook</option>
-              <option value="wn">White Knight</option>
-              <option value="wb">White Bishop</option>
-              <option value="wq">White Queen</option>
-              <option value="wk">White King</option>
-              <option value="bp">Black Pawn</option>
-              <option value="br">Black Rook</option>
-              <option value="bn">Black Knight</option>
-              <option value="bb">Black Bishop</option>
-              <option value="bq">Black Queen</option>
-              <option value="bk">Black King</option>
-            </select>
           </div>
         </div>
         <button 
-          @click="sendManualMove" 
-          :disabled="!canSendMove"
+          @click="sendFenString" 
+          :disabled="!canSendFen"
           class="control-btn send"
         >
-          Send Move
+          Send FEN
         </button>
-      </div>
-
-      <!-- Quick Actions -->
-      <div class="quick-actions" v-if="isConnected">
-        <h4>Quick Actions</h4>
-        <div class="action-buttons">
-          <button @click="sendReset" class="control-btn reset">
-            🔄 Reset Board
-          </button>
-          <button @click="sendStatus" class="control-btn status">
-            📊 Send Status
-          </button>
-        </div>
       </div>
 
       <!-- Message Log -->
@@ -134,13 +93,11 @@ const isConnected = ref(false)
 const isConnecting = ref(false)
 const messageLog = ref<LogMessage[]>([])
 
-// Manual move controls
-const manualFrom = ref('')
-const manualTo = ref('')
-const manualPiece = ref('')
+// FEN input controls
+const fenString = ref('')
 
-const canSendMove = computed(() => {
-  return manualFrom.value && manualTo.value && manualPiece.value && isConnected.value
+const canSendFen = computed(() => {
+  return fenString.value.trim() && isConnected.value
 })
 
 const getStatusText = () => {
@@ -209,53 +166,17 @@ const retryRealConnection = async () => {
   }
 }
 
-const sendManualMove = () => {
-  if (!canSendMove.value) return
+const sendFenString = () => {
+  if (!canSendFen.value) return
 
-  const success = mqttService.sendMove(
-    manualFrom.value.toLowerCase(),
-    manualTo.value.toLowerCase(),
-    manualPiece.value
-  )
+  const success = mqttService.sendFen(fenString.value.trim())
 
   if (success) {
-    addLogMessage('sent', `Move: ${manualPiece.value} from ${manualFrom.value} to ${manualTo.value}`)
-    // Clear inputs after successful send
-    manualFrom.value = ''
-    manualTo.value = ''
-    manualPiece.value = ''
+    addLogMessage('sent', `FEN: ${fenString.value}`)
+    // Clear input after successful send
+    fenString.value = ''
   } else {
-    addLogMessage('error', 'Failed to send move')
-  }
-}
-
-const sendReset = () => {
-  const success = mqttService.sendReset()
-  if (success) {
-    addLogMessage('sent', 'Reset board command')
-  } else {
-    addLogMessage('error', 'Failed to send reset command')
-  }
-}
-
-const sendStatus = () => {
-  // Mock board state for demo
-  const mockBoard = [
-    ['br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br'],
-    ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],
-    ['', '', '', '', '', '', '', ''],
-    ['', '', '', '', '', '', '', ''],
-    ['', '', '', '', '', '', '', ''],
-    ['', '', '', '', '', '', '', ''],
-    ['wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp'],
-    ['wr', 'wn', 'wb', 'wq', 'wk', 'wb', 'wn', 'wr']
-  ]
-  
-  const success = mqttService.sendStatus(mockBoard, 'white')
-  if (success) {
-    addLogMessage('sent', 'Board status')
-  } else {
-    addLogMessage('error', 'Failed to send status')
+    addLogMessage('error', 'Failed to send FEN string')
   }
 }
 
@@ -274,14 +195,12 @@ const formatTime = (timestamp: Date) => {
 const setupMqttListeners = () => {
   const topics = mqttService.getTopics()
   
-  // Listen to all chess topics
-  const handleMessage = (data: any) => {
-    addLogMessage('received', `${data.type}: ${JSON.stringify(data)}`)
+  // Listen to FEN topic
+  const handleFenMessage = (data: any) => {
+    addLogMessage('received', `FEN: ${data.fen_str || ''}`)
   }
   
-  mqttService.subscribe(topics.CHESS_MOVES, handleMessage)
-  mqttService.subscribe(topics.CHESS_STATUS, handleMessage)
-  mqttService.subscribe(topics.CHESS_CONTROL, handleMessage)
+  mqttService.subscribe(topics.CHESS_FEN, handleFenMessage)
 }
 
 onMounted(() => {
@@ -419,22 +338,19 @@ onBeforeUnmount(() => {
   transform: none;
 }
 
-.manual-controls, .quick-actions {
+.fen-controls {
   margin-bottom: 20px;
   padding: 15px;
   background: #f8f9fa;
   border-radius: 8px;
 }
 
-.manual-controls h4, .quick-actions h4 {
+.fen-controls h4 {
   margin: 0 0 15px 0;
   color: #2c3e50;
 }
 
-.move-inputs {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 10px;
+.fen-inputs {
   margin-bottom: 15px;
 }
 
@@ -450,23 +366,18 @@ onBeforeUnmount(() => {
   margin-bottom: 4px;
 }
 
-.move-input, .piece-select {
+.fen-input {
   padding: 8px;
   border: 2px solid #ecf0f1;
   border-radius: 4px;
   font-size: 14px;
   transition: border-color 0.3s;
+  width: 100%;
 }
 
-.move-input:focus, .piece-select:focus {
+.fen-input:focus {
   outline: none;
   border-color: #3498db;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
 }
 
 .message-log h4 {
