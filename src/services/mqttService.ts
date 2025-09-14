@@ -23,7 +23,7 @@ class MQTTService {
   // Cấu hình RabbitMQ MQTT
   private config = {
     host: '100.99.22.52',
-    port: 15675,  // WebSocket port for RabbitMQ MQTT (default: 15675)
+    port: 5552,  // WebSocket port for RabbitMQ MQTT (default: 15675)
     username: 'admin',
     password: '123456',
     clientId: `chess_client_${Math.random().toString(16).substr(2, 8)}`,
@@ -32,9 +32,10 @@ class MQTTService {
 
   // Alternative configurations to try
   private alternativeConfigs = [
-    { ...this.config, host: 'broker.hivemq.com', port: 8000, username: '', password: '' },  // Public broker for testing (moved to first)
-    { ...this.config, port: 15676 },  // Alternative WebSocket port
+    { ...this.config, port: 5552 },  // Alternative WebSocket port
     { ...this.config, port: 8080 },   // Common alternative
+    { ...this.config, host: 'localhost', port: 15675 }, // Local RabbitMQ
+    { ...this.config, host: 'broker.hivemq.com', port: 5552, username: '', password: '' },  // Public broker for testing
   ]
 
   // Topic cho chess game  
@@ -191,6 +192,37 @@ class MQTTService {
     }
 
     return this.publish(this.topics.CHESS_FEN, message)
+  }
+
+  // Generic publish method for any message
+  publishMessage(topic: string, message: any): boolean {
+    console.log(`📤 Attempting to publish to ${topic}:`, message)
+    
+    // If we have a real MQTT connection, use it first
+    if (this.client && this.isConnected && !this.mockMode) {
+      try {
+        const payload = JSON.stringify(message)
+        this.client.publish(topic, payload, { qos: 1 }, (error) => {
+          if (error) {
+            console.error(`❌ Failed to publish to ${topic}:`, error)
+          } else {
+            console.log(`✅ Successfully published to ${topic}`)
+          }
+        })
+        return true
+      } catch (error) {
+        console.error('❌ Failed to publish message:', error)
+        return false
+      }
+    }
+    
+    // Fallback to mock mode if no real connection
+    console.log(`🎭 Mock MQTT - Publishing to ${topic}:`, message)
+    // Simulate message reception after small delay for topics we're subscribed to
+    setTimeout(() => {
+      this.handleMessage(topic, JSON.stringify(message))
+    }, 100)
+    return true
   }
 
   // Generic publish method

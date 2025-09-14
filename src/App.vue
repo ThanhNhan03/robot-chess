@@ -3,6 +3,7 @@ import CameraView from './components/CameraView.vue'
 import ChessBoard from './components/ChessBoard.vue'
 import MoveHistory from './components/MoveHistory.vue'
 import MQTTLog from './components/MQTTLog.vue'
+import MoveCommand from './components/MoveCommand.vue'
 </script>
 
 <template>
@@ -23,10 +24,13 @@ import MQTTLog from './components/MQTTLog.vue'
           <ChessBoard />
         </div>
 
-        <!-- Right Sidebar with History and MQTT Log -->
+        <!-- Right Sidebar with History, MQTT Log, and Move Command -->
         <aside class="right-sidebar">
           <div class="sidebar-section">
             <MoveHistory />
+          </div>
+          <div class="sidebar-section">
+            <MoveCommand />
           </div>
           <div class="sidebar-section">
             <MQTTLog />
@@ -70,7 +74,7 @@ import MQTTLog from './components/MQTTLog.vue'
 
 .main-content {
   display: grid;
-  grid-template-columns: 1fr 1.2fr 350px;
+  grid-template-columns: 1fr 1.2fr 400px;
   gap: 18px;
   align-items: start;
   min-height: calc(100vh - 140px);
@@ -87,8 +91,8 @@ import MQTTLog from './components/MQTTLog.vue'
 .right-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  min-height: 600px;
+  gap: 15px;
+  min-height: 800px;
 }
 
 .sidebar-section {
