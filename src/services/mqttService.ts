@@ -23,7 +23,7 @@ class MQTTService {
   // Cấu hình RabbitMQ MQTT
   private config = {
     host: '100.99.22.52',
-    port: 5552,  // WebSocket port for RabbitMQ MQTT (default: 15675)
+    port: 15675,  // WebSocket port for RabbitMQ MQTT (default: 15675)
     username: 'admin',
     password: '123456',
     clientId: `chess_client_${Math.random().toString(16).substr(2, 8)}`,

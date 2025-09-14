@@ -127,7 +127,7 @@ const sendHistory = ref<Array<{
 // Message templates
 const messageTemplates = {
   action_goal: {
-    topic: '/robot/move_piece/goal',
+    topic: 'robot/move_piece/goal',
     message: {
       goal_id: "attack_001",
       header: {

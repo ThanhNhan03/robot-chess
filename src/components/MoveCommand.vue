@@ -307,7 +307,7 @@ const sendMoveCommand = async () => {
 // Publish message via MQTT service
 const publishMoveMessage = async (message: any): Promise<boolean> => {
   try {
-    const topic = '/robot/move_piece/move'
+    const topic = 'robot/move_piece/goal'
     console.log(`📤 Sending move command to ${topic}:`, message)
     
     // Use the publishMessage method from MQTT service
