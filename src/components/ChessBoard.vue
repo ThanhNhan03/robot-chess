@@ -10,7 +10,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { TheChessboard } from 'vue3-chessboard'
 import 'vue3-chessboard/style.css'
 import type { BoardApi, BoardConfig, MoveEvent } from 'vue3-chessboard'
@@ -18,8 +18,11 @@ import mqttService from '../services/mqttService'
 
 // Board API and configuration
 let boardAPI: BoardApi
-const boardConfig: BoardConfig = {
+const currentFen = ref('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
+
+const boardConfig = computed((): BoardConfig => ({
   coordinates: true,
+  fen: currentFen.value,
   movable: {
     free: false,
     color: 'both',
@@ -40,11 +43,10 @@ const boardConfig: BoardConfig = {
   premovable: {
     enabled: false
   }
-}
+}))
 
 // Game state
 const isConnected = ref(false)
-const currentFen = ref('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
 
 // Handle board creation
 const handleBoardCreated = (api: BoardApi) => {
@@ -60,17 +62,72 @@ const handleMove = (move: MoveEvent) => {
   }
 }
 
+// Validate and normalize FEN string
+const normalizeAndValidateFEN = (fen: string): string | null => {
+  try {
+    const trimmedFen = fen.trim()
+    const parts = trimmedFen.split(' ')
+    
+    // Check position part (8 ranks separated by /)
+    const position = parts[0]
+    const ranks = position.split('/')
+    if (ranks.length !== 8) return null
+    
+    // If FEN only has position part, add default values for other parts
+    if (parts.length === 1) {
+      // Add default: white to move, no castling, no en passant, halfmove 0, fullmove 1
+      return `${position} w - - 0 1`
+    }
+    
+    // If FEN has some parts but not all, fill in the missing ones
+    const normalizedParts = [...parts]
+    
+    // Ensure we have at least 6 parts
+    if (normalizedParts.length < 2) normalizedParts.push('w') // active color
+    if (normalizedParts.length < 3) normalizedParts.push('-') // castling
+    if (normalizedParts.length < 4) normalizedParts.push('-') // en passant
+    if (normalizedParts.length < 5) normalizedParts.push('0') // halfmove
+    if (normalizedParts.length < 6) normalizedParts.push('1') // fullmove
+    
+    // Basic validation of parts
+    const activeColor = normalizedParts[1]
+    if (!['w', 'b'].includes(activeColor)) normalizedParts[1] = 'w'
+    
+    const castling = normalizedParts[2]
+    if (!/^(-|[KQkq]{0,4})$/.test(castling)) normalizedParts[2] = '-'
+    
+    const enPassant = normalizedParts[3]
+    if (enPassant !== '-' && !/^[a-h][36]$/.test(enPassant)) normalizedParts[3] = '-'
+    
+    return normalizedParts.slice(0, 6).join(' ')
+  } catch (error) {
+    return null
+  }
+}
+
 // Handle incoming FEN messages
 const handleMqttFen = (data: any) => {
   try {
     if (data.fen_str) {
-      currentFen.value = data.fen_str
-      // Update the board with the new FEN position
-      if (boardAPI) {
-        boardAPI.setPosition(data.fen_str)
+      console.log(`📥 Received FEN: ${data.fen_str}`)
+      
+      // Normalize and validate FEN
+      const normalizedFen = normalizeAndValidateFEN(data.fen_str)
+      if (!normalizedFen) {
+        console.error('❌ Invalid FEN received:', data.fen_str)
+        return
       }
       
-      console.log(`📥 Received FEN: ${data.fen_str}`)
+      console.log(`📝 Normalized FEN: ${normalizedFen}`)
+      
+      // Update the current FEN (this will trigger boardConfig update)
+      currentFen.value = normalizedFen
+      
+      // Also update the board API if available
+      if (boardAPI) {
+        boardAPI.setPosition(normalizedFen)
+      }
+      
       console.log('📋 Board updated from FEN')
     }
   } catch (error) {

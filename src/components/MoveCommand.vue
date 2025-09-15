@@ -127,8 +127,8 @@
             </label>
           </div>
 
-          <!-- Auto-generated fields (read-only) -->
-          <div class="form-group">
+          <!-- Auto-generated fields (read-only, hidden) -->
+          <div class="form-group" style="display: none;">
             <label for="goalId">Goal ID:</label>
             <input
               id="goalId"
@@ -139,7 +139,7 @@
             />
           </div>
 
-          <div class="form-group">
+          <div class="form-group" style="display: none;">
             <label for="notation">Notation (auto-generated):</label>
             <input
               id="notation"

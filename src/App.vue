@@ -19,21 +19,23 @@ import MoveCommand from './components/MoveCommand.vue'
           <CameraView />
         </div>
 
-        <!-- Chess Board Section -->
+        <!-- Chess Board Section with MQTT -->
         <div class="board-section">
-          <ChessBoard />
+          <div class="board-with-mqtt">
+            <ChessBoard />
+            <div class="mqtt-below-board">
+              <MQTTLog />
+            </div>
+          </div>
         </div>
 
-        <!-- Right Sidebar with History, MQTT Log, and Move Command -->
+        <!-- Right Sidebar with History and Move Command -->
         <aside class="right-sidebar">
           <div class="sidebar-section">
             <MoveHistory />
           </div>
           <div class="sidebar-section">
             <MoveCommand />
-          </div>
-          <div class="sidebar-section">
-            <MQTTLog />
           </div>
         </aside>
       </div>
@@ -66,7 +68,7 @@ import MoveCommand from './components/MoveCommand.vue'
 .app-main {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 100px;
   padding: 20px;
   max-width: 1600px;
   margin: 0 auto;
@@ -74,8 +76,8 @@ import MoveCommand from './components/MoveCommand.vue'
 
 .main-content {
   display: grid;
-  grid-template-columns: 1fr 1.2fr 400px;
-  gap: 18px;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 80px;
   align-items: start;
   min-height: calc(100vh - 140px);
 }
@@ -84,8 +86,20 @@ import MoveCommand from './components/MoveCommand.vue'
 .board-section {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   min-height: 520px;
+}
+
+.board-with-mqtt {
+  display: flex;
+  flex-direction: column;
+  gap: 100px;
+  width: 100%;
+  align-items: center;
+}
+
+.mqtt-below-board {
+  width: 100%;
 }
 
 .right-sidebar {
