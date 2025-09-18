@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TCP Server Web Interface</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🌐 TCP Server Web Interface</h1>
+            <div class="status">
+                <div id="connection-status" class="status-indicator disconnected">
+                    <span class="status-dot"></span>
+                    <span id="status-text">Disconnected</span>
+                </div>
+                <div id="client-info" class="client-info"></div>
+            </div>
+        </header>
+
+        <main class="main">
+            <!-- Message Display Area -->
+            <div class="messages-container">
+                <div class="messages-header">
+                    <h2>📨 Messages</h2>
+                    <button id="clear-messages" class="btn btn-small">Clear</button>
+                </div>
+                <div id="messages" class="messages"></div>
+            </div>
+
+            <!-- Message Send Area -->
+            <div class="send-container">
+                <div class="send-header">
+                    <h3>✏️ Send Message</h3>
+                    <div class="message-type-tabs">
+                        <button class="tab-btn active" data-type="text">Text</button>
+                        <button class="tab-btn" data-type="json">JSON</button>
+                        <button class="tab-btn" data-type="preset">Preset</button>
+                    </div>
+                </div>
+
+                <!-- Text Message Tab -->
+                <div id="tab-text" class="tab-content active">
+                    <div class="input-group">
+                        <input type="text" id="text-input" placeholder="Type your message..." class="message-input">
+                        <button id="send-text" class="btn btn-primary">Send</button>
+                    </div>
+                </div>
+
+                <!-- JSON Message Tab -->
+                <div id="tab-json" class="tab-content">
+                    <div class="input-group">
+                        <textarea id="json-input" placeholder='{"type": "text", "content": "Hello!"}'
+                                  class="json-textarea"></textarea>
+                        <button id="send-json" class="btn btn-primary">Send JSON</button>
+                    </div>
+                    <div class="json-examples">
+                        <h4>Examples:</h4>
+                        <button class="example-btn" data-json='{"type": "ping"}'>Ping</button>
+                        <button class="example-btn" data-json='{"type": "list_clients"}'>List Clients</button>
+                        <button class="example-btn" data-json='{"type": "broadcast", "content": "Hello everyone!"}'>Broadcast</button>
+                    </div>
+                </div>
+
+                <!-- Preset Messages Tab -->
+                <div id="tab-preset" class="tab-content">
+                    <div class="preset-buttons">
+                        <button class="preset-btn" data-message='{"type": "ping"}'>🏓 Ping Server</button>
+                        <button class="preset-btn" data-message='{"type": "list_clients"}'>👥 List Clients</button>
+                        <button class="preset-btn" data-message='{"type": "broadcast", "content": "Hello from web interface! 👋"}'>📢 Broadcast Hello</button>
+                        <button class="preset-btn" data-message='{"type": "text", "content": "Test message from web"}'>💬 Test Message</button>
+                        <button class="preset-btn" data-message='{"type": "custom_data", "payload": {"user": "WebUser", "action": "test", "timestamp": ""}}'>🧪 Custom Data</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Connection Controls -->
+            <div class="controls">
+                <button id="connect-btn" class="btn btn-success">Connect to TCP Server</button>
+                <button id="disconnect-btn" class="btn btn-danger" disabled>Disconnect</button>
+                <button id="refresh-status" class="btn btn-secondary">Refresh Status</button>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <div class="stats">
+                <span id="message-count">Messages: 0</span>
+                <span id="tcp-port">TCP Port: -</span>
+                <span id="timestamp">Last update: -</span>
+            </div>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

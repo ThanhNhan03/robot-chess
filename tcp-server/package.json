@@ -1,0 +1,21 @@
+{
+  "name": "tcp-server",
+  "version": "1.0.0",
+  "description": "TCP Server với khả năng xử lý nhiều client đồng thời",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test-client.js",
+    "dev": "node --watch server.js",
+    "demo": "node demo.js",
+    "kill-port": "./kill-port.sh",
+    "force-demo": "./kill-port.sh && npm run demo",
+    "json-test": "node json-test.js",
+    "web": "cd web-interface && npm install && npm run web"
+  },
+  "keywords": ["tcp", "server", "socket", "nodejs"],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {}
+}
