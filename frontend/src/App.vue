@@ -2,7 +2,6 @@
 import CameraView from './components/CameraView.vue'
 import ChessBoard from './components/ChessBoard.vue'
 import MoveHistory from './components/MoveHistory.vue'
-import MQTTLog from './components/MQTTLog.vue'
 </script>
 
 <template>
@@ -23,13 +22,10 @@ import MQTTLog from './components/MQTTLog.vue'
           <ChessBoard />
         </div>
 
-        <!-- Right Sidebar with History and MQTT Log -->
+        <!-- Right Sidebar with History -->
         <aside class="right-sidebar">
           <div class="sidebar-section">
             <MoveHistory />
-          </div>
-          <div class="sidebar-section">
-            <MQTTLog />
           </div>
         </aside>
       </div>

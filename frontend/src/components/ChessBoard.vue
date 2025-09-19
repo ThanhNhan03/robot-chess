@@ -44,7 +44,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import mqttService from '../services/mqttService'
+import webSocketService from '../services/webSocketService'
 
 // Initial chess board setup with piece codes
 const initialBoard = ref([  
@@ -127,51 +127,54 @@ const getPieceAlt = (row: number, col: number) => {
   return piece ? pieceNames[piece] || piece : ''
 }
 
-// Handle incoming FEN messages
-const handleMqttFen = (data: any) => {
+// Handle incoming FEN messages from WebSocket
+const handleWebSocketFen = (data: any) => {
   try {
     if (data.fen_str) {
       const newBoard = parseFenToBoard(data.fen_str)
       initialBoard.value = newBoard
       
-      console.log(`📥 Received FEN: ${data.fen_str}`)
-      console.log('📋 Board updated from FEN')
+      console.log(`Received FEN: ${data.fen_str}`)
+      console.log('Board updated from FEN')
     }
   } catch (error) {
-    console.error('❌ Error handling FEN message:', error, data)
+    console.error('Error handling FEN message:', error, data)
   }
 }
 
-// Initialize MQTT connection
+// Initialize WebSocket connection
 onMounted(async () => {
   try {
-    isConnected.value = await mqttService.connect()
+    isConnected.value = await webSocketService.connect()
     if (isConnected.value) {
-      console.log('✅ MQTT connected successfully')
+      console.log('WebSocket connected successfully')
       
-      // Subscribe to FEN topic
-      const topics = mqttService.getTopics()
-      mqttService.subscribe(topics.CHESS_FEN, handleMqttFen)
+      // Subscribe to FEN messages
+      webSocketService.subscribe('fen', handleWebSocketFen)
     } else {
-      console.error('❌ Failed to connect to MQTT')
+      console.error('Failed to connect to WebSocket')
     }
   } catch (error) {
-    console.error('❌ MQTT connection error:', error)
+    console.error('WebSocket connection error:', error)
   }
 })
 
 // Cleanup on component unmount
 onBeforeUnmount(() => {
   if (isConnected.value) {
-    const topics = mqttService.getTopics()
-    mqttService.unsubscribe(topics.CHESS_FEN, handleMqttFen)
+    webSocketService.unsubscribe('fen', handleWebSocketFen)
+    webSocketService.disconnect()
   }
 })
 
 // Expose methods for external use
 defineExpose({
   getBoard: () => initialBoard.value,
-  isConnected: () => isConnected.value
+  isConnected: () => isConnected.value,
+  updateFromFen: (fen: string) => {
+    const newBoard = parseFenToBoard(fen)
+    initialBoard.value = newBoard
+  }
 })
 </script>
 
