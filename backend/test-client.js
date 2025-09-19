@@ -1,7 +1,7 @@
 const net = require('net');
 
 // Cấu hình kết nối
-const HOST = 'localhost';
+const HOST = 'localhost' || '100.73.130.46';
 const PORT = 8080;
 
 // Test FEN strings
