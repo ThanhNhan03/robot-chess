@@ -10,19 +10,114 @@ class WebSocketService {
   private isConnected = false
   private subscribers: Map<string, Function[]> = new Map()
   private reconnectAttempts = 0
-  private maxReconnectAttempts = 5
-  private reconnectInterval = 3000
+  private maxReconnectAttempts = Number(import.meta.env.VITE_WS_RECONNECT_ATTEMPTS) || 5
+  private reconnectInterval = Number(import.meta.env.VITE_WS_RECONNECT_INTERVAL) || 3000
+  private connectionTimeout = Number(import.meta.env.VITE_WS_CONNECTION_TIMEOUT) || 5000
 
-  // Cấu hình WebSocket server
-  private config = {
-    url: 'ws://localhost:8081'
+  // Cấu hình WebSocket servers với fallback
+  private primaryIP = import.meta.env.VITE_WS_PRIMARY_IP || '100.73.130.46'
+  private fallbackIP = import.meta.env.VITE_WS_FALLBACK_IP || 'localhost'
+  private primaryPort = import.meta.env.VITE_WS_PRIMARY_PORT || '8081'
+  private fallbackPorts = import.meta.env.VITE_WS_FALLBACK_PORTS 
+    ? import.meta.env.VITE_WS_FALLBACK_PORTS.split(',') 
+    : ['8085', '8086', '8087']
+
+  private currentConnection: { ip: string, port: string } | null = null
+
+  // Method để thử kết nối với một URL cụ thể
+  private tryConnect(url: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      console.log(`Đang thử kết nối: ${url}`)
+      
+      const testWs = new WebSocket(url)
+      let timeoutId: number
+
+      const cleanup = () => {
+        clearTimeout(timeoutId)
+        if (testWs.readyState === WebSocket.CONNECTING || testWs.readyState === WebSocket.OPEN) {
+          testWs.close()
+        }
+      }
+
+      timeoutId = window.setTimeout(() => {
+        cleanup()
+        console.log(`Timeout kết nối: ${url}`)
+        resolve(false)
+      }, this.connectionTimeout)
+
+      testWs.onopen = () => {
+        cleanup()
+        console.log(`Kết nối thành công: ${url}`)
+        testWs.close()
+        resolve(true)
+      }
+
+      testWs.onerror = () => {
+        cleanup()
+        console.log(`Lỗi kết nối: ${url}`)
+        resolve(false)
+      }
+    })
+  }
+
+  // Method để tìm URL WebSocket khả dụng
+  private async findAvailableWebSocket(): Promise<string | null> {
+    // Thử IP chính với port chính
+    const primaryUrl = `ws://${this.primaryIP}:${this.primaryPort}`
+    if (await this.tryConnect(primaryUrl)) {
+      this.currentConnection = { ip: this.primaryIP, port: this.primaryPort }
+      return primaryUrl
+    }
+
+    console.log(`IP chính ${this.primaryIP} không khả dụng, thử fallback ports...`)
+    
+    // Thử IP chính với các ports fallback
+    for (const port of this.fallbackPorts) {
+      const url = `ws://${this.primaryIP}:${port}`
+      if (await this.tryConnect(url)) {
+        this.currentConnection = { ip: this.primaryIP, port }
+        return url
+      }
+    }
+
+    console.log(`IP chính ${this.primaryIP} hoàn toàn không khả dụng, thử IP fallback...`)
+
+    // Thử IP fallback với port chính
+    const fallbackPrimaryUrl = `ws://${this.fallbackIP}:${this.primaryPort}`
+    if (await this.tryConnect(fallbackPrimaryUrl)) {
+      this.currentConnection = { ip: this.fallbackIP, port: this.primaryPort }
+      return fallbackPrimaryUrl
+    }
+
+    // Thử IP fallback với các ports fallback
+    for (const port of this.fallbackPorts) {
+      const url = `ws://${this.fallbackIP}:${port}`
+      if (await this.tryConnect(url)) {
+        this.currentConnection = { ip: this.fallbackIP, port }
+        return url
+      }
+    }
+
+    console.error('Không tìm thấy WebSocket server khả dụng!')
+    return null
   }
 
   async connect(): Promise<boolean> {
     try {
-      console.log('🔄 Đang kết nối WebSocket...')
-      
-      this.ws = new WebSocket(this.config.url)
+      console.log('Đang tìm WebSocket server khả dụng...')
+      console.log(`IP chính: ${this.primaryIP}:${this.primaryPort}`)
+      console.log(`IP fallback: ${this.fallbackIP}:${this.primaryPort}`)
+      console.log(`Fallback ports: ${this.fallbackPorts.join(', ')}`)
+
+      // Tìm URL khả dụng
+      const availableUrl = await this.findAvailableWebSocket()
+      if (!availableUrl) {
+        console.error('Không thể tìm thấy WebSocket server khả dụng')
+        return false
+      }
+
+      console.log(`Kết nối tới: ${availableUrl}`)
+      this.ws = new WebSocket(availableUrl)
       
       return new Promise((resolve) => {
         if (!this.ws) {
@@ -31,7 +126,8 @@ class WebSocketService {
         }
 
         this.ws.onopen = () => {
-          console.log('✅ WebSocket đã kết nối thành công')
+          const connInfo = this.currentConnection ? `${this.currentConnection.ip}:${this.currentConnection.port}` : 'unknown'
+          console.log(`WebSocket đã kết nối thành công tới: ${connInfo}`)
           this.isConnected = true
           this.reconnectAttempts = 0
           resolve(true)
@@ -40,7 +136,7 @@ class WebSocketService {
         this.ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data)
-            console.log('📥 Nhận được message:', data)
+            console.log('Nhận được message:', data)
             
             // Gọi tất cả subscribers
             this.notifySubscribers('message', data)
@@ -50,32 +146,32 @@ class WebSocketService {
               this.notifySubscribers('fen', data)
             }
           } catch (error) {
-            console.error('❌ Lỗi parse message:', error)
+            console.error('Lỗi parse message:', error)
           }
         }
 
         this.ws.onclose = () => {
-          console.log('🔌 WebSocket đã ngắt kết nối')
+          console.log('WebSocket đã ngắt kết nối')
           this.isConnected = false
           this.handleReconnect()
         }
 
         this.ws.onerror = (error) => {
-          console.error('❌ WebSocket error:', error)
+          console.error('WebSocket error:', error)
           this.isConnected = false
           resolve(false)
         }
 
-        // Timeout sau 5 giây
+        // Timeout sau connectionTimeout
         setTimeout(() => {
           if (!this.isConnected) {
-            console.error('⏰ WebSocket connection timeout')
+            console.error('WebSocket connection timeout')
             resolve(false)
           }
-        }, 5000)
+        }, this.connectionTimeout)
       })
     } catch (error) {
-      console.error('❌ Lỗi kết nối WebSocket:', error)
+      console.error('Lỗi kết nối WebSocket:', error)
       return false
     }
   }
@@ -83,13 +179,13 @@ class WebSocketService {
   private handleReconnect() {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++
-      console.log(`🔄 Thử reconnect lần ${this.reconnectAttempts}/${this.maxReconnectAttempts}...`)
+      console.log(`Thử reconnect lần ${this.reconnectAttempts}/${this.maxReconnectAttempts}...`)
       
       setTimeout(() => {
         this.connect()
       }, this.reconnectInterval)
     } else {
-      console.error('❌ Đã thử reconnect tối đa, dừng kết nối')
+      console.error('Đã thử reconnect tối đa, dừng kết nối')
     }
   }
 
@@ -98,7 +194,7 @@ class WebSocketService {
       this.subscribers.set(event, [])
     }
     this.subscribers.get(event)!.push(callback)
-    console.log(`📝 Đã subscribe event: ${event}`)
+    console.log(`Đã subscribe event: ${event}`)
   }
 
   unsubscribe(event: string, callback: Function) {
@@ -107,7 +203,7 @@ class WebSocketService {
       const index = callbacks.indexOf(callback)
       if (index > -1) {
         callbacks.splice(index, 1)
-        console.log(`🗑️ Đã unsubscribe event: ${event}`)
+        console.log(`Đã unsubscribe event: ${event}`)
       }
     }
   }
@@ -119,7 +215,7 @@ class WebSocketService {
         try {
           callback(data)
         } catch (error) {
-          console.error(`❌ Lỗi trong callback cho event ${event}:`, error)
+          console.error(`Lỗi trong callback cho event ${event}:`, error)
         }
       })
     }
@@ -128,9 +224,9 @@ class WebSocketService {
   send(data: any) {
     if (this.ws && this.isConnected) {
       this.ws.send(JSON.stringify(data))
-      console.log('📤 Đã gửi:', data)
+      console.log('Đã gửi:', data)
     } else {
-      console.warn('⚠️ WebSocket chưa kết nối, không thể gửi data')
+      console.warn('WebSocket chưa kết nối, không thể gửi data')
     }
   }
 
@@ -139,12 +235,17 @@ class WebSocketService {
       this.ws.close()
       this.ws = null
       this.isConnected = false
-      console.log('🔌 Đã ngắt kết nối WebSocket')
+      this.currentConnection = null
+      console.log('Đã ngắt kết nối WebSocket')
     }
   }
 
   getConnectionStatus(): boolean {
     return this.isConnected
+  }
+
+  getConnectionInfo(): { ip: string, port: string } | null {
+    return this.currentConnection
   }
 
   // Phương thức để test kết nối
