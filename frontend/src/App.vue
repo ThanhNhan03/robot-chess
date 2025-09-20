@@ -2,6 +2,7 @@
 import CameraView from './components/CameraView.vue'
 import ChessBoard from './components/ChessBoard.vue'
 import MoveHistory from './components/MoveHistory.vue'
+import RobotCommand from './components/RobotCommand.vue'
 </script>
 
 <template>
@@ -22,10 +23,13 @@ import MoveHistory from './components/MoveHistory.vue'
           <ChessBoard />
         </div>
 
-        <!-- Right Sidebar with History -->
+        <!-- Right Sidebar with History and Robot Control -->
         <aside class="right-sidebar">
           <div class="sidebar-section">
             <MoveHistory />
+          </div>
+          <div class="sidebar-section">
+            <RobotCommand />
           </div>
         </aside>
       </div>
@@ -66,7 +70,7 @@ import MoveHistory from './components/MoveHistory.vue'
 
 .main-content {
   display: grid;
-  grid-template-columns: 1fr 1fr 350px;
+  grid-template-columns: 1fr 1fr 400px;
   gap: 20px;
   align-items: start;
 }
@@ -83,7 +87,9 @@ import MoveHistory from './components/MoveHistory.vue'
   display: flex;
   flex-direction: column;
   gap: 20px;
-  min-height: 600px;
+  min-height: 800px;
+  max-height: 100vh;
+  overflow-y: auto;
 }
 
 .sidebar-section {
