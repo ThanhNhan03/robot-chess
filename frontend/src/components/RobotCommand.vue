@@ -132,7 +132,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import robotTcpService, { type RobotCommandMessage, type RobotResponse } from '../services/robotTcpService'
+import webSocketService from '../services/webSocketService'
 
 // Types
 interface RobotCommand {
@@ -164,7 +164,7 @@ const previewCommand = computed(() => {
     return null
   }
 
-  const commandData = robotTcpService.createCommand(
+  const commandData = webSocketService.createRobotCommand(
     command.value.type as 'move' | 'attack',
     command.value.piece,
     command.value.from,
@@ -179,13 +179,13 @@ const previewCommand = computed(() => {
 // Methods
 const connectToRobot = async () => {
   try {
-    const connected = await robotTcpService.connect()
+    const connected = await webSocketService.connect()
     isConnected.value = connected
     
     if (connected) {
-      showStatus('Connected to robot', 'success')
+      showStatus('Connected to server', 'success')
     } else {
-      showStatus('Failed to connect to robot', 'error')
+      showStatus('Failed to connect to server', 'error')
     }
   } catch (error) {
     console.error('Connection error:', error)
@@ -195,7 +195,7 @@ const connectToRobot = async () => {
 
 const sendCommand = async () => {
   if (!isConnected.value || !command.value.type || !command.value.piece || !command.value.from || !command.value.to) {
-    showStatus('Please fill in all required fields and connect to robot', 'error')
+    showStatus('Please fill in all required fields and connect to server', 'error')
     return
   }
 
@@ -203,7 +203,7 @@ const sendCommand = async () => {
   showStatus('Sending command to robot...', 'info')
 
   try {
-    const robotCommand = robotTcpService.createCommand(
+    const robotCommand = webSocketService.createRobotCommand(
       command.value.type as 'move' | 'attack',
       command.value.piece,
       command.value.from,
@@ -212,17 +212,17 @@ const sendCommand = async () => {
       command.value.resultsInCheck
     )
 
-    const success = await robotTcpService.sendCommand(robotCommand)
+    const success = webSocketService.sendRobotCommand(robotCommand)
     
     if (success) {
-      showStatus('Command sent successfully', 'success')
+      showStatus('Command sent to server', 'info')
     } else {
       showStatus('Failed to send command', 'error')
+      isLoading.value = false
     }
   } catch (error) {
     console.error('Send command error:', error)
     showStatus('Failed to send command', 'error')
-  } finally {
     isLoading.value = false
   }
 }
@@ -265,36 +265,49 @@ watch(() => command.value.to, (newVal) => {
 
 // Lifecycle
 onMounted(() => {
-  // Set up event listeners for robot service
-  robotTcpService.subscribe('connection', (data: { connected: boolean }) => {
-    isConnected.value = data.connected
+  // Set up event listeners for WebSocket service
+  webSocketService.subscribe('connection', (data: any) => {
+    if (data.connected !== undefined) {
+      isConnected.value = data.connected
+    }
   })
 
-  robotTcpService.subscribe('response', (response: RobotResponse) => {
-    console.log('Robot response:', response)
+  webSocketService.subscribe('robot_response', (response: any) => {
+    console.log('🤖 Robot response:', response)
     if (response.success) {
-      showStatus(`Command executed successfully: ${response.message}`, 'success')
+      showStatus(`Command executed successfully: ${response.response?.message || 'Success'}`, 'success')
     } else {
-      showStatus(`Command failed: ${response.error || response.message}`, 'error')
+      showStatus(`Command failed: ${response.error || 'Unknown error'}`, 'error')
     }
     isLoading.value = false
   })
 
-  robotTcpService.subscribe('error', (data: { error: string }) => {
+  webSocketService.subscribe('command_sent', (data: any) => {
+    console.log('📤 Command sent:', data)
+    showStatus(`Command ${data.goal_id} sent to robot`, 'info')
+  })
+
+  webSocketService.subscribe('error', (data: { error: string }) => {
     showStatus(data.error, 'error')
     isLoading.value = false
   })
 
-  robotTcpService.subscribe('commandSent', (command: RobotCommandMessage) => {
-    console.log('Command sent to robot:', command)
-  })
+  // Monitor connection status
+  const checkConnection = () => {
+    isConnected.value = webSocketService.getConnectionStatus()
+  }
+
+  // Check connection every 5 seconds
+  const connectionChecker = setInterval(checkConnection, 5000)
 
   // Initial connection
   connectToRobot()
-})
 
-onUnmounted(() => {
-  robotTcpService.disconnect()
+  // Cleanup interval on unmount
+  onUnmounted(() => {
+    clearInterval(connectionChecker)
+    webSocketService.disconnect()
+  })
 })
 </script>
 
