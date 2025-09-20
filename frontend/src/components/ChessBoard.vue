@@ -12,8 +12,10 @@
             :key="colIndex"
             :class="[
               'chess-square',
-              (rowIndex + colIndex) % 2 === 0 ? 'light' : 'dark'
+              (rowIndex + colIndex) % 2 === 0 ? 'light' : 'dark',
+              { 'selected': isSquareSelected(rowIndex, colIndex) }
             ]"
+            @click="handleSquareClick(rowIndex, colIndex)"
           >
             <img
               v-if="getPieceImage(rowIndex, colIndex)"
@@ -46,20 +48,16 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import webSocketService from '../services/webSocketService'
 
-// Initial chess board setup with piece codes
-const initialBoard = ref([  
-  ['br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br'],
-  ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],
-  ['', '', '', '', '', '', '', ''],
-  ['', '', '', '', '', '', '', ''],
-  ['', '', '', '', '', '', '', ''],
-  ['', '', '', '', '', '', '', ''],
-  ['wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp'],
-  ['wr', 'wn', 'wb', 'wq', 'wk', 'wb', 'wn', 'wr']
-])
+// Initial chess board setup using FEN notation
+const initialFen = ref('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
+const currentBoard = ref<string[][]>([])
 
 // Game state
 const isConnected = ref(false)
+
+// Interaction state
+const selectedSquare = ref<{ row: number, col: number } | null>(null)
+const selectedPiece = ref<string | null>(null)
 
 // Piece name mapping for alt text
 const pieceNames: { [key: string]: string } = {
@@ -115,7 +113,7 @@ const parseFenToBoard = (fen: string): string[][] => {
 }
 
 const getPieceImage = (row: number, col: number) => {
-  const piece = initialBoard.value[row][col]
+  const piece = currentBoard.value[row]?.[col]
   if (piece) {
     return new URL(`../assets/${piece}.png`, import.meta.url).href
   }
@@ -123,8 +121,128 @@ const getPieceImage = (row: number, col: number) => {
 }
 
 const getPieceAlt = (row: number, col: number) => {
-  const piece = initialBoard.value[row][col]
+  const piece = currentBoard.value[row]?.[col]
   return piece ? pieceNames[piece] || piece : ''
+}
+
+// Handle square click for piece selection and movement
+const handleSquareClick = (row: number, col: number) => {
+  const clickedPiece = currentBoard.value[row]?.[col]
+  
+  // If no piece is selected
+  if (!selectedSquare.value) {
+    // Select the clicked piece if it exists
+    if (clickedPiece) {
+      selectedSquare.value = { row, col }
+      selectedPiece.value = clickedPiece
+      console.log(`Selected piece: ${clickedPiece} at ${getSquareNotation(row, col)}`)
+    }
+  } else {
+    // A piece is already selected
+    const fromRow = selectedSquare.value.row
+    const fromCol = selectedSquare.value.col
+    
+    // If clicking on the same square, deselect
+    if (fromRow === row && fromCol === col) {
+      selectedSquare.value = null
+      selectedPiece.value = null
+      console.log('Deselected piece')
+      return
+    }
+    
+    // Move the piece to the new position (free movement)
+    movePiece(fromRow, fromCol, row, col)
+    
+    // Clear selection
+    selectedSquare.value = null
+    selectedPiece.value = null
+  }
+}
+
+// Move piece from one square to another (no rules validation)
+const movePiece = (fromRow: number, fromCol: number, toRow: number, toCol: number) => {
+  const piece = currentBoard.value[fromRow]?.[fromCol]
+  
+  if (!piece) {
+    console.warn('No piece to move')
+    return
+  }
+  
+  // Simple move - just update the board
+  currentBoard.value[fromRow][fromCol] = ''
+  currentBoard.value[toRow][toCol] = piece
+  
+  const fromNotation = getSquareNotation(fromRow, fromCol)
+  const toNotation = getSquareNotation(toRow, toCol)
+  
+  console.log(`Moved ${piece} from ${fromNotation} to ${toNotation}`)
+  
+  // Update FEN string after move
+  updateFenFromBoard()
+}
+
+// Convert row, col to chess notation (e.g., 0,0 = a8)
+const getSquareNotation = (row: number, col: number): string => {
+  const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+  const rank = 8 - row
+  const file = files[col]
+  return `${file}${rank}`
+}
+
+// Check if a square is selected
+const isSquareSelected = (row: number, col: number): boolean => {
+  return selectedSquare.value?.row === row && selectedSquare.value?.col === col
+}
+
+// Convert board array back to FEN string
+const updateFenFromBoard = () => {
+  const board = currentBoard.value
+  
+  // Piece mapping from internal format to FEN
+  const pieceToFen: { [key: string]: string } = {
+    'br': 'r', 'bn': 'n', 'bb': 'b', 'bq': 'q', 'bk': 'k', 'bp': 'p', // Black pieces
+    'wr': 'R', 'wn': 'N', 'wb': 'B', 'wq': 'Q', 'wk': 'K', 'wp': 'P'  // White pieces
+  }
+  
+  let fenBoard = ''
+  
+  for (let row = 0; row < 8; row++) {
+    let rankStr = ''
+    let emptyCount = 0
+    
+    for (let col = 0; col < 8; col++) {
+      const piece = board[row]?.[col]
+      
+      if (piece && pieceToFen[piece]) {
+        if (emptyCount > 0) {
+          rankStr += emptyCount.toString()
+          emptyCount = 0
+        }
+        rankStr += pieceToFen[piece]
+      } else {
+        emptyCount++
+      }
+    }
+    
+    if (emptyCount > 0) {
+      rankStr += emptyCount.toString()
+    }
+    
+    fenBoard += rankStr
+    if (row < 7) fenBoard += '/'
+  }
+  
+  // Keep other FEN parts from original (active color, castling, en passant, etc.)
+  const fenParts = initialFen.value.split(' ')
+  const newFen = `${fenBoard} ${fenParts.slice(1).join(' ')}`
+  
+  initialFen.value = newFen
+  console.log('Updated FEN:', newFen)
+}
+
+// Initialize board from FEN
+const initializeBoardFromFen = () => {
+  currentBoard.value = parseFenToBoard(initialFen.value)
 }
 
 // Handle incoming FEN messages from WebSocket
@@ -132,7 +250,8 @@ const handleWebSocketFen = (data: any) => {
   try {
     if (data.fen_str) {
       const newBoard = parseFenToBoard(data.fen_str)
-      initialBoard.value = newBoard
+      currentBoard.value = newBoard
+      initialFen.value = data.fen_str
       
       console.log(`Received FEN: ${data.fen_str}`)
       console.log('Board updated from FEN')
@@ -144,6 +263,9 @@ const handleWebSocketFen = (data: any) => {
 
 // Initialize WebSocket connection
 onMounted(async () => {
+  // Initialize board from FEN
+  initializeBoardFromFen()
+  
   try {
     isConnected.value = await webSocketService.connect()
     if (isConnected.value) {
@@ -169,11 +291,13 @@ onBeforeUnmount(() => {
 
 // Expose methods for external use
 defineExpose({
-  getBoard: () => initialBoard.value,
+  getBoard: () => currentBoard.value,
+  getFen: () => initialFen.value,
   isConnected: () => isConnected.value,
   updateFromFen: (fen: string) => {
     const newBoard = parseFenToBoard(fen)
-    initialBoard.value = newBoard
+    currentBoard.value = newBoard
+    initialFen.value = fen
   }
 })
 </script>
