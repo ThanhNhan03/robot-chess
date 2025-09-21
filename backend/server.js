@@ -3,19 +3,20 @@ const WebSocket = require('ws');
 require('dotenv').config();
 
 // Cấu hình từ environment variables
-const PRIMARY_IP = process.env.PRIMARY_IP || '100.73.130.46';
+const PRIMARY_IP = process.env.PRIMARY_IP || 'localhost';
 const FALLBACK_IP = process.env.FALLBACK_IP || 'localhost';
 const TCP_PORT = process.env.TCP_PORT || 8080;
 const WS_PORT = process.env.WS_PORT || 8081;
 const CONNECTION_TIMEOUT = process.env.CONNECTION_TIMEOUT || 3000;
 
 // Alternative ports
-const ALT_TCP_PORTS = process.env.ALT_TCP_PORTS ? process.env.ALT_TCP_PORTS.split(',').map(p => parseInt(p)) : [8082, 8083, 8084];
+const ALT_TCP_PORTS = process.env.ALT_TCP_PORTS ? process.env.ALT_TCP_PORTS.split(',').map(p => parseInt(p)) : [8083, 8084];
 const ALT_WS_PORTS = process.env.ALT_WS_PORTS ? process.env.ALT_WS_PORTS.split(',').map(p => parseInt(p)) : [8085, 8086, 8087];
 
 // Store clients
 let webSocketClients = new Set();
 let tcpClients = new Set();
+let robotClients = new Set(); // Riêng biệt cho robot clients
 let currentServerIP = null;
 
 // Broadcast FEN đến tất cả WebSocket clients
@@ -24,6 +25,22 @@ function broadcastToWebSocketClients(data) {
   webSocketClients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message);
+    }
+  });
+}
+
+// Send command to robot clients qua TCP
+function sendCommandToRobotClients(command) {
+  console.log(`Đang gửi lệnh đến ${robotClients.size} robot clients`);
+  
+  robotClients.forEach(robotSocket => {
+    try {
+      const commandStr = JSON.stringify(command);
+      robotSocket.write(commandStr + '\n');
+      console.log('Đã gửi đến robot:', commandStr);
+    } catch (error) {
+      console.error('Lỗi gửi đến robot:', error);
+      robotClients.delete(robotSocket);
     }
   });
 }
@@ -40,7 +57,44 @@ const tcpServer = net.createServer((socket) => {
   socket.on('data', (data) => {
     try {
       const message = data.toString().trim();
-      console.log('Nhận được:', message);
+      console.log('Nhận được dữ liệu từ TCP client:', message);
+
+      // Kiểm tra nếu đây là robot client identify
+      try {
+        const parsed = JSON.parse(message);
+        
+        if (parsed.type === 'robot_identify') {
+          console.log('Robot client đã được xác định:', parsed.robot_id);
+          robotClients.add(socket);
+          socket.isRobot = true;
+          socket.robotId = parsed.robot_id;
+          
+          socket.write(JSON.stringify({
+            status: 'robot_registered',
+            message: 'Robot đã được đăng ký thành công',
+            robot_id: parsed.robot_id,
+            timestamp: new Date().toISOString()
+          }) + '\n');
+          return;
+        }
+        
+        // Nếu đây là robot response
+        if (parsed.goal_id && parsed.success !== undefined) {
+          console.log('Nhận được phản hồi từ robot:', parsed);
+          
+          // Broadcast response đến WebSocket clients
+          broadcastToWebSocketClients({
+            type: 'robot_response',
+            success: parsed.success,
+            goal_id: parsed.goal_id,
+            response: parsed,
+            timestamp: new Date().toISOString()
+          });
+          return;
+        }
+      } catch (e) {
+        // Không phải JSON, tiếp tục xử lý như FEN
+      }
 
       // Parse message - có thể là JSON hoặc plain FEN string
       let fenData;
@@ -67,7 +121,7 @@ const tcpServer = net.createServer((socket) => {
       }
 
       if (fenData) {
-        console.log('FEN hợp lệ:', fenData.fen_str);
+        console.log('FEN hợp lệ đã nhận được:', fenData.fen_str);
         
         // Gửi đến tất cả WebSocket clients (frontend)
         broadcastToWebSocketClients(fenData);
@@ -75,23 +129,23 @@ const tcpServer = net.createServer((socket) => {
         // Gửi response lại cho TCP client
         socket.write(JSON.stringify({
           status: 'success',
-          message: 'FEN received and broadcasted',
+          message: 'FEN đã được nhận và phát rộng',
           timestamp: new Date().toISOString()
         }) + '\n');
       } else {
-        console.log('Message không phải FEN hợp lệ');
+        console.log('Định dạng thông điệp không được nhận dạng');
         socket.write(JSON.stringify({
           status: 'error',
-          message: 'Invalid FEN format',
+          message: 'Định dạng thông điệp không xác định',
           timestamp: new Date().toISOString()
         }) + '\n');
       }
 
     } catch (error) {
-      console.error('Lỗi xử lý data:', error);
+      console.error('Lỗi xử lý dữ liệu:', error);
       socket.write(JSON.stringify({
         status: 'error',
-        message: 'Server processing error',
+        message: 'Lỗi xử lý server',
         timestamp: new Date().toISOString()
       }) + '\n');
     }
@@ -101,26 +155,37 @@ const tcpServer = net.createServer((socket) => {
   socket.on('end', () => {
     console.log('TCP client đã ngắt kết nối');
     tcpClients.delete(socket);
+    if (socket.isRobot) {
+      robotClients.delete(socket);
+      console.log(`Robot ${socket.robotId} đã ngắt kết nối`);
+    }
   });
 
   // Xử lý lỗi
   socket.on('error', (err) => {
-    console.error('TCP Socket error:', err);
+    console.error('Lỗi TCP Socket:', err);
     tcpClients.delete(socket);
+    if (socket.isRobot) {
+      robotClients.delete(socket);
+    }
   });
 
   // Gửi welcome message
   socket.write(JSON.stringify({
     status: 'connected',
-    message: 'Welcome to Robot Chess TCP Server',
+    message: 'Chào mừng đến với Robot Chess TCP Server',
     timestamp: new Date().toISOString(),
-    instructions: 'Send FEN string as JSON: {"fen_str": "your_fen"} or plain FEN string'
+    instructions: {
+      robot_identify: 'Gửi {"type": "robot_identify", "robot_id": "your_robot_id"}',
+      fen_data: 'Gửi FEN dạng JSON: {"fen_str": "your_fen"} hoặc chuỗi FEN thuần',
+      robot_response: 'Gửi phản hồi robot với goal_id và trạng thái success'
+    }
   }) + '\n');
 });
 
 // Xử lý lỗi server
 tcpServer.on('error', (err) => {
-  console.error('TCP Server error:', err);
+  console.error('Lỗi TCP Server:', err);
 });
 
 // Function để thử bind server với IP cụ thể
@@ -148,14 +213,14 @@ async function findAvailablePort(ip, primaryPort, altPorts, serverType) {
     await tryBindServer(ip, primaryPort, serverType);
     return primaryPort;
   } catch (error) {
-    console.log(`Port ${primaryPort} đã bị chiếm, thử ports alternative...`);
+    console.log(`Port ${primaryPort} đã bị chiếm, thử ports thay thế...`);
   }
 
   // Thử các ports alternative
   for (const port of altPorts) {
     try {
       await tryBindServer(ip, port, serverType);
-      console.log(`Sử dụng alternative port: ${port}`);
+      console.log(`Sử dụng port thay thế: ${port}`);
       return port;
     } catch (error) {
       console.log(`Port ${port} cũng bị chiếm...`);
@@ -224,7 +289,7 @@ async function startWebSocketServer() {
     } catch (fallbackError) {
       console.error(`WebSocket không thể bind vào cả hai IP: ${fallbackError.message}`);
       // WebSocket không bắt buộc, có thể tiếp tục mà không có WebSocket
-      console.log('Tiếp tục mà không có WebSocket server...');
+      console.log(`Tiếp tục mà không có WebSocket server...`);
       return null;
     }
   }
@@ -238,18 +303,65 @@ async function startWebSocketServer() {
   console.log(`WebSocket server đang chạy trên ${wsIP}:${wsPort}`);
 
   wss.on('connection', (ws) => {
-    console.log('Frontend client đã kết nối');
+    console.log('WebSocket client đã kết nối');
     webSocketClients.add(ws);
 
+    ws.on('message', async (message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        console.log('WebSocket message nhận được:', data);
+
+        // Kiểm tra nếu đây là robot command
+        if (data.goal_id && data.move) {
+          console.log('Đang xử lý lệnh robot:', data.goal_id);
+          
+          // Gửi command đến robot clients qua TCP
+          sendCommandToRobotClients(data);
+          
+          // Gửi acknowledgment về client
+          ws.send(JSON.stringify({
+            type: 'command_sent',
+            goal_id: data.goal_id,
+            message: 'Lệnh đã được gửi đến robot',
+            timestamp: new Date().toISOString()
+          }));
+          
+          console.log('Lệnh robot đã được gửi đến các robot kết nối');
+          
+        } else {
+          // Message khác (có thể là FEN hoặc status)
+          console.log('Phát rộng message đến các client khác');
+          broadcastToWebSocketClients(data);
+        }
+        
+      } catch (error) {
+        console.error('Lỗi parse WebSocket message:', error);
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: 'Định dạng message không hợp lệ',
+          error: error.message
+        }));
+      }
+    });
+
     ws.on('close', () => {
-      console.log('Frontend client đã ngắt kết nối');
+      console.log('WebSocket client đã ngắt kết nối');
       webSocketClients.delete(ws);
     });
 
     ws.on('error', (err) => {
-      console.error('WebSocket error:', err);
+      console.error('Lỗi WebSocket:', err);
       webSocketClients.delete(ws);
     });
+
+    // Send welcome message
+    ws.send(JSON.stringify({
+      type: 'connection',
+      message: 'Đã kết nối đến Robot Chess Server',
+      capabilities: ['fen_broadcast', 'robot_commands'],
+      connected_robots: robotClients.size,
+      timestamp: new Date().toISOString()
+    }));
   });
 
   return { wss, ip: wsIP, port: wsPort };
@@ -257,12 +369,12 @@ async function startWebSocketServer() {
 
 // Khởi động servers
 async function startServers() {
-  console.log('=== Robot Chess TCP Server ===');
+  console.log('=== Robot Chess Integrated Server ===');
   console.log(`IP chính: ${PRIMARY_IP}`);
   console.log(`IP fallback: ${FALLBACK_IP}`);
-  console.log(`TCP Port: ${TCP_PORT} (alt: ${ALT_TCP_PORTS.join(', ')})`);
-  console.log(`WebSocket Port: ${WS_PORT} (alt: ${ALT_WS_PORTS.join(', ')})`);
-  console.log('===============================\n');
+  console.log(`TCP Port (ALL): ${TCP_PORT} (thay thế: ${ALT_TCP_PORTS.join(', ')})`);
+  console.log(`WebSocket Port: ${WS_PORT} (thay thế: ${ALT_WS_PORTS.join(', ')})`);
+  console.log('=====================================\n');
 
   try {
     // Khởi động WebSocket server trước
@@ -271,12 +383,11 @@ async function startServers() {
     // Khởi động TCP server
     const tcpResult = await startTCPServer();
 
-    console.log('\n✓ Server đã khởi động thành công!');
-    console.log(`✓ TCP: ${tcpResult.ip}:${tcpResult.port}`);
+    console.log('\nServer đã khởi động thành công!');
+    console.log(`TCP (ALL): ${tcpResult.ip}:${tcpResult.port}`);
     if (wsResult) {
-      console.log(`✓ WebSocket: ${wsResult.ip}:${wsResult.port}`);
-    }
-    
+      console.log(`WebSocket (Frontend): ${wsResult.ip}:${wsResult.port}`);
+    }    
     // Cập nhật graceful shutdown
     process.on('SIGINT', () => {
       console.log('\nĐang shutdown server...');
@@ -303,5 +414,5 @@ startServers();
 // Log status mỗi 30 giây
 setInterval(() => {
   const serverInfo = currentServerIP ? `(${currentServerIP})` : '';
-  console.log(`Status: ${tcpClients.size} TCP clients, ${webSocketClients.size} WebSocket clients ${serverInfo}`);
+  console.log(`Trạng thái: ${tcpClients.size} TCP clients (${robotClients.size} robots), ${webSocketClients.size} WebSocket clients ${serverInfo}`);
 }, 30000);
