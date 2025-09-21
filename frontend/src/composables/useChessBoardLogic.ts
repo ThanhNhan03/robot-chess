@@ -21,6 +21,7 @@ export interface ChessBoardLogic {
   isSquareSelected: (row: number, col: number) => boolean
   isPossibleMove: (row: number, col: number) => boolean
   isSquareInCheck: (row: number, col: number) => boolean
+  isSquareInCheckmate: (row: number, col: number) => boolean
   getSquareNotation: (row: number, col: number) => string
   getPieceImage: (row: number, col: number) => string | null
   getPieceAlt: (row: number, col: number) => string
@@ -151,6 +152,21 @@ export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
                                (!isWhiteKing && currentPlayer.value === 'black')
     
     return isCurrentPlayerKing && isCheck.value
+  }
+
+  // Check if square contains king in checkmate
+  const isSquareInCheckmate = (row: number, col: number): boolean => {
+    const piece = fenLogic.currentBoard.value[row]?.[col]
+    if (!piece) return false
+    
+    const isKing = piece.endsWith('k')
+    if (!isKing) return false
+    
+    const isWhiteKing = piece === 'wk'
+    const isCurrentPlayerKing = (isWhiteKing && currentPlayer.value === 'white') || 
+                               (!isWhiteKing && currentPlayer.value === 'black')
+    
+    return isCurrentPlayerKing && isCheckmate.value
   }
 
   // Handle square click for piece selection and movement
@@ -421,6 +437,7 @@ export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
     isSquareSelected,
     isPossibleMove,
     isSquareInCheck,
+    isSquareInCheckmate,
     getSquareNotation,
     getPieceImage,
     getPieceAlt,

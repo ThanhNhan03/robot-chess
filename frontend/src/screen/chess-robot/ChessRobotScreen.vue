@@ -1,8 +1,61 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import CameraView from '../../components/CameraView.vue'
 import ChessBoard from '../../components/ChessBoard.vue'
+import GameStatus from '../../components/GameStatus.vue'
 import MoveHistory from '../../components/MoveHistory.vue'
 import RobotCommand from '../../components/RobotCommand.vue'
+
+// Ref to access ChessBoard methods and data
+const chessBoardRef = ref<InstanceType<typeof ChessBoard> | null>(null)
+
+// Handle events from MoveHistory
+const handleUndoMove = () => {
+  if (chessBoardRef.value) {
+    chessBoardRef.value.undoLastMove()
+  }
+}
+
+const handleNewGame = () => {
+  if (chessBoardRef.value) {
+    chessBoardRef.value.resetGame()
+  }
+}
+
+const handleClearHistory = () => {
+  if (chessBoardRef.value) {
+    chessBoardRef.value.resetGame()
+  }
+}
+
+const handleExportPGN = () => {
+  if (chessBoardRef.value) {
+    const moveHistory = chessBoardRef.value.moveHistory()
+    
+    let pgn = '[Event "Robot Chess Game"]\n'
+    pgn += '[Date "' + new Date().toISOString().split('T')[0] + '"]\n'
+    pgn += '[White "Player"]\n'
+    pgn += '[Black "Robot"]\n\n'
+    
+    for (let i = 0; i < moveHistory.length; i += 2) {
+      const moveNumber = Math.floor(i / 2) + 1
+      pgn += `${moveNumber}. ${moveHistory[i]}`
+      
+      if (i + 1 < moveHistory.length) {
+        pgn += ` ${moveHistory[i + 1]}`
+      }
+      pgn += ' '
+    }
+    
+    const blob = new Blob([pgn], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `chess-game-${new Date().getTime()}.pgn`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+}
 </script>
 
 <template>
@@ -20,13 +73,33 @@ import RobotCommand from '../../components/RobotCommand.vue'
 
         <!-- Chess Board Section -->
         <div class="board-section">
-          <ChessBoard />
+          <GameStatus 
+            :current-player="chessBoardRef?.currentPlayer() || 'white'"
+            :is-receiving-external-move="chessBoardRef?.isReceivingExternalMove() || false"
+            :is-check="chessBoardRef?.isCheck() || false"
+            :is-game-over="chessBoardRef?.isGameOver() || false"
+            :is-checkmate="chessBoardRef?.isCheckmate() || false"
+            :is-stalemate="chessBoardRef?.isStalemate() || false"
+          />
+          <ChessBoard ref="chessBoardRef" />
         </div>
 
         <!-- Right Sidebar with History and Robot Control -->
         <aside class="right-sidebar">
           <div class="sidebar-section">
-            <MoveHistory />
+            <MoveHistory 
+              :move-history="chessBoardRef?.moveHistory() || []"
+              :current-turn="chessBoardRef?.currentPlayer() || 'white'"
+              :is-receiving-external-move="chessBoardRef?.isReceivingExternalMove() || false"
+              :is-check="chessBoardRef?.isCheck() || false"
+              :is-game-over="chessBoardRef?.isGameOver() || false"
+              :is-checkmate="chessBoardRef?.isCheckmate() || false"
+              :is-stalemate="chessBoardRef?.isStalemate() || false"
+              @undo-move="handleUndoMove"
+              @new-game="handleNewGame"
+              @clear-history="handleClearHistory"
+              @export-pgn="handleExportPGN"
+            />
           </div>
           <div class="sidebar-section">
             <RobotCommand />
