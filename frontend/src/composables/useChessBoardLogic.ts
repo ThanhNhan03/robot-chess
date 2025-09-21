@@ -13,8 +13,11 @@ export interface ChessBoardLogic {
   currentPlayer: Ref<'white' | 'black'>
   moveHistory: Ref<string[]>
   isReceivingExternalMove: Ref<boolean>
+  promotionPending: Ref<{ from: string, to: string } | null>
   handleSquareClick: (row: number, col: number) => void
   movePiece: (fromRow: number, fromCol: number, toRow: number, toCol: number) => boolean
+  makePromotionMove: (promotionPiece: 'q' | 'r' | 'b' | 'n') => boolean
+  cancelPromotion: () => void
   isSquareSelected: (row: number, col: number) => boolean
   isPossibleMove: (row: number, col: number) => boolean
   isSquareInCheck: (row: number, col: number) => boolean
@@ -43,6 +46,7 @@ export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
   const currentPlayer = ref<'white' | 'black'>('white')
   const moveHistory = ref<string[]>([])
   const isReceivingExternalMove = ref(false)
+  const promotionPending = ref<{ from: string, to: string } | null>(null)
 
   // Piece name mapping for alt text
   const pieceNames: { [key: string]: string } = {
@@ -97,6 +101,15 @@ export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
     const rank = 8 - row
     const file = files[col]
     return `${file}${rank}`
+  }
+
+  // Check if a move is a pawn promotion
+  const isPawnPromotion = (fromSquare: string, toSquare: string): boolean => {
+    const piece = chess.get(fromSquare as Square)
+    if (!piece || piece.type !== 'p') return false
+    
+    const toRank = parseInt(toSquare[1])
+    return (piece.color === 'w' && toRank === 8) || (piece.color === 'b' && toRank === 1)
   }
 
   const getPieceImage = (row: number, col: number) => {
@@ -223,12 +236,19 @@ export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
     const fromSquare = getSquareNotation(fromRow, fromCol) as Square
     const toSquare = getSquareNotation(toRow, toCol) as Square
     
+    // Check if this is a pawn promotion
+    if (isPawnPromotion(fromSquare, toSquare)) {
+      // Store the pending promotion move
+      promotionPending.value = { from: fromSquare, to: toSquare }
+      console.log(`Pawn promotion pending: ${fromSquare} to ${toSquare}`)
+      return true // Return true to clear selection, but don't make the move yet
+    }
+    
     try {
-      // Attempt the move
+      // Attempt the move (non-promotion)
       const move = chess.move({
         from: fromSquare,
-        to: toSquare,
-        promotion: 'q' // Auto-promote to queen for now
+        to: toSquare
       })
       
       if (move) {
@@ -306,10 +326,11 @@ export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
       // Sync board from chess.js
       syncBoardFromChess()
       
-      // Clear any current selection
+      // Clear any current selection and promotion
       selectedSquare.value = null
       selectedPiece.value = null
       possibleMoves.value = []
+      promotionPending.value = null
       
       console.log('Successfully updated board from external FEN')
       
@@ -322,6 +343,60 @@ export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
       console.error('Error updating from external FEN:', error)
       isReceivingExternalMove.value = false
     }
+  }
+
+  // Make promotion move with selected piece
+  const makePromotionMove = (promotionPiece: 'q' | 'r' | 'b' | 'n'): boolean => {
+    if (!promotionPending.value) {
+      console.error('No promotion pending')
+      return false
+    }
+    
+    try {
+      const move = chess.move({
+        from: promotionPending.value.from as Square,
+        to: promotionPending.value.to as Square,
+        promotion: promotionPiece
+      })
+      
+      if (move) {
+        console.log(`Promotion move: ${move.san}`)
+        
+        // Clear promotion pending
+        promotionPending.value = null
+        
+        // Update game state
+        updateGameState()
+        
+        // Sync board
+        syncBoardFromChess()
+        
+        // Check for special conditions
+        if (isCheckmate.value) {
+          console.log(`Checkmate! ${currentPlayer.value === 'white' ? 'Black' : 'White'} wins!`)
+        } else if (isStalemate.value) {
+          console.log('Stalemate! Game is a draw.')
+        } else if (isCheck.value) {
+          console.log(`${currentPlayer.value} is in check!`)
+        }
+        
+        return true
+      }
+    } catch (error) {
+      console.error('Error making promotion move:', error)
+    }
+    
+    promotionPending.value = null
+    return false
+  }
+
+  // Cancel promotion and restore piece to original position
+  const cancelPromotion = () => {
+    console.log('Promotion cancelled')
+    promotionPending.value = null
+    selectedSquare.value = null
+    selectedPiece.value = null
+    possibleMoves.value = []
   }
 
   // Initialize on creation
@@ -338,8 +413,11 @@ export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
     currentPlayer,
     moveHistory,
     isReceivingExternalMove,
+    promotionPending,
     handleSquareClick,
     movePiece,
+    makePromotionMove,
+    cancelPromotion,
     isSquareSelected,
     isPossibleMove,
     isSquareInCheck,

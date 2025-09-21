@@ -64,6 +64,14 @@
       <button @click="resetGame" class="control-btn reset">New Game</button>
       <button @click="undoLastMove" class="control-btn undo" :disabled="moveHistory.length === 0">Undo</button>
     </div>
+    
+    <!-- Promotion Dialog -->
+    <PromotionDialog
+      :is-visible="promotionPending !== null"
+      :current-player="currentPlayer"
+      @select-promotion="handlePromotionSelect"
+      @cancel="handlePromotionCancel"
+    />
   </div>
 </template>
 
@@ -72,6 +80,7 @@ import { onMounted, onBeforeUnmount } from 'vue'
 import { useFenLogic } from '../composables/useFenLogic'
 import { useChessBoardLogic } from '../composables/useChessBoardLogic'
 import { useWebSocketLogic } from '../composables/useWebSocketLogic'
+import PromotionDialog from './PromotionDialog.vue'
 
 // Initialize composables
 const fenLogic = useFenLogic()
@@ -94,6 +103,9 @@ const {
   currentPlayer,
   moveHistory,
   isReceivingExternalMove,
+  promotionPending,
+  makePromotionMove,
+  cancelPromotion,
   resetGame,
   undoLastMove,
   updateFromExternalFen
@@ -114,6 +126,15 @@ onBeforeUnmount(() => {
   cleanupWebSocket()
 })
 
+// Handle promotion selection
+const handlePromotionSelect = (piece: 'q' | 'r' | 'b' | 'n') => {
+  makePromotionMove(piece)
+}
+
+const handlePromotionCancel = () => {
+  cancelPromotion()
+}
+
 // Expose methods for external use
 defineExpose({
   getBoard: () => currentBoard.value,
@@ -128,9 +149,12 @@ defineExpose({
   currentPlayer: () => currentPlayer.value,
   moveHistory: () => moveHistory.value,
   isReceivingExternalMove: () => isReceivingExternalMove.value,
+  promotionPending: () => promotionPending.value,
   resetGame,
   undoLastMove,
-  updateFromExternalFen
+  updateFromExternalFen,
+  makePromotionMove,
+  cancelPromotion
 })
 </script>
 
