@@ -56,6 +56,18 @@ const handleExportPGN = () => {
     URL.revokeObjectURL(url)
   }
 }
+
+// Handle modal events
+const handleModalNewGame = () => {
+  if (chessBoardRef.value) {
+    chessBoardRef.value.resetGame()
+  }
+}
+
+const handleModalClose = () => {
+  // Modal will automatically close when game state changes
+  console.log('Modal closed')
+}
 </script>
 
 <template>
@@ -73,14 +85,6 @@ const handleExportPGN = () => {
 
         <!-- Chess Board Section -->
         <div class="board-section">
-          <GameStatus 
-            :current-player="chessBoardRef?.currentPlayer() || 'white'"
-            :is-receiving-external-move="chessBoardRef?.isReceivingExternalMove() || false"
-            :is-check="chessBoardRef?.isCheck() || false"
-            :is-game-over="chessBoardRef?.isGameOver() || false"
-            :is-checkmate="chessBoardRef?.isCheckmate() || false"
-            :is-stalemate="chessBoardRef?.isStalemate() || false"
-          />
           <ChessBoard ref="chessBoardRef" />
         </div>
 
@@ -107,6 +111,18 @@ const handleExportPGN = () => {
         </aside>
       </div>
     </main>
+    
+    <!-- Game Status Modal -->
+    <GameStatus 
+      :current-player="chessBoardRef?.currentPlayer() || 'white'"
+      :is-receiving-external-move="chessBoardRef?.isReceivingExternalMove() || false"
+      :is-check="chessBoardRef?.isCheck() || false"
+      :is-game-over="chessBoardRef?.isGameOver() || false"
+      :is-checkmate="chessBoardRef?.isCheckmate() || false"
+      :is-stalemate="chessBoardRef?.isStalemate() || false"
+      @new-game="handleModalNewGame"
+      @close="handleModalClose"
+    />
   </div>
 </template>
 
