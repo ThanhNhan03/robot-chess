@@ -1,21 +1,48 @@
 import { ref, type Ref } from 'vue'
+import { Chess, type Square } from 'chess.js'
 import type { FenLogic } from './useFenLogic'
 
 export interface ChessBoardLogic {
   selectedSquare: Ref<{ row: number, col: number } | null>
   selectedPiece: Ref<string | null>
+  possibleMoves: Ref<string[]>
+  isGameOver: Ref<boolean>
+  isCheck: Ref<boolean>
+  isCheckmate: Ref<boolean>
+  isStalemate: Ref<boolean>
+  currentPlayer: Ref<'white' | 'black'>
+  moveHistory: Ref<string[]>
+  isReceivingExternalMove: Ref<boolean>
   handleSquareClick: (row: number, col: number) => void
-  movePiece: (fromRow: number, fromCol: number, toRow: number, toCol: number) => void
+  movePiece: (fromRow: number, fromCol: number, toRow: number, toCol: number) => boolean
   isSquareSelected: (row: number, col: number) => boolean
+  isPossibleMove: (row: number, col: number) => boolean
+  isSquareInCheck: (row: number, col: number) => boolean
   getSquareNotation: (row: number, col: number) => string
   getPieceImage: (row: number, col: number) => string | null
   getPieceAlt: (row: number, col: number) => string
+  resetGame: () => void
+  undoLastMove: () => void
+  updateFromExternalFen: (fen: string) => void
 }
 
 export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
+  // Initialize chess.js instance
+  const chess = new Chess()
+  
   // Interaction state
   const selectedSquare = ref<{ row: number, col: number } | null>(null)
   const selectedPiece = ref<string | null>(null)
+  const possibleMoves = ref<string[]>([])
+  
+  // Game state
+  const isGameOver = ref(false)
+  const isCheck = ref(false)
+  const isCheckmate = ref(false)
+  const isStalemate = ref(false)
+  const currentPlayer = ref<'white' | 'black'>('white')
+  const moveHistory = ref<string[]>([])
+  const isReceivingExternalMove = ref(false)
 
   // Piece name mapping for alt text
   const pieceNames: { [key: string]: string } = {
@@ -33,6 +60,45 @@ export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
     'bp': 'Black Pawn'
   }
 
+  // Initialize chess game from FEN
+  const initializeChessFromFen = () => {
+    try {
+      chess.load(fenLogic.initialFen.value)
+      updateGameState()
+      syncBoardFromChess()
+    } catch (error) {
+      console.error('Invalid FEN:', error)
+      // Fallback to starting position
+      chess.reset()
+      updateGameState()
+      syncBoardFromChess()
+    }
+  }
+
+  // Update game state from chess.js
+  const updateGameState = () => {
+    isCheck.value = chess.inCheck()
+    isCheckmate.value = chess.isCheckmate()
+    isStalemate.value = chess.isStalemate()
+    isGameOver.value = chess.isGameOver()
+    currentPlayer.value = chess.turn() === 'w' ? 'white' : 'black'
+    moveHistory.value = chess.history()
+  }
+
+  // Sync board from chess.js to fenLogic
+  const syncBoardFromChess = () => {
+    const newFen = chess.fen()
+    fenLogic.updateFromFen(newFen)
+  }
+
+  // Convert row,col to square notation (e.g., 0,0 = a8)
+  const getSquareNotation = (row: number, col: number): string => {
+    const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+    const rank = 8 - row
+    const file = files[col]
+    return `${file}${rank}`
+  }
+
   const getPieceImage = (row: number, col: number) => {
     const piece = fenLogic.currentBoard.value[row]?.[col]
     if (piece) {
@@ -46,17 +112,66 @@ export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
     return piece ? pieceNames[piece] || piece : ''
   }
 
+  // Get possible moves for selected piece
+  const getPossibleMoves = (row: number, col: number): string[] => {
+    const square = getSquareNotation(row, col) as Square
+    const moves = chess.moves({ square, verbose: true })
+    return moves.map(move => move.to)
+  }
+
+  // Check if square is a possible move
+  const isPossibleMove = (row: number, col: number): boolean => {
+    const square = getSquareNotation(row, col)
+    return possibleMoves.value.includes(square)
+  }
+
+  // Check if square contains king in check
+  const isSquareInCheck = (row: number, col: number): boolean => {
+    const piece = fenLogic.currentBoard.value[row]?.[col]
+    if (!piece) return false
+    
+    const isKing = piece.endsWith('k')
+    if (!isKing) return false
+    
+    const isWhiteKing = piece === 'wk'
+    const isCurrentPlayerKing = (isWhiteKing && currentPlayer.value === 'white') || 
+                               (!isWhiteKing && currentPlayer.value === 'black')
+    
+    return isCurrentPlayerKing && isCheck.value
+  }
+
   // Handle square click for piece selection and movement
   const handleSquareClick = (row: number, col: number) => {
     const clickedPiece = fenLogic.currentBoard.value[row]?.[col]
+    const square = getSquareNotation(row, col)
+    
+    // If game is over or receiving external move, don't allow manual moves
+    if (isGameOver.value || isReceivingExternalMove.value) {
+      if (isReceivingExternalMove.value) {
+        console.log('Currently receiving external move, manual interaction disabled')
+      } else {
+        console.log('Game is over!')
+      }
+      return
+    }
     
     // If no piece is selected
     if (!selectedSquare.value) {
-      // Select the clicked piece if it exists
+      // Select the clicked piece if it belongs to current player
       if (clickedPiece) {
-        selectedSquare.value = { row, col }
-        selectedPiece.value = clickedPiece
-        console.log(`Selected piece: ${clickedPiece} at ${getSquareNotation(row, col)}`)
+        const isWhitePiece = clickedPiece.startsWith('w')
+        const canSelect = (isWhitePiece && currentPlayer.value === 'white') || 
+                         (!isWhitePiece && currentPlayer.value === 'black')
+        
+        if (canSelect) {
+          selectedSquare.value = { row, col }
+          selectedPiece.value = clickedPiece
+          possibleMoves.value = getPossibleMoves(row, col)
+          console.log(`Selected ${clickedPiece} at ${square}`)
+          console.log('Possible moves:', possibleMoves.value)
+        } else {
+          console.log(`It's ${currentPlayer.value}'s turn`)
+        }
       }
     } else {
       // A piece is already selected
@@ -67,47 +182,80 @@ export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
       if (fromRow === row && fromCol === col) {
         selectedSquare.value = null
         selectedPiece.value = null
+        possibleMoves.value = []
         console.log('Deselected piece')
         return
       }
       
-      // Move the piece to the new position (free movement)
-      movePiece(fromRow, fromCol, row, col)
+      // Try to move the piece
+      const success = movePiece(fromRow, fromCol, row, col)
       
-      // Clear selection
-      selectedSquare.value = null
-      selectedPiece.value = null
+      if (success) {
+        // Clear selection after successful move
+        selectedSquare.value = null
+        selectedPiece.value = null
+        possibleMoves.value = []
+      } else {
+        // If move failed, check if clicking on own piece to select it
+        if (clickedPiece) {
+          const isWhitePiece = clickedPiece.startsWith('w')
+          const canSelect = (isWhitePiece && currentPlayer.value === 'white') || 
+                           (!isWhitePiece && currentPlayer.value === 'black')
+          
+          if (canSelect) {
+            selectedSquare.value = { row, col }
+            selectedPiece.value = clickedPiece
+            possibleMoves.value = getPossibleMoves(row, col)
+            console.log(`Selected ${clickedPiece} at ${square}`)
+          }
+        } else {
+          // Clear selection if clicking empty square and move failed
+          selectedSquare.value = null
+          selectedPiece.value = null
+          possibleMoves.value = []
+        }
+      }
     }
   }
 
-  // Move piece from one square to another (no rules validation)
-  const movePiece = (fromRow: number, fromCol: number, toRow: number, toCol: number) => {
-    const piece = fenLogic.currentBoard.value[fromRow]?.[fromCol]
+  // Move piece using chess.js validation
+  const movePiece = (fromRow: number, fromCol: number, toRow: number, toCol: number): boolean => {
+    const fromSquare = getSquareNotation(fromRow, fromCol) as Square
+    const toSquare = getSquareNotation(toRow, toCol) as Square
     
-    if (!piece) {
-      console.warn('No piece to move')
-      return
+    try {
+      // Attempt the move
+      const move = chess.move({
+        from: fromSquare,
+        to: toSquare,
+        promotion: 'q' // Auto-promote to queen for now
+      })
+      
+      if (move) {
+        console.log(`Legal move: ${move.san}`)
+        
+        // Update game state
+        updateGameState()
+        
+        // Sync board
+        syncBoardFromChess()
+        
+        // Check for special conditions
+        if (isCheckmate.value) {
+          console.log(`Checkmate! ${currentPlayer.value === 'white' ? 'Black' : 'White'} wins!`)
+        } else if (isStalemate.value) {
+          console.log('Stalemate! Game is a draw.')
+        } else if (isCheck.value) {
+          console.log(`${currentPlayer.value} is in check!`)
+        }
+        
+        return true
+      }
+    } catch (error) {
+      console.log('Illegal move:', error)
     }
     
-    // Simple move - just update the board
-    fenLogic.currentBoard.value[fromRow][fromCol] = ''
-    fenLogic.currentBoard.value[toRow][toCol] = piece
-    
-    const fromNotation = getSquareNotation(fromRow, fromCol)
-    const toNotation = getSquareNotation(toRow, toCol)
-    
-    console.log(`Moved ${piece} from ${fromNotation} to ${toNotation}`)
-    
-    // Update FEN string after move
-    fenLogic.updateFenFromBoard()
-  }
-
-  // Convert row, col to chess notation (e.g., 0,0 = a8)
-  const getSquareNotation = (row: number, col: number): string => {
-    const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
-    const rank = 8 - row
-    const file = files[col]
-    return `${file}${rank}`
+    return false
   }
 
   // Check if a square is selected
@@ -115,14 +263,91 @@ export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
     return selectedSquare.value?.row === row && selectedSquare.value?.col === col
   }
 
+  // Reset game to starting position
+  const resetGame = () => {
+    chess.reset()
+    selectedSquare.value = null
+    selectedPiece.value = null
+    possibleMoves.value = []
+    updateGameState()
+    syncBoardFromChess()
+    console.log('Game reset to starting position')
+  }
+
+  // Undo last move
+  const undoLastMove = () => {
+    const undone = chess.undo()
+    if (undone) {
+      selectedSquare.value = null
+      selectedPiece.value = null
+      possibleMoves.value = []
+      updateGameState()
+      syncBoardFromChess()
+      console.log('Undid last move:', undone.san)
+    } else {
+      console.log('No move to undo')
+    }
+  }
+
+  // Update from external FEN (from WebSocket)
+  const updateFromExternalFen = (fen: string) => {
+    try {
+      // Set flag to prevent manual interaction during external update
+      isReceivingExternalMove.value = true
+      
+      console.log('Updating from external FEN:', fen)
+      
+      // Try to load the FEN into chess.js
+      chess.load(fen)
+      
+      // Update game state
+      updateGameState()
+      
+      // Sync board from chess.js
+      syncBoardFromChess()
+      
+      // Clear any current selection
+      selectedSquare.value = null
+      selectedPiece.value = null
+      possibleMoves.value = []
+      
+      console.log('Successfully updated board from external FEN')
+      
+      // Allow manual interaction again after a short delay
+      setTimeout(() => {
+        isReceivingExternalMove.value = false
+      }, 500)
+      
+    } catch (error) {
+      console.error('Error updating from external FEN:', error)
+      isReceivingExternalMove.value = false
+    }
+  }
+
+  // Initialize on creation
+  initializeChessFromFen()
+
   return {
     selectedSquare,
     selectedPiece,
+    possibleMoves,
+    isGameOver,
+    isCheck,
+    isCheckmate,
+    isStalemate,
+    currentPlayer,
+    moveHistory,
+    isReceivingExternalMove,
     handleSquareClick,
     movePiece,
     isSquareSelected,
+    isPossibleMove,
+    isSquareInCheck,
     getSquareNotation,
     getPieceImage,
-    getPieceAlt
+    getPieceAlt,
+    resetGame,
+    undoLastMove,
+    updateFromExternalFen
   }
 }

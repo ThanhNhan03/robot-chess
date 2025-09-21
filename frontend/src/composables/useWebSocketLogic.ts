@@ -4,22 +4,30 @@ import type { FenLogic } from './useFenLogic'
 
 export interface WebSocketLogic {
   isConnected: Ref<boolean>
-  initializeWebSocket: () => Promise<void>
+  initializeWebSocket: (chessBoardLogic?: any) => Promise<void>
   cleanupWebSocket: () => void
 }
 
 export function useWebSocketLogic(fenLogic: FenLogic): WebSocketLogic {
   // Game state
   const isConnected = ref(false)
+  let chessBoardLogicRef: any = null
 
   // Handle incoming FEN messages from WebSocket
   const handleWebSocketFen = (data: any) => {
     try {
       if (data.fen_str) {
-        fenLogic.updateFromFen(data.fen_str)
+        console.log(`Received FEN from WebSocket: ${data.fen_str}`)
         
-        console.log(`Received FEN: ${data.fen_str}`)
-        console.log('Board updated from FEN')
+        // If we have chess board logic reference, use the external FEN update method
+        if (chessBoardLogicRef && chessBoardLogicRef.updateFromExternalFen) {
+          chessBoardLogicRef.updateFromExternalFen(data.fen_str)
+        } else {
+          // Fallback to direct FEN logic update (old behavior)
+          fenLogic.updateFromFen(data.fen_str)
+        }
+        
+        console.log('Board updated from WebSocket FEN')
       }
     } catch (error) {
       console.error('Error handling FEN message:', error, data)
@@ -27,7 +35,10 @@ export function useWebSocketLogic(fenLogic: FenLogic): WebSocketLogic {
   }
 
   // Initialize WebSocket connection
-  const initializeWebSocket = async () => {
+  const initializeWebSocket = async (chessBoardLogic?: any) => {
+    // Store reference to chess board logic for proper FEN handling
+    chessBoardLogicRef = chessBoardLogic
+    
     try {
       isConnected.value = await webSocketService.connect()
       if (isConnected.value) {

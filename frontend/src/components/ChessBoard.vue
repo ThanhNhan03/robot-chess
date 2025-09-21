@@ -1,5 +1,18 @@
 <template>
   <div class="chess-board">
+    <!-- Game Status -->
+    <div class="game-status">
+      <div class="current-player">
+        Current Player: <span :class="{ 'white': currentPlayer === 'white', 'black': currentPlayer === 'black' }">
+          {{ currentPlayer === 'white' ? 'White' : 'Black' }}
+        </span>
+      </div>
+      <div v-if="isReceivingExternalMove" class="status-warning">Receiving robot move...</div>
+      <div v-else-if="isCheck && !isGameOver" class="status-warning">Check!</div>
+      <div v-if="isCheckmate" class="status-game-over">Checkmate! {{ currentPlayer === 'white' ? 'Black' : 'White' }} wins!</div>
+      <div v-if="isStalemate" class="status-game-over">Stalemate! Game is a draw.</div>
+    </div>
+
     <div class="board-container">
       <div class="board-grid">
         <div
@@ -13,7 +26,11 @@
             :class="[
               'chess-square',
               (rowIndex + colIndex) % 2 === 0 ? 'light' : 'dark',
-              { 'selected': isSquareSelected(rowIndex, colIndex) }
+              { 
+                'selected': isSquareSelected(rowIndex, colIndex),
+                'possible-move': isPossibleMove(rowIndex, colIndex),
+                'in-check': isSquareInCheck(rowIndex, colIndex)
+              }
             ]"
             @click="handleSquareClick(rowIndex, colIndex)"
           >
@@ -41,6 +58,12 @@
         </div>
       </div>
     </div>
+    
+    <!-- Game Controls -->
+    <div class="game-controls">
+      <button @click="resetGame" class="control-btn reset">New Game</button>
+      <button @click="undoLastMove" class="control-btn undo" :disabled="moveHistory.length === 0">Undo</button>
+    </div>
   </div>
 </template>
 
@@ -60,8 +83,20 @@ const { currentBoard, initialFen } = fenLogic
 const { 
   handleSquareClick, 
   isSquareSelected, 
+  isPossibleMove,
+  isSquareInCheck,
   getPieceImage, 
-  getPieceAlt 
+  getPieceAlt,
+  isGameOver,
+  isCheck,
+  isCheckmate,
+  isStalemate,
+  currentPlayer,
+  moveHistory,
+  isReceivingExternalMove,
+  resetGame,
+  undoLastMove,
+  updateFromExternalFen
 } = chessBoardLogic
 const { isConnected, initializeWebSocket, cleanupWebSocket } = webSocketLogic
 
@@ -70,8 +105,8 @@ onMounted(async () => {
   // Initialize board from FEN
   fenLogic.initializeBoardFromFen()
   
-  // Initialize WebSocket
-  await initializeWebSocket()
+  // Initialize WebSocket with chess board logic reference
+  await initializeWebSocket(chessBoardLogic)
 })
 
 // Cleanup on component unmount
@@ -84,16 +119,74 @@ defineExpose({
   getBoard: () => currentBoard.value,
   getFen: () => initialFen.value,
   isConnected: () => isConnected.value,
-  updateFromFen: fenLogic.updateFromFen
+  updateFromFen: fenLogic.updateFromFen,
+  // New chess features
+  isGameOver: () => isGameOver.value,
+  isCheck: () => isCheck.value,
+  isCheckmate: () => isCheckmate.value,
+  isStalemate: () => isStalemate.value,
+  currentPlayer: () => currentPlayer.value,
+  moveHistory: () => moveHistory.value,
+  isReceivingExternalMove: () => isReceivingExternalMove.value,
+  resetGame,
+  undoLastMove,
+  updateFromExternalFen
 })
 </script>
 
 <style scoped>
 .chess-board {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   width: 100%;
+  gap: 15px;
+}
+
+.game-status {
+  text-align: center;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  min-height: 50px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+}
+
+.current-player {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.current-player .white {
+  color: #333;
+}
+
+.current-player .black {
+  color: #666;
+}
+
+.status-warning {
+  color: #ff6b00;
+  font-weight: bold;
+  font-size: 18px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status-game-over {
+  color: #d32f2f;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
 }
 
 .board-container {
@@ -144,6 +237,29 @@ defineExpose({
 .chess-square.selected {
   background-color: #FFE135 !important;
   box-shadow: inset 0 0 0 3px #FF6B35;
+  animation: selectPulse 1.5s ease-in-out infinite;
+}
+
+.chess-square.possible-move {
+  position: relative;
+}
+
+.chess-square.possible-move::after {
+  content: '';
+  position: absolute;
+  width: 30%;
+  height: 30%;
+  background-color: #4CAF50;
+  border-radius: 50%;
+  opacity: 0.8;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.chess-square.in-check {
+  background-color: #ffcdd2 !important;
+  box-shadow: inset 0 0 0 2px #f44336;
 }
 
 .chess-square:hover {
@@ -241,33 +357,41 @@ defineExpose({
   100% { box-shadow: inset 0 0 0 3px #FF6B35; }
 }
 
-.chess-square.selected {
-  animation: selectPulse 1.5s ease-in-out infinite;
+.game-controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
 }
 
-/* Possible move indicators */
-.chess-square.possible-move {
-  background-color: rgba(76, 175, 80, 0.3) !important;
+.control-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.chess-square.possible-move::after {
-  content: '';
-  position: absolute;
-  width: 30%;
-  height: 30%;
+.control-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.control-btn.reset {
   background-color: #4CAF50;
-  border-radius: 50%;
-  opacity: 0.7;
+  color: white;
 }
 
-/* Capture move indicators */
-.chess-square.possible-capture::after {
-  content: '';
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border: 3px solid #F44336;
-  border-radius: 50%;
-  box-sizing: border-box;
+.control-btn.reset:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.control-btn.undo {
+  background-color: #2196F3;
+  color: white;
+}
+
+.control-btn.undo:hover:not(:disabled) {
+  background-color: #1976D2;
 }
 </style>
