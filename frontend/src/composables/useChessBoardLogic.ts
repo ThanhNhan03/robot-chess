@@ -48,6 +48,10 @@ export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
   const moveHistory = ref<string[]>([])
   const isReceivingExternalMove = ref(false)
   const promotionPending = ref<{ from: string, to: string } | null>(null)
+  
+  // Store persistent move history that survives FEN updates
+  const persistentMoveHistory = ref<string[]>([])
+  const lastProcessedFen = ref<string>('')
 
   // Piece name mapping for alt text
   const pieceNames: { [key: string]: string } = {
@@ -69,6 +73,8 @@ export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
   const initializeChessFromFen = () => {
     try {
       chess.load(fenLogic.initialFen.value)
+      persistentMoveHistory.value = []
+      lastProcessedFen.value = fenLogic.initialFen.value
       updateGameState()
       syncBoardFromChess()
     } catch (error) {
@@ -87,7 +93,13 @@ export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
     isStalemate.value = chess.isStalemate()
     isGameOver.value = chess.isGameOver()
     currentPlayer.value = chess.turn() === 'w' ? 'white' : 'black'
-    moveHistory.value = chess.history()
+    
+    // Use persistent history if available, otherwise fall back to chess.js history
+    if (persistentMoveHistory.value.length > 0) {
+      moveHistory.value = [...persistentMoveHistory.value]
+    } else {
+      moveHistory.value = chess.history()
+    }
   }
 
   // Sync board from chess.js to fenLogic
@@ -270,6 +282,9 @@ export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
       if (move) {
         console.log(`Legal move: ${move.san}`)
         
+        // Add to persistent history
+        persistentMoveHistory.value.push(move.san)
+        
         // Update game state
         updateGameState()
         
@@ -302,6 +317,8 @@ export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
   // Reset game to starting position
   const resetGame = () => {
     chess.reset()
+    persistentMoveHistory.value = []
+    lastProcessedFen.value = ''
     selectedSquare.value = null
     selectedPiece.value = null
     possibleMoves.value = []
@@ -314,6 +331,11 @@ export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
   const undoLastMove = () => {
     const undone = chess.undo()
     if (undone) {
+      // Remove last move from persistent history
+      if (persistentMoveHistory.value.length > 0) {
+        persistentMoveHistory.value.pop()
+      }
+      
       selectedSquare.value = null
       selectedPiece.value = null
       possibleMoves.value = []
@@ -333,8 +355,50 @@ export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
       
       console.log('Updating from external FEN:', fen)
       
-      // Try to load the FEN into chess.js
+      // Store current position info for move detection
+      const currentFen = chess.fen()
+      const currentHistory = [...persistentMoveHistory.value]
+      
+      // Skip if this is the same FEN we just processed
+      if (lastProcessedFen.value === fen) {
+        console.log('Skipping duplicate FEN')
+        isReceivingExternalMove.value = false
+        return
+      }
+      
+      // If this is a different position, try to detect the move
+      if (currentFen !== fen && currentHistory.length >= 0) {
+        // Create a copy of chess instance to test moves
+        const testChess = new Chess(currentFen)
+        const possibleMoves = testChess.moves({ verbose: true })
+        
+        let detectedMove: string | null = null
+        
+        // Try each possible move to see if it results in the target FEN
+        for (const move of possibleMoves) {
+          const tempChess = new Chess(currentFen)
+          tempChess.move(move)
+          
+          // Compare board positions (ignore turn, castling, etc.)
+          const tempFenBoard = tempChess.fen().split(' ')[0]
+          const targetFenBoard = fen.split(' ')[0]
+          
+          if (tempFenBoard === targetFenBoard) {
+            detectedMove = move.san
+            console.log('Detected external move:', detectedMove)
+            break
+          }
+        }
+        
+        // If we detected a move, add it to our persistent history
+        if (detectedMove) {
+          persistentMoveHistory.value.push(detectedMove)
+        }
+      }
+      
+      // Load the new FEN
       chess.load(fen)
+      lastProcessedFen.value = fen
       
       // Update game state
       updateGameState()
@@ -349,6 +413,7 @@ export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
       promotionPending.value = null
       
       console.log('Successfully updated board from external FEN')
+      console.log('Current move history:', moveHistory.value)
       
       // Allow manual interaction again after a short delay
       setTimeout(() => {
@@ -377,6 +442,9 @@ export function useChessBoardLogic(fenLogic: FenLogic): ChessBoardLogic {
       
       if (move) {
         console.log(`Promotion move: ${move.san}`)
+        
+        // Add to persistent history
+        persistentMoveHistory.value.push(move.san)
         
         // Clear promotion pending
         promotionPending.value = null
