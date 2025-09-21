@@ -1,28 +1,38 @@
 <template>
-  <Transition name="game-status" appear>
-    <div v-if="shouldShowStatus" class="game-status">
-      <div v-if="props.isReceivingExternalMove && !props.isGameOver" class="status-item status-receiving">
-        <div class="status-icon">🤖</div>
-        <div class="status-text">Robot đang di chuyển...</div>
-      </div>
-      
-      <div v-else-if="props.isCheckmate" class="status-item status-checkmate">
-        <div class="status-icon">👑</div>
-        <div class="status-text">
-          <div class="checkmate-title">Chiếu hết!</div>
-          <div class="winner">{{ props.currentPlayer === 'white' ? 'Đen' : 'Trắng' }} thắng!</div>
+  <Teleport to="body">
+    <Transition name="modal" appear>
+      <div v-if="shouldShowStatus" class="modal-overlay" @click="handleOverlayClick">
+        <div class="game-status-modal" @click.stop>
+          <div v-if="props.isCheckmate" class="status-item status-checkmate">
+            <div class="status-icon">👑</div>
+            <div class="status-text">
+              <div class="checkmate-title">Chiếu hết!</div>
+              <div class="winner">{{ props.currentPlayer === 'white' ? 'Đen' : 'Trắng' }} thắng!</div>
+              <div class="congratulations">Chúc mừng!</div>
+            </div>
+          </div>
+          
+          <div v-else-if="props.isStalemate" class="status-item status-stalemate">
+            <div class="status-icon">🤝</div>
+            <div class="status-text">
+              <div class="stalemate-title">Hòa cờ!</div>
+              <div class="draw-reason">Không có nước đi hợp lệ</div>
+              <div class="draw-message">Trận đấu kết thúc hòa</div>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button @click="handleNewGame" class="action-btn primary">
+              🎯 Ván mới
+            </button>
+            <button @click="handleClose" class="action-btn secondary">
+              ✖️ Đóng
+            </button>
+          </div>
         </div>
       </div>
-      
-      <div v-else-if="props.isStalemate" class="status-item status-stalemate">
-        <div class="status-icon">🤝</div>
-        <div class="status-text">
-          <div class="stalemate-title">Hòa cờ!</div>
-          <div class="draw-reason">Không có nước đi hợp lệ</div>
-        </div>
-      </div>
-    </div>
-  </Transition>
+    </Transition>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -47,49 +57,80 @@ const props = withDefaults(defineProps<Props>(), {
   isStalemate: false
 })
 
-// Chỉ hiển thị status khi:
-// 1. Game kết thúc (checkmate hoặc stalemate)
-// 2. Robot đang di chuyển
+// Events emit to parent
+const emit = defineEmits<{
+  newGame: []
+  close: []
+}>()
+
+// Chỉ hiển thị status khi game kết thúc (checkmate hoặc stalemate)
 const shouldShowStatus = computed(() => {
-  return props.isCheckmate || props.isStalemate || (props.isReceivingExternalMove && !props.isGameOver)
+  return props.isCheckmate || props.isStalemate
 })
+
+// Handle functions
+const handleNewGame = () => {
+  emit('newGame')
+}
+
+const handleClose = () => {
+  emit('close')
+}
+
+const handleOverlayClick = () => {
+  emit('close')
+}
 </script>
 
 <style scoped>
-.game-status-enter-active,
-.game-status-leave-active {
-  transition: all 0.5s ease;
+.modal-enter-active,
+.modal-leave-active {
+  transition: all 0.3s ease;
 }
 
-.game-status-enter-from,
-.game-status-leave-to {
+.modal-enter-from,
+.modal-leave-to {
   opacity: 0;
-  transform: translateY(-20px) scale(0.95);
 }
 
-.game-status {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  padding: 15px;
-  margin-bottom: 20px;
-  min-height: 60px;
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+}
+
+.game-status-modal {
+  background: linear-gradient(145deg, #ffffff, #f8f9fa);
+  border-radius: 20px;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.2);
+  padding: 40px;
+  max-width: 90vw;
+  max-height: 90vh;
+  text-align: center;
   position: relative;
+  transform: scale(1);
+  transition: transform 0.3s ease;
   overflow: hidden;
 }
 
-.game-status::before {
+.game-status-modal::before {
   content: '';
   position: absolute;
   top: 0;
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
   animation: shimmer 3s infinite;
 }
 
@@ -99,108 +140,156 @@ const shouldShowStatus = computed(() => {
 }
 
 .status-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-align: center;
-  width: 100%;
-  z-index: 1;
+  margin-bottom: 30px;
   position: relative;
+  z-index: 1;
 }
 
 .status-icon {
-  font-size: clamp(24px, 5vw, 28px);
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  font-size: clamp(60px, 15vw, 80px);
+  margin-bottom: 20px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+  60% {
+    transform: translateY(-5px);
+  }
 }
 
 .status-text {
-  font-size: clamp(14px, 3vw, 16px);
   font-weight: 600;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 /* Status-specific styles */
-.status-receiving {
-  color: #f39c12;
-}
-
-.status-receiving .status-text {
-  color: #e67e22;
-}
-
-.status-checkmate {
-  color: #8e44ad;
-  animation: pulse-victory 1.5s infinite;
-}
-
 .status-checkmate .checkmate-title {
-  font-size: clamp(18px, 4vw, 22px);
+  font-size: clamp(24px, 6vw, 32px);
   font-weight: bold;
   color: #8e44ad;
-  margin-bottom: 4px;
+  margin-bottom: 10px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .status-checkmate .winner {
-  font-size: clamp(16px, 3.5vw, 20px);
+  font-size: clamp(20px, 5vw, 26px);
   color: #27ae60;
   font-weight: bold;
+  margin-bottom: 8px;
 }
 
-.status-stalemate {
-  color: #7f8c8d;
+.status-checkmate .congratulations {
+  font-size: clamp(16px, 4vw, 20px);
+  color: #f39c12;
+  font-style: italic;
 }
 
 .status-stalemate .stalemate-title {
-  font-size: clamp(18px, 4vw, 20px);
+  font-size: clamp(24px, 6vw, 32px);
   font-weight: bold;
   color: #34495e;
-  margin-bottom: 4px;
+  margin-bottom: 10px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .status-stalemate .draw-reason {
-  font-size: clamp(14px, 3vw, 16px);
+  font-size: clamp(16px, 4vw, 20px);
   color: #7f8c8d;
+  margin-bottom: 8px;
 }
 
-/* Animations */
-@keyframes pulse-victory {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.08);
-    opacity: 0.9;
-  }
+.status-stalemate .draw-message {
+  font-size: clamp(14px, 3.5vw, 18px);
+  color: #95a5a6;
+  font-style: italic;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.action-btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 12px;
+  font-size: clamp(14px, 3.5vw, 16px);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.action-btn.primary {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  color: white;
+  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+}
+
+.action-btn.primary:hover {
+  background: linear-gradient(135deg, #2980b9, #3498db);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+}
+
+.action-btn.secondary {
+  background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+  color: white;
+  box-shadow: 0 4px 15px rgba(149, 165, 166, 0.3);
+}
+
+.action-btn.secondary:hover {
+  background: linear-gradient(135deg, #7f8c8d, #95a5a6);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(149, 165, 166, 0.4);
+}
+
+.action-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .game-status {
-    padding: 12px;
-    margin-bottom: 15px;
-    min-height: 50px;
+  .game-status-modal {
+    padding: 30px 20px;
+    margin: 20px;
   }
   
-  .status-item {
-    gap: 8px;
+  .modal-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .action-btn {
+    width: 100%;
+    min-width: auto;
   }
 }
 
 @media (max-width: 480px) {
-  .game-status {
-    padding: 10px;
-    margin-bottom: 12px;
-    min-height: 45px;
+  .game-status-modal {
+    padding: 25px 15px;
+    margin: 15px;
+    border-radius: 15px;
   }
   
   .status-item {
-    gap: 6px;
-    flex-direction: column;
-  }
-  
-  .status-icon {
-    margin-bottom: -4px;
+    margin-bottom: 20px;
   }
 }
 </style>

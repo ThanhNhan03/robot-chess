@@ -2,6 +2,7 @@
   <div class="chess-board">
     <div class="board-container">
       <div class="board-grid">
+        <!-- Invisible grid overlay for piece positioning and interaction -->
         <div
           v-for="(_row, rowIndex) in 8"
           :key="rowIndex"
@@ -12,7 +13,6 @@
             :key="colIndex"
             :class="[
               'chess-square',
-              (rowIndex + colIndex) % 2 === 0 ? 'light' : 'dark',
               { 
                 'selected': isSquareSelected(rowIndex, colIndex),
                 'possible-move': isPossibleMove(rowIndex, colIndex),
