@@ -17,8 +17,9 @@ const wss = new WebSocket.Server({ port: PORT });
 
 console.log(`Robot TCP Proxy WebSocket Server running on port ${PORT}`);
 console.log(`Robot TCP endpoint: ${ROBOT_HOST}:${ROBOT_PORT}`);
-
+var clients = [];
 wss.on('connection', (ws) => {
+  clients.push(ws)
   console.log('Frontend connected to robot proxy');
   
   ws.on('message', async (message) => {
@@ -27,23 +28,29 @@ wss.on('connection', (ws) => {
       console.log('Received command from frontend:', command);
       
       // Send command to robot via TCP
-      const response = await sendTcpCommand(command);
+      // const response = await sendTcpCommand(command);
       
-      // Send response back to frontend
-      ws.send(JSON.stringify(response));
+      // Send response back to frontend 
+      clients.forEach((_ws) => {
+        if (_ws != ws) {
+          _ws.send(JSON.stringify(command));
+        }
+      })
       
     } catch (error) {
       console.error('Error processing command:', error);
-      ws.send(JSON.stringify({
-        success: false,
-        message: 'Failed to process command',
-        error: error.message
-      }));
+      // ws.send(JSON.stringify({
+      //   success: false,
+      //   message: 'Failed to process command',
+      //   error: error.message
+      // }));
     }
   });
 
   ws.on('close', () => {
     console.log('Frontend disconnected from robot proxy');
+    clients = clients.filter((_ws) => _ws != ws);
+    console.log(clients.length);
   });
 
   ws.on('error', (error) => {
@@ -127,23 +134,23 @@ function sendTcpCommand(command) {
 }
 
 // HTTP endpoint for direct API calls (alternative to WebSocket)
-app.post('/api/robot/command', async (req, res) => {
-  try {
-    const { command } = req.body;
-    console.log('Received HTTP command:', command);
+// app.post('/api/robot/command', async (req, res) => {
+//   try {
+//     const { command } = req.body;
+//     console.log('Received HTTP command:', command);
     
-    const response = await sendTcpCommand(command);
-    res.json(response);
+//     const response = await sendTcpCommand(command);
+//     res.json(response);
     
-  } catch (error) {
-    console.error('HTTP command error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to send command',
-      error: error.message
-    });
-  }
-});
+//   } catch (error) {
+//     console.error('HTTP command error:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Failed to send command',
+//       error: error.message
+//     });
+//   }
+// });
 
 // Health check endpoint
 app.get('/health', (req, res) => {
