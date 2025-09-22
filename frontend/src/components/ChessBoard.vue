@@ -31,20 +31,6 @@
           </div>
         </div>
       </div>
-      
-      <!-- Coordinates -->
-      <div class="coordinates">
-        <div class="row-labels">
-          <div v-for="n in 8" :key="n" class="row-label">
-            {{ 9 - n }}
-          </div>
-        </div>
-        <div class="col-labels">
-          <div v-for="(letter, index) in ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']" :key="index" class="col-label">
-            {{ letter }}
-          </div>
-        </div>
-      </div>
     </div>
     
     <!-- Promotion Dialog -->
