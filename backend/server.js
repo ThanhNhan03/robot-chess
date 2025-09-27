@@ -17,6 +17,7 @@ const ALT_WS_PORTS = process.env.ALT_WS_PORTS ? process.env.ALT_WS_PORTS.split('
 let webSocketClients = new Set();
 let tcpClients = new Set();
 let robotClients = new Set(); // Riêng biệt cho robot clients
+let aiClients = new Set(); // Riêng biệt cho AI clients
 let currentServerIP = null;
 
 // Broadcast FEN đến tất cả WebSocket clients
@@ -41,6 +42,22 @@ function sendCommandToRobotClients(command) {
     } catch (error) {
       console.error('Lỗi gửi đến robot:', error);
       robotClients.delete(robotSocket);
+    }
+  });
+}
+
+// Send request to AI clients qua TCP
+function sendRequestToAIClients(request) {
+  console.log(`Đang gửi yêu cầu đến ${aiClients.size} AI clients`);
+  
+  aiClients.forEach(aiSocket => {
+    try {
+      const requestStr = JSON.stringify(request);
+      aiSocket.write(requestStr + '\n');
+      console.log('Đã gửi đến AI:', requestStr);
+    } catch (error) {
+      console.error('Lỗi gửi đến AI:', error);
+      aiClients.delete(aiSocket);
     }
   });
 }
@@ -78,6 +95,22 @@ const tcpServer = net.createServer((socket) => {
           return;
         }
         
+        // Kiểm tra nếu đây là AI client identify
+        if (parsed.type === 'ai_identify') {
+          console.log('AI client đã được xác định:', parsed.ai_id);
+          aiClients.add(socket);
+          socket.isAI = true;
+          socket.aiId = parsed.ai_id;
+          
+          socket.write(JSON.stringify({
+            status: 'ai_registered',
+            message: 'AI đã được đăng ký thành công',
+            ai_id: parsed.ai_id,
+            timestamp: new Date().toISOString()
+          }) + '\n');
+          return;
+        }
+        
         // Nếu đây là robot response
         if (parsed.goal_id && parsed.success !== undefined) {
           console.log('Nhận được phản hồi từ robot:', parsed);
@@ -92,6 +125,20 @@ const tcpServer = net.createServer((socket) => {
           });
           return;
         }
+        
+        // TODO: AI response (best move) - sẽ implement sau
+        // if (parsed.best_move && parsed.evaluation !== undefined) {
+        //   console.log('Nhận được phản hồi từ AI:', parsed);
+        //   broadcastToWebSocketClients({
+        //     type: 'ai_response',
+        //     best_move: parsed.best_move,
+        //     evaluation: parsed.evaluation,
+        //     ai_id: socket.aiId,
+        //     response: parsed,
+        //     timestamp: new Date().toISOString()
+        //   });
+        //   return;
+        // }
       } catch (e) {
         // Không phải JSON, tiếp tục xử lý như FEN
       }
@@ -159,6 +206,10 @@ const tcpServer = net.createServer((socket) => {
       robotClients.delete(socket);
       console.log(`Robot ${socket.robotId} đã ngắt kết nối`);
     }
+    if (socket.isAI) {
+      aiClients.delete(socket);
+      console.log(`AI ${socket.aiId} đã ngắt kết nối`);
+    }
   });
 
   // Xử lý lỗi
@@ -168,19 +219,24 @@ const tcpServer = net.createServer((socket) => {
     if (socket.isRobot) {
       robotClients.delete(socket);
     }
+    if (socket.isAI) {
+      aiClients.delete(socket);
+    }
   });
 
   // Gửi welcome message
-  socket.write(JSON.stringify({
-    status: 'connected',
-    message: 'Chào mừng đến với Robot Chess TCP Server',
-    timestamp: new Date().toISOString(),
-    instructions: {
-      robot_identify: 'Gửi {"type": "robot_identify", "robot_id": "your_robot_id"}',
-      fen_data: 'Gửi FEN dạng JSON: {"fen_str": "your_fen"} hoặc chuỗi FEN thuần',
-      robot_response: 'Gửi phản hồi robot với goal_id và trạng thái success'
-    }
-  }) + '\n');
+  // socket.write(JSON.stringify({
+  //   status: 'connected',
+  //   message: 'Chào mừng đến với Robot Chess TCP Server',
+  //   timestamp: new Date().toISOString(),
+  //   instructions: {
+  //     robot_identify: 'Gửi {"type": "robot_identify", "robot_id": "your_robot_id"}',
+  //     ai_identify: 'Gửi {"type": "ai_identify", "ai_id": "your_ai_id"}',
+  //     fen_data: 'Gửi FEN dạng JSON: {"fen_str": "your_fen"} hoặc chuỗi FEN thuần',
+  //     robot_response: 'Gửi phản hồi robot với goal_id và trạng thái success',
+  //     ai_response: 'Gửi phản hồi AI với best_move và evaluation'
+  //   }
+  // }) + '\n');
 });
 
 // Xử lý lỗi server
@@ -328,6 +384,22 @@ async function startWebSocketServer() {
           
           console.log('Lệnh robot đã được gửi đến các robot kết nối');
           
+        } else if (data.type === 'ai_request' && data.fen_position) {
+          console.log('Đang xử lý yêu cầu AI:', data.request_id);
+          
+          // Gửi request đến AI clients qua TCP
+          sendRequestToAIClients(data);
+          
+          // Gửi acknowledgment về client
+          ws.send(JSON.stringify({
+            type: 'ai_request_sent',
+            request_id: data.request_id,
+            message: 'Yêu cầu đã được gửi đến AI',
+            timestamp: new Date().toISOString()
+          }));
+          
+          console.log('Yêu cầu AI đã được gửi đến các AI kết nối');
+          
         } else {
           // Message khác (có thể là FEN hoặc status)
           console.log('Phát rộng message đến các client khác');
@@ -354,14 +426,15 @@ async function startWebSocketServer() {
       webSocketClients.delete(ws);
     });
 
-    // Send welcome message
-    ws.send(JSON.stringify({
-      type: 'connection',
-      message: 'Đã kết nối đến Robot Chess Server',
-      capabilities: ['fen_broadcast', 'robot_commands'],
-      connected_robots: robotClients.size,
-      timestamp: new Date().toISOString()
-    }));
+    // // Send welcome message
+    // ws.send(JSON.stringify({
+    //   type: 'connection',
+    //   message: 'Đã kết nối đến Robot Chess Server',
+    //   capabilities: ['fen_broadcast', 'robot_commands', 'ai_requests'],
+    //   connected_robots: robotClients.size,
+    //   connected_ais: aiClients.size,
+    //   timestamp: new Date().toISOString()
+    // }));
   });
 
   return { wss, ip: wsIP, port: wsPort };
@@ -414,5 +487,5 @@ startServers();
 // Log status mỗi 30 giây
 setInterval(() => {
   const serverInfo = currentServerIP ? `(${currentServerIP})` : '';
-  console.log(`Trạng thái: ${tcpClients.size} TCP clients (${robotClients.size} robots), ${webSocketClients.size} WebSocket clients ${serverInfo}`);
+  console.log(`Trạng thái: ${tcpClients.size} TCP clients (${robotClients.size} robots, ${aiClients.size} AIs), ${webSocketClients.size} WebSocket clients ${serverInfo}`);
 }, 30000);
