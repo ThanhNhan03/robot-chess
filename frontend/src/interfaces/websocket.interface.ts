@@ -16,7 +16,7 @@ export interface RobotCommandMessage {
     from: string
     to: string
     from_piece: string
-    to_piece?: string
+    to_piece: string | null
     notation: string
     results_in_check: boolean
   }

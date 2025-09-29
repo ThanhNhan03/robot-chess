@@ -360,13 +360,10 @@ class WebSocketService {
         from: from.toLowerCase(),
         to: to.toLowerCase(),
         from_piece: fromPiece,
+        to_piece: type === 'attack' ? (toPiece || null) : null,
         notation,
         results_in_check: resultsInCheck
       }
-    }
-
-    if (type === 'attack' && toPiece) {
-      command.move.to_piece = toPiece
     }
 
     return command
