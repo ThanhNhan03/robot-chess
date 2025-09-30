@@ -1,124 +1,66 @@
 <template>
   <div class="robot-command">
     <div class="command-header">
-      <h3>Robot Command Control</h3>
+      <h3>Robot AI Command Display</h3>
       <div class="connection-status" :class="{ connected: isConnected }">
         {{ isConnected ? 'Connected' : 'Disconnected' }}
       </div>
     </div>
     
-    <form @submit.prevent="sendCommand" class="command-form">
-      <!-- Type Selection -->
-      <div class="form-group">
-        <label for="moveType">Move Type:</label>
-        <select id="moveType" v-model="command.type" required>
-          <option value="">Select move type</option>
-          <option value="move">Move</option>
-          <option value="attack">Attack</option>
-        </select>
+    <!-- AI Move Display -->
+    <div class="ai-move-section" v-if="lastAIMove">
+      <h4>Latest AI Move:</h4>
+      <div class="move-info">
+        <div class="move-details">
+          <span class="move-type" :class="lastAIMove.move.type">{{ lastAIMove.move.type.toUpperCase() }}</span>
+          <span class="move-notation">{{ lastAIMove.move.notation }}</span>
+          <span class="move-description">
+            {{ lastAIMove.move.from_piece }} from {{ lastAIMove.move.from }} to {{ lastAIMove.move.to }}
+            {{ lastAIMove.move.to_piece ? ` (captures ${lastAIMove.move.to_piece})` : '' }}
+          </span>
+        </div>
+        <div class="move-status">
+          <span v-if="lastAIMove.move.results_in_check" class="check-indicator">CHECK!</span>
+          <span class="timestamp">{{ formatTime(lastAIMove.timestamp) }}</span>
+        </div>
       </div>
+    </div>
 
-      <!-- Piece Selection -->
-      <div class="form-group">
-        <label for="piece">Select Piece:</label>
-        <select id="piece" v-model="command.piece" required>
-          <option value="">Select piece</option>
-          <optgroup label="White Pieces">
-            <option value="white_king">White King</option>
-            <option value="white_queen">White Queen</option>
-            <option value="white_rook">White Rook</option>
-            <option value="white_bishop">White Bishop</option>
-            <option value="white_knight">White Knight</option>
-            <option value="white_pawn">White Pawn</option>
-          </optgroup>
-          <optgroup label="Black Pieces">
-            <option value="black_king">Black King</option>
-            <option value="black_queen">Black Queen</option>
-            <option value="black_rook">Black Rook</option>
-            <option value="black_bishop">Black Bishop</option>
-            <option value="black_knight">Black Knight</option>
-            <option value="black_pawn">Black Pawn</option>
-          </optgroup>
-        </select>
+    <!-- Robot Command JSON Display -->
+    <div class="command-display" v-if="lastRobotCommand">
+      <h4>Robot Command Sent:</h4>
+      <pre class="json-display">{{ formatJSON(lastRobotCommand) }}</pre>
+      <div class="command-status">
+        <span class="goal-id">Goal ID: {{ lastRobotCommand.goal_id }}</span>
+        <span class="command-time">{{ formatTime(lastRobotCommand.header.timestamp) }}</span>
       </div>
+    </div>
 
-      <!-- From Position -->
-      <div class="form-group">
-        <label for="fromPosition">From Position:</label>
-        <input 
-          id="fromPosition"
-          type="text" 
-          v-model="command.from" 
-          placeholder="e.g., d1"
-          pattern="[a-h][1-8]"
-          title="Enter position like a1, b2, etc."
-          required
-          maxlength="2"
-        />
+    <!-- FEN Display -->
+    <div class="fen-display" v-if="currentFEN">
+      <h4>Current Board Position:</h4>
+      <div class="fen-info">
+        <code class="fen-string">{{ currentFEN.fen_str }}</code>
+        <span class="fen-source">Source: {{ currentFEN.source }}</span>
       </div>
+    </div>
 
-      <!-- To Position -->
-      <div class="form-group">
-        <label for="toPosition">To Position:</label>
-        <input 
-          id="toPosition"
-          type="text" 
-          v-model="command.to" 
-          placeholder="e.g., f7"
-          pattern="[a-h][1-8]"
-          title="Enter position like a1, b2, etc."
-          required
-          maxlength="2"
-        />
+    <!-- Robot Response Display -->
+    <div class="robot-response" v-if="lastRobotResponse">
+      <h4>Robot Response:</h4>
+      <div class="response-info" :class="{ success: lastRobotResponse.success, error: !lastRobotResponse.success }">
+        <div class="response-status">
+          <span class="status-icon">{{ lastRobotResponse.success ? '✅' : '❌' }}</span>
+          <span class="status-text">{{ lastRobotResponse.success ? 'SUCCESS' : 'FAILED' }}</span>
+        </div>
+        <div class="response-details">
+          <span class="goal-id">Goal: {{ lastRobotResponse.goal_id }}</span>
+          <span class="response-time">{{ formatTime(lastRobotResponse.timestamp) }}</span>
+        </div>
+        <div class="response-message" v-if="lastRobotResponse.response?.message">
+          {{ lastRobotResponse.response.message }}
+        </div>
       </div>
-
-      <!-- Target Piece (only for attack) -->
-      <div class="form-group" v-if="command.type === 'attack'">
-        <label for="targetPiece">Target Piece:</label>
-        <select id="targetPiece" v-model="command.targetPiece" :required="command.type === 'attack'">
-          <option value="">Select target piece</option>
-          <optgroup label="White Pieces">
-            <option value="white_king">White King</option>
-            <option value="white_queen">White Queen</option>
-            <option value="white_rook">White Rook</option>
-            <option value="white_bishop">White Bishop</option>
-            <option value="white_knight">White Knight</option>
-            <option value="white_pawn">White Pawn</option>
-          </optgroup>
-          <optgroup label="Black Pieces">
-            <option value="black_king">Black King</option>
-            <option value="black_queen">Black Queen</option>
-            <option value="black_rook">Black Rook</option>
-            <option value="black_bishop">Black Bishop</option>
-            <option value="black_knight">Black Knight</option>
-            <option value="black_pawn">Black Pawn</option>
-          </optgroup>
-        </select>
-      </div>
-
-      <!-- Additional Options -->
-      <div class="form-group">
-        <label>
-          <input type="checkbox" v-model="command.resultsInCheck" />
-          Results in Check
-        </label>
-      </div>
-
-      <!-- Submit Button -->
-      <div class="form-actions">
-        <button type="submit" :disabled="!isConnected || isLoading" class="send-button">
-          {{ isLoading ? 'Sending...' : 'Send Command to Robot' }}
-        </button>
-        <button type="button" @click="resetForm" class="reset-button">
-          Reset
-        </button>
-      </div>
-    </form>
-
-    <!-- Command Preview -->
-    <div class="command-preview" v-if="previewCommand">
-      <h4>Command Preview:</h4>
-      <pre>{{ previewCommand }}</pre>
     </div>
 
     <!-- Status Messages -->
@@ -127,54 +69,95 @@
         {{ statusMessage.text }}
       </div>
     </div>
+
+    <!-- Manual Send Button (for testing) -->
+    <div class="manual-controls" v-if="showManualControls">
+      <button 
+        @click="toggleManualControls" 
+        class="toggle-button"
+      >
+        Hide Manual Controls
+      </button>
+      <button 
+        @click="testCommand" 
+        :disabled="!isConnected" 
+        class="test-button"
+      >
+        Send Test Command
+      </button>
+    </div>
+    <div v-else class="manual-controls">
+      <button 
+        @click="toggleManualControls" 
+        class="toggle-button"
+      >
+        Show Manual Controls
+      </button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import webSocketService from '../services/webSocketService'
 
 // Types
+interface AIMove {
+  fen_str: string
+  move: {
+    type: 'move' | 'attack'
+    from: string
+    to: string
+    from_piece: string
+    to_piece: string | null
+    notation: string
+    results_in_check: boolean
+  }
+  timestamp: string
+}
+
 interface RobotCommand {
-  type: 'move' | 'attack' | ''
-  piece: string
-  from: string
-  to: string
-  targetPiece?: string
-  resultsInCheck: boolean
+  goal_id: string
+  header: {
+    timestamp: string
+    source?: string
+    ai_id?: string
+  }
+  move: {
+    type: 'move' | 'attack'
+    from: string
+    to: string
+    from_piece: string
+    to_piece: string | null
+    notation: string
+    results_in_check: boolean
+  }
+}
+
+interface RobotResponse {
+  type: string
+  success: boolean
+  goal_id: string
+  response: any
+  timestamp: string
+}
+
+interface FENData {
+  fen_str: string
+  source: string
+  timestamp: string
 }
 
 // Reactive data
-const command = ref<RobotCommand>({
-  type: '',
-  piece: '',
-  from: '',
-  to: '',
-  targetPiece: '',
-  resultsInCheck: false
-})
-
 const isConnected = ref(false)
-const isLoading = ref(false)
 const statusMessage = ref<{ text: string, type: 'success' | 'error' | 'info' } | null>(null)
+const showManualControls = ref(false)
 
-// Computed properties
-const previewCommand = computed(() => {
-  if (!command.value.type || !command.value.piece || !command.value.from || !command.value.to) {
-    return null
-  }
-
-  const commandData = webSocketService.createRobotCommand(
-    command.value.type as 'move' | 'attack',
-    command.value.piece,
-    command.value.from,
-    command.value.to,
-    command.value.targetPiece,
-    command.value.resultsInCheck
-  )
-
-  return JSON.stringify(commandData, null, 2)
-})
+// AI and Robot data
+const lastAIMove = ref<AIMove | null>(null)
+const lastRobotCommand = ref<RobotCommand | null>(null)
+const lastRobotResponse = ref<RobotResponse | null>(null)
+const currentFEN = ref<FENData | null>(null)
 
 // Methods
 const connectToRobot = async () => {
@@ -193,52 +176,6 @@ const connectToRobot = async () => {
   }
 }
 
-const sendCommand = async () => {
-  if (!isConnected.value || !command.value.type || !command.value.piece || !command.value.from || !command.value.to) {
-    showStatus('Please fill in all required fields and connect to server', 'error')
-    return
-  }
-
-  isLoading.value = true
-  showStatus('Sending command to robot...', 'info')
-
-  try {
-    const robotCommand = webSocketService.createRobotCommand(
-      command.value.type as 'move' | 'attack',
-      command.value.piece,
-      command.value.from,
-      command.value.to,
-      command.value.targetPiece,
-      command.value.resultsInCheck
-    )
-
-    const success = webSocketService.sendRobotCommand(robotCommand)
-    
-    if (success) {
-      showStatus('Command sent to server', 'info')
-    } else {
-      showStatus('Failed to send command', 'error')
-      isLoading.value = false
-    }
-  } catch (error) {
-    console.error('Send command error:', error)
-    showStatus('Failed to send command', 'error')
-    isLoading.value = false
-  }
-}
-
-const resetForm = () => {
-  command.value = {
-    type: '',
-    piece: '',
-    from: '',
-    to: '',
-    targetPiece: '',
-    resultsInCheck: false
-  }
-  statusMessage.value = null
-}
-
 const showStatus = (text: string, type: 'success' | 'error' | 'info') => {
   statusMessage.value = { text, type }
   setTimeout(() => {
@@ -246,22 +183,61 @@ const showStatus = (text: string, type: 'success' | 'error' | 'info') => {
   }, 5000)
 }
 
-const formatPosition = (position: string): string => {
-  return position.toLowerCase().replace(/[^a-h1-8]/g, '')
+const formatTime = (timestamp: string): string => {
+  return new Date(timestamp).toLocaleTimeString()
 }
 
-// Watchers
-watch(() => command.value.from, (newVal) => {
-  if (newVal) {
-    command.value.from = formatPosition(newVal)
-  }
-})
+const formatJSON = (obj: any): string => {
+  return JSON.stringify(obj, null, 2)
+}
 
-watch(() => command.value.to, (newVal) => {
-  if (newVal) {
-    command.value.to = formatPosition(newVal)
+const toggleManualControls = () => {
+  showManualControls.value = !showManualControls.value
+}
+
+const testCommand = () => {
+  if (!isConnected.value) return
+  
+  const testMove = webSocketService.createRobotCommand(
+    'move',
+    'white_pawn',
+    'e2',
+    'e4',
+    undefined,
+    false
+  )
+  
+  webSocketService.sendRobotCommand(testMove)
+  showStatus('Test command sent', 'info')
+}
+
+// Auto-send robot command when AI move is received
+const handleAIMove = (aiMoveData: AIMove) => {
+  console.log('🤖 Processing AI move:', aiMoveData)
+  
+  // Store the AI move for display
+  lastAIMove.value = aiMoveData
+  
+  // Create robot command from AI move
+  const robotCommand: RobotCommand = {
+    goal_id: `ai_auto_${Date.now().toString().slice(-6)}`,
+    header: {
+      timestamp: new Date().toISOString()
+    },
+    move: aiMoveData.move
   }
-})
+  
+  // Store for display
+  lastRobotCommand.value = robotCommand
+  
+  // Send to robot automatically
+  if (isConnected.value) {
+    webSocketService.sendRobotCommand(robotCommand)
+    showStatus(`Auto-sending AI move: ${aiMoveData.move.notation}`, 'info')
+  } else {
+    showStatus('Cannot send AI move: not connected', 'error')
+  }
+}
 
 // Lifecycle
 onMounted(() => {
@@ -272,14 +248,42 @@ onMounted(() => {
     }
   })
 
+  // Listen for AI moves (from server when AI sends fen_str + move)
+  webSocketService.subscribe('ai_move_executed', (data: any) => {
+    console.log('🤖 AI move executed:', data)
+    const aiMoveData: AIMove = {
+      fen_str: '', // Will be updated from FEN message
+      move: data.move,
+      timestamp: data.timestamp
+    }
+    handleAIMove(aiMoveData)
+  })
+
+  // Listen for FEN updates (board position)
+  webSocketService.subscribe('fen', (data: any) => {
+    console.log('📋 FEN update:', data)
+    currentFEN.value = {
+      fen_str: data.fen_str,
+      source: data.source || 'unknown',
+      timestamp: data.timestamp
+    }
+    
+    // If we have a recent AI move, update its FEN
+    if (lastAIMove.value && data.source === 'ai') {
+      lastAIMove.value.fen_str = data.fen_str
+    }
+  })
+
+  // Listen for robot responses
   webSocketService.subscribe('robot_response', (response: any) => {
     console.log('🤖 Robot response:', response)
+    lastRobotResponse.value = response
+    
     if (response.success) {
-      showStatus(`Command executed successfully: ${response.response?.message || 'Success'}`, 'success')
+      showStatus(`Robot executed command successfully: ${response.goal_id}`, 'success')
     } else {
-      showStatus(`Command failed: ${response.error || 'Unknown error'}`, 'error')
+      showStatus(`Robot failed to execute command: ${response.goal_id}`, 'error')
     }
-    isLoading.value = false
   })
 
   webSocketService.subscribe('command_sent', (data: any) => {
@@ -289,7 +293,6 @@ onMounted(() => {
 
   webSocketService.subscribe('error', (data: { error: string }) => {
     showStatus(data.error, 'error')
-    isLoading.value = false
   })
 
   // Monitor connection status
@@ -319,7 +322,7 @@ onMounted(() => {
   padding: 24px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  max-width: 500px;
+  max-width: 600px;
   margin: 0 auto;
 }
 
@@ -353,114 +356,279 @@ onMounted(() => {
   background: #27ae60;
 }
 
-.command-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+/* AI Move Section */
+.ai-move-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
 }
 
-.form-group {
+.ai-move-section h4 {
+  margin: 0 0 16px 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.move-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.move-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.move-type {
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.move-type.move {
+  background: rgba(46, 204, 113, 0.2);
+  border: 1px solid rgba(46, 204, 113, 0.4);
+}
+
+.move-type.attack {
+  background: rgba(231, 76, 60, 0.2);
+  border: 1px solid rgba(231, 76, 60, 0.4);
+}
+
+.move-notation {
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  font-size: 1.1rem;
+  font-weight: bold;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.move-description {
+  font-size: 0.95rem;
+  opacity: 0.9;
+}
+
+.move-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.check-indicator {
+  background: #f39c12;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.timestamp {
+  font-size: 0.875rem;
+  opacity: 0.8;
+}
+
+/* Command Display */
+.command-display {
+  background: #f8f9fa;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.command-display h4 {
+  margin: 0 0 12px 0;
+  color: #2c3e50;
+  font-size: 1.1rem;
+}
+
+.json-display {
+  background: #2c3e50;
+  color: #ecf0f1;
+  padding: 16px;
+  border-radius: 8px;
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0 0 12px 0;
+  overflow-x: auto;
+}
+
+.command-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+  color: #6c757d;
+}
+
+.goal-id {
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  background: #e9ecef;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* FEN Display */
+.fen-display {
+  background: #fff3cd;
+  border: 2px solid #ffeaa7;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.fen-display h4 {
+  margin: 0 0 12px 0;
+  color: #856404;
+  font-size: 1.1rem;
+}
+
+.fen-info {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.form-group label {
-  font-weight: 500;
-  color: #2c3e50;
-  font-size: 0.95rem;
+.fen-string {
+  background: #fff;
+  border: 1px solid #ffeaa7;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  font-size: 0.875rem;
+  word-break: break-all;
 }
 
-.form-group select,
-.form-group input {
-  padding: 12px 16px;
-  border: 2px solid rgba(102, 126, 234, 0.2);
-  border-radius: 8px;
+.fen-source {
+  font-size: 0.875rem;
+  color: #856404;
+  font-style: italic;
+}
+
+/* Robot Response */
+.robot-response {
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.robot-response.success {
+  background: #d4edda;
+  border: 2px solid #c3e6cb;
+}
+
+.robot-response.error {
+  background: #f8d7da;
+  border: 2px solid #f5c6cb;
+}
+
+.robot-response h4 {
+  margin: 0 0 16px 0;
+  font-size: 1.1rem;
+}
+
+.response-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.response-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-icon {
+  font-size: 1.2rem;
+}
+
+.status-text {
+  font-weight: bold;
   font-size: 1rem;
-  transition: all 0.3s ease;
-  background: white;
 }
 
-.form-group select:focus,
-.form-group input:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+.response-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+  opacity: 0.8;
 }
 
-.form-group input[type="checkbox"] {
-  width: auto;
-  margin-right: 8px;
+.response-message {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-style: italic;
 }
 
-.form-actions {
+/* Manual Controls */
+.manual-controls {
   display: flex;
   gap: 12px;
-  margin-top: 8px;
+  justify-content: center;
+  margin-top: 16px;
 }
 
-.send-button,
-.reset-button {
-  flex: 1;
-  padding: 14px 20px;
+.toggle-button,
+.test-button {
+  padding: 10px 20px;
   border: none;
   border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 0.9rem;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
-.send-button {
+.toggle-button {
+  background: #6c757d;
+  color: white;
+}
+
+.toggle-button:hover {
+  background: #545b62;
+  transform: translateY(-1px);
+}
+
+.test-button {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
 }
 
-.send-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+.test-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
-.send-button:disabled {
+.test-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
 }
 
-.reset-button {
-  background: #ecf0f1;
-  color: #2c3e50;
-  border: 2px solid rgba(44, 62, 80, 0.1);
-}
-
-.reset-button:hover {
-  background: #d5dbdb;
-  transform: translateY(-1px);
-}
-
-.command-preview {
-  margin-top: 24px;
-  padding: 16px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border-left: 4px solid #667eea;
-}
-
-.command-preview h4 {
-  margin: 0 0 12px 0;
-  color: #2c3e50;
-  font-size: 1rem;
-}
-
-.command-preview pre {
-  margin: 0;
-  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-  font-size: 0.875rem;
-  color: #2c3e50;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
+/* Status Messages */
 .status-messages {
   margin-top: 16px;
 }
@@ -503,8 +671,22 @@ onMounted(() => {
     align-items: flex-start;
   }
   
-  .form-actions {
+  .move-details {
     flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .response-details {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .manual-controls {
+    flex-direction: column;
+  }
+  
+  .json-display {
+    font-size: 0.75rem;
   }
 }
 </style>
