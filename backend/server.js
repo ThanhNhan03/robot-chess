@@ -126,19 +126,63 @@ const tcpServer = net.createServer((socket) => {
           return;
         }
         
-        // TODO: AI response (best move) - sẽ implement sau
-        // if (parsed.best_move && parsed.evaluation !== undefined) {
-        //   console.log('Nhận được phản hồi từ AI:', parsed);
-        //   broadcastToWebSocketClients({
-        //     type: 'ai_response',
-        //     best_move: parsed.best_move,
-        //     evaluation: parsed.evaluation,
-        //     ai_id: socket.aiId,
-        //     response: parsed,
-        //     timestamp: new Date().toISOString()
-        //   });
-        //   return;
-        // }
+        // Xử lý AI response với FEN và robot command
+        if (parsed.fen_str && parsed.move) {
+          console.log('Nhận được AI response với FEN và robot command:', parsed);
+          
+          // 1. Broadcast FEN đến WebSocket clients (frontend)
+          broadcastToWebSocketClients({
+            fen_str: parsed.fen_str,
+            timestamp: new Date().toISOString(),
+            source: 'ai'
+          });
+          
+          // 2. Tạo robot command từ AI move và gửi đến robot clients
+          const robotCommand = {
+            goal_id: `ai_cmd_${Date.now().toString().slice(-6)}`,
+            header: {
+              timestamp: new Date().toISOString(),
+              source: 'ai',
+              ai_id: socket.aiId || 'unknown'
+            },
+            move: parsed.move
+          };
+          
+          console.log('Gửi robot command từ AI:', robotCommand.goal_id);
+          sendCommandToRobotClients(robotCommand);
+          
+          // 3. Broadcast thông tin AI move đến WebSocket clients
+          broadcastToWebSocketClients({
+            type: 'ai_move_executed',
+            goal_id: robotCommand.goal_id,
+            move: parsed.move,
+            ai_id: socket.aiId || 'unknown',
+            timestamp: new Date().toISOString()
+          });
+          
+          // 4. Gửi acknowledgment về AI client
+          socket.write(JSON.stringify({
+            status: 'ai_command_processed',
+            goal_id: robotCommand.goal_id,
+            message: 'FEN đã được phát rộng và robot command đã được gửi',
+            timestamp: new Date().toISOString()
+          }) + '\n');
+          return;
+        }
+        
+        // Xử lý AI response với best move (format cũ - để tương thích)
+        if (parsed.best_move && parsed.evaluation !== undefined) {
+          console.log('Nhận được phản hồi từ AI (format cũ):', parsed);
+          broadcastToWebSocketClients({
+            type: 'ai_response',
+            best_move: parsed.best_move,
+            evaluation: parsed.evaluation,
+            ai_id: socket.aiId,
+            response: parsed,
+            timestamp: new Date().toISOString()
+          });
+          return;
+        }
       } catch (e) {
         // Không phải JSON, tiếp tục xử lý như FEN
       }
@@ -224,7 +268,7 @@ const tcpServer = net.createServer((socket) => {
     }
   });
 
-  // Gửi welcome message
+  // // Gửi welcome message
   // socket.write(JSON.stringify({
   //   status: 'connected',
   //   message: 'Chào mừng đến với Robot Chess TCP Server',
@@ -234,7 +278,8 @@ const tcpServer = net.createServer((socket) => {
   //     ai_identify: 'Gửi {"type": "ai_identify", "ai_id": "your_ai_id"}',
   //     fen_data: 'Gửi FEN dạng JSON: {"fen_str": "your_fen"} hoặc chuỗi FEN thuần',
   //     robot_response: 'Gửi phản hồi robot với goal_id và trạng thái success',
-  //     ai_response: 'Gửi phản hồi AI với best_move và evaluation'
+  //     ai_command: 'AI gửi FEN + robot command: {"fen_str": "fen", "move": {"type": "attack/move", "from": "d1", "to": "f7", "from_piece": "black_queen", "to_piece": "white_knight", "notation": "Qd1xf7+", "results_in_check": true}}',
+  //     ai_response_legacy: 'Gửi phản hồi AI (format cũ) với best_move và evaluation'
   //   }
   // }) + '\n');
 });
@@ -430,7 +475,7 @@ async function startWebSocketServer() {
     // ws.send(JSON.stringify({
     //   type: 'connection',
     //   message: 'Đã kết nối đến Robot Chess Server',
-    //   capabilities: ['fen_broadcast', 'robot_commands', 'ai_requests'],
+    //   capabilities: ['fen_broadcast', 'robot_commands', 'ai_requests', 'ai_command_execution'],
     //   connected_robots: robotClients.size,
     //   connected_ais: aiClients.size,
     //   timestamp: new Date().toISOString()
