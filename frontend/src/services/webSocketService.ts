@@ -156,6 +156,10 @@ class WebSocketService {
               this.notifySubscribers('connection', data)
             }
             
+            if (data.type === 'ai_move_executed') {
+              this.notifySubscribers('ai_move_executed', data)
+            }
+            
           } catch (error) {
             console.error('Lỗi parse message:', error)
             this.notifySubscribers('error', { error: 'Failed to parse server message' })
@@ -213,6 +217,10 @@ class WebSocketService {
 
         case 'command_sent':
           console.log('Command sent to robot:', data.goal_id)
+          break
+
+        case 'ai_move_executed':
+          console.log('AI move executed:', data)
           break
 
         case 'error':
