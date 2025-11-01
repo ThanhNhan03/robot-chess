@@ -316,3 +316,5 @@ onMounted(() => {
 })
 </script>
 
+<style scoped src="../assets/styles/RobotCommand.css">
+</style>
