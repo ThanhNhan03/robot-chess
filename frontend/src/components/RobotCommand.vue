@@ -28,7 +28,7 @@
 
     <!-- Robot Command JSON Display -->
     <div class="command-display" v-if="lastRobotCommand">
-      <h4>Robot Command Sent:</h4>
+      <h4>Robot Command ({{ lastRobotCommand.goal_id.startsWith('ai_cmd') ? 'Server Auto-Sent' : 'Manual Test' }}):</h4>
       <pre class="json-display">{{ formatJSON(lastRobotCommand) }}</pre>
       <div class="command-status">
         <span class="goal-id">Goal ID: {{ lastRobotCommand.goal_id }}</span>
@@ -207,36 +207,24 @@ const testCommand = () => {
     false
   )
   
+  // Store test command for display
+  lastRobotCommand.value = testMove
+  
   webSocketService.sendRobotCommand(testMove)
-  showStatus('Test command sent', 'info')
+  showStatus('Manual test command sent', 'info')
 }
 
-// Auto-send robot command when AI move is received
+// Display AI move when received (NO AUTO-SEND - server already sent to robot)
 const handleAIMove = (aiMoveData: AIMove) => {
-  console.log('🤖 Processing AI move:', aiMoveData)
+  console.log('🤖 Displaying AI move (server already sent to robot):', aiMoveData)
   
   // Store the AI move for display
   lastAIMove.value = aiMoveData
   
-  // Create robot command from AI move
-  const robotCommand: RobotCommand = {
-    goal_id: `ai_auto_${Date.now().toString().slice(-6)}`,
-    header: {
-      timestamp: new Date().toISOString()
-    },
-    move: aiMoveData.move
-  }
-  
-  // Store for display
-  lastRobotCommand.value = robotCommand
-  
-  // Send to robot automatically
-  if (isConnected.value) {
-    webSocketService.sendRobotCommand(robotCommand)
-    showStatus(`Auto-sending AI move: ${aiMoveData.move.notation}`, 'info')
-  } else {
-    showStatus('Cannot send AI move: not connected', 'error')
-  }
+  // Extract the command info that server already sent (for display only)
+  // Server created and sent robot command with goal_id like: ai_cmd_123456
+  // We just show what was sent
+  showStatus(`AI move received: ${aiMoveData.move.notation} (server sent to robot)`, 'info')
 }
 
 // Lifecycle
@@ -250,7 +238,18 @@ onMounted(() => {
 
   // Listen for AI moves (from server when AI sends fen_str + move)
   webSocketService.subscribe('ai_move_executed', (data: any) => {
-    console.log('🤖 AI move executed:', data)
+    console.log('🤖 AI move executed by server:', data)
+    
+    // Store the robot command that server already sent
+    lastRobotCommand.value = {
+      goal_id: data.goal_id,
+      header: {
+        timestamp: data.timestamp
+      },
+      move: data.move
+    }
+    
+    // Display AI move info
     const aiMoveData: AIMove = {
       fen_str: '', // Will be updated from FEN message
       move: data.move,
@@ -287,8 +286,11 @@ onMounted(() => {
   })
 
   webSocketService.subscribe('command_sent', (data: any) => {
-    console.log('📤 Command sent:', data)
-    showStatus(`Command ${data.goal_id} sent to robot`, 'info')
+    console.log('📤 Command sent acknowledgment:', data)
+    // Only update status, don't change lastRobotCommand if it's from AI
+    if (!lastRobotCommand.value || lastRobotCommand.value.goal_id !== data.goal_id) {
+      showStatus(`Command ${data.goal_id} sent to robot`, 'info')
+    }
   })
 
   webSocketService.subscribe('error', (data: { error: string }) => {
