@@ -33,7 +33,7 @@
       </div>
       
       <!-- Coordinates -->
-      <div class="coordinates">
+      <!-- <div class="coordinates">
         <div class="row-labels">
           <div v-for="n in 8" :key="n" class="row-label">
             {{ 9 - n }}
@@ -44,7 +44,7 @@
             {{ letter }}
           </div>
         </div>
-      </div>
+      </div> -->
     </div>
     
     <!-- Promotion Dialog -->

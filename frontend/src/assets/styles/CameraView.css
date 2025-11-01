@@ -1,28 +1,30 @@
+/* Flat Design - Camera View */
 .camera-view {
   display: flex;
   justify-content: center;
   align-items: center;
   width: 100%;
+  height: 100%;
 }
 
 .camera-container {
   background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   overflow: hidden;
   width: 100%;
-  max-width: 100%;
+  height: 100%;
+  border: 4px solid #2c3e50;
 }
 
 .camera-header {
   background: #2c3e50;
   color: white;
-  padding: 12px 15px;
+  padding: 16px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
+  border-bottom: 3px solid #34495e;
 }
 
 .camera-header h3 {
@@ -38,14 +40,15 @@
 }
 
 .status-indicator {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
+  width: 16px;
+  height: 16px;
   background: #e74c3c;
+  border: 2px solid white;
 }
 
 .status-indicator.connected {
   background: #27ae60;
+  border: 2px solid white;
 }
 
 .camera-feed {

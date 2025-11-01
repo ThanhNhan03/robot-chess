@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import ChessRobotScreen from './screen/chess-robot/ChessRobotScreen.vue'
+// Import router view for navigation
 </script>
 
 <template>
   <div class="app">
-    <ChessRobotScreen />
+    <router-view />
   </div>
 </template>
 

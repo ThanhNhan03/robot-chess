@@ -1,10 +1,11 @@
+/* Flat Design - Promotion Dialog */
 .promotion-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(44, 62, 80, 0.85);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -14,9 +15,8 @@
 
 .promotion-dialog {
   background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  padding: 32px;
+  border: 5px solid #2c3e50;
   max-width: 400px;
   width: 90%;
   animation: scaleIn 0.3s ease-out;
