@@ -30,6 +30,13 @@
             <span class="nav-label">AI Management</span>
           </button>
           <button 
+            :class="['nav-item', { active: activeTab === 'user' }]"
+            @click="activeTab = 'user'"
+          >
+            <span class="nav-icon">👥</span>
+            <span class="nav-label">User Management</span>
+          </button>
+          <button 
             :class="['nav-item', { active: activeTab === 'settings' }]"
             @click="activeTab = 'settings'"
           >
@@ -54,6 +61,9 @@
         <!-- AI Management -->
         <AIManagement v-if="activeTab === 'ai'" />
         
+        <!-- User Management -->
+        <UserManagement v-if="activeTab === 'user'" />
+        
         <!-- Settings -->
         <div v-if="activeTab === 'settings'" class="panel">
           <h2 class="panel-title">System Settings</h2>
@@ -72,12 +82,11 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 import RobotManagement from '../../components/admin/RobotManagement.vue'
 import AIManagement from '../../components/admin/AIManagement.vue'
+import UserManagement from '../../components/admin/UserManagement.vue'
 
-const router = useRouter()
-const activeTab = ref<'robot' | 'ai' | 'settings' | 'logs'>('robot')
+const activeTab = ref<'robot' | 'ai' | 'user' | 'settings' | 'logs'>('robot')
 </script>
 
 <style scoped>
