@@ -16,6 +16,13 @@
       <aside class="admin-sidebar">
         <nav class="admin-nav">
           <button 
+            :class="['nav-item', { active: activeTab === 'overview' }]"
+            @click="activeTab = 'overview'"
+            >
+            <span class="nav-icon">📊</span>
+            <span class="nav-label">Overview</span>
+            </button>
+          <button 
             :class="['nav-item', { active: activeTab === 'robot' }]"
             @click="activeTab = 'robot'"
           >
@@ -28,6 +35,13 @@
           >
             <span class="nav-icon">🧠</span>
             <span class="nav-label">AI Management</span>
+          </button>
+          <button 
+            :class="['nav-item', { active: activeTab === 'user' }]"
+            @click="activeTab = 'user'"
+          >
+            <span class="nav-icon">👥</span>
+            <span class="nav-label">User Management</span>
           </button>
           <button 
             :class="['nav-item', { active: activeTab === 'settings' }]"
@@ -48,11 +62,17 @@
 
       <!-- Main Panel -->
       <main class="admin-main">
+        <!-- Overview Dashboard -->
+        <OverviewDashboard v-if="activeTab === 'overview'" />
+        
         <!-- Robot Management -->
         <RobotManagement v-if="activeTab === 'robot'" />
         
         <!-- AI Management -->
         <AIManagement v-if="activeTab === 'ai'" />
+        
+        <!-- User Management -->
+        <UserManagement v-if="activeTab === 'user'" />
         
         <!-- Settings -->
         <div v-if="activeTab === 'settings'" class="panel">
@@ -72,12 +92,12 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import OverviewDashboard from '../../components/admin/OverviewDashboard.vue'
 import RobotManagement from '../../components/admin/RobotManagement.vue'
 import AIManagement from '../../components/admin/AIManagement.vue'
+import UserManagement from '../../components/admin/UserManagement.vue'
 
-const router = useRouter()
-const activeTab = ref<'robot' | 'ai' | 'settings' | 'logs'>('robot')
+const activeTab = ref<'overview' | 'robot' | 'ai' | 'user' | 'settings' | 'logs'>('overview')
 </script>
 
 <style scoped>
