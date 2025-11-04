@@ -76,9 +76,9 @@ const handleModalClose = () => {
 <template>
   <div class="chess-robot-screen">
     <!-- Admin Button -->
-    <button class="admin-button" @click="router.push('/admin')" title="Admin Dashboard">
+    <!-- <button class="admin-button" @click="router.push('/admin')" title="Admin Dashboard">
       ⚙️ ADMIN
-    </button>
+    </button> -->
 
     <main class="app-main">
       <div class="main-content">
