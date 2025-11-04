@@ -16,6 +16,13 @@
       <aside class="admin-sidebar">
         <nav class="admin-nav">
           <button 
+            :class="['nav-item', { active: activeTab === 'overview' }]"
+            @click="activeTab = 'overview'"
+            >
+            <span class="nav-icon">📊</span>
+            <span class="nav-label">Overview</span>
+            </button>
+          <button 
             :class="['nav-item', { active: activeTab === 'robot' }]"
             @click="activeTab = 'robot'"
           >
@@ -55,6 +62,9 @@
 
       <!-- Main Panel -->
       <main class="admin-main">
+        <!-- Overview Dashboard -->
+        <OverviewDashboard v-if="activeTab === 'overview'" />
+        
         <!-- Robot Management -->
         <RobotManagement v-if="activeTab === 'robot'" />
         
@@ -82,11 +92,12 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import OverviewDashboard from '../../components/admin/OverviewDashboard.vue'
 import RobotManagement from '../../components/admin/RobotManagement.vue'
 import AIManagement from '../../components/admin/AIManagement.vue'
 import UserManagement from '../../components/admin/UserManagement.vue'
 
-const activeTab = ref<'robot' | 'ai' | 'user' | 'settings' | 'logs'>('robot')
+const activeTab = ref<'overview' | 'robot' | 'ai' | 'user' | 'settings' | 'logs'>('overview')
 </script>
 
 <style scoped>
