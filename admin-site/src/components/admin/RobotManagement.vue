@@ -176,5 +176,6 @@
 // Component logic will be implemented later
 </script>
 
-<style scoped src="../../assets/styles/RobotManagement.css">
+<style scoped>
+@import '../../assets/styles/RobotManagement.css';
 </style>

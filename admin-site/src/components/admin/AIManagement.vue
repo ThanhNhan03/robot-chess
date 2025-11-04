@@ -317,5 +317,6 @@
 // Component logic will be implemented later
 </script>
 
-<style scoped src="../../assets/styles/AIManagement.css">
+<style scoped>
+@import '../../assets/styles/AIManagement.css';
 </style>
