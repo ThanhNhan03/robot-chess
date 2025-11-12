@@ -1,0 +1,526 @@
+﻿using System;
+using System.Collections.Generic;
+using Microsoft.EntityFrameworkCore;
+
+namespace robot_chest_api.Data;
+
+public partial class PostgresContext : DbContext
+{
+    public PostgresContext()
+    {
+    }
+
+    public PostgresContext(DbContextOptions<PostgresContext> options)
+        : base(options)
+    {
+    }
+
+    public virtual DbSet<AiSuggestion> AiSuggestions { get; set; }
+
+    public virtual DbSet<Feedback> Feedbacks { get; set; }
+
+    public virtual DbSet<Game> Games { get; set; }
+
+    public virtual DbSet<GameMove> GameMoves { get; set; }
+
+    public virtual DbSet<GameType> GameTypes { get; set; }
+
+    public virtual DbSet<PaymentHistory> PaymentHistories { get; set; }
+
+    public virtual DbSet<Robot> Robots { get; set; }
+
+    public virtual DbSet<RobotCommand> RobotCommands { get; set; }
+
+    public virtual DbSet<RobotLog> RobotLogs { get; set; }
+
+    public virtual DbSet<SavedState> SavedStates { get; set; }
+
+    public virtual DbSet<TrainingPuzzle> TrainingPuzzles { get; set; }
+
+    public virtual DbSet<User> Users { get; set; }
+
+    public virtual DbSet<User1> Users1 { get; set; }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseNpgsql("Host=db.lyvfqltjhsyjmjmlwweo.supabase.co;Database=postgres;Username=postgres;Password=0oIADgNx5kbykRlB;Port=5432");
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder
+            .HasPostgresEnum("auth", "aal_level", new[] { "aal1", "aal2", "aal3" })
+            .HasPostgresEnum("auth", "code_challenge_method", new[] { "s256", "plain" })
+            .HasPostgresEnum("auth", "factor_status", new[] { "unverified", "verified" })
+            .HasPostgresEnum("auth", "factor_type", new[] { "totp", "webauthn", "phone" })
+            .HasPostgresEnum("auth", "oauth_authorization_status", new[] { "pending", "approved", "denied", "expired" })
+            .HasPostgresEnum("auth", "oauth_client_type", new[] { "public", "confidential" })
+            .HasPostgresEnum("auth", "oauth_registration_type", new[] { "dynamic", "manual" })
+            .HasPostgresEnum("auth", "oauth_response_type", new[] { "code" })
+            .HasPostgresEnum("auth", "one_time_token_type", new[] { "confirmation_token", "reauthentication_token", "recovery_token", "email_change_token_new", "email_change_token_current", "phone_change_token" })
+            .HasPostgresEnum("realtime", "action", new[] { "INSERT", "UPDATE", "DELETE", "TRUNCATE", "ERROR" })
+            .HasPostgresEnum("realtime", "equality_op", new[] { "eq", "neq", "lt", "lte", "gt", "gte", "in" })
+            .HasPostgresEnum("storage", "buckettype", new[] { "STANDARD", "ANALYTICS" })
+            .HasPostgresExtension("extensions", "pg_stat_statements")
+            .HasPostgresExtension("extensions", "pgcrypto")
+            .HasPostgresExtension("extensions", "uuid-ossp")
+            .HasPostgresExtension("graphql", "pg_graphql")
+            .HasPostgresExtension("vault", "supabase_vault");
+
+        modelBuilder.Entity<AiSuggestion>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("ai_suggestions_pkey");
+
+            entity.ToTable("ai_suggestions");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.Confidence)
+                .HasPrecision(5, 2)
+                .HasColumnName("confidence");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+            entity.Property(e => e.GameId).HasColumnName("game_id");
+            entity.Property(e => e.MoveId).HasColumnName("move_id");
+            entity.Property(e => e.SuggestedMove).HasColumnName("suggested_move");
+
+            entity.HasOne(d => d.Move).WithMany(p => p.AiSuggestions)
+                .HasForeignKey(d => d.MoveId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("ai_suggestions_move_id_fkey");
+        });
+
+        modelBuilder.Entity<Feedback>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("feedbacks_pkey");
+
+            entity.ToTable("feedbacks");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Message).HasColumnName("message");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.User).WithMany(p => p.Feedbacks)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("feedbacks_user_id_fkey");
+        });
+
+        modelBuilder.Entity<Game>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("games_pkey");
+
+            entity.ToTable("games");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.EndedAt).HasColumnName("ended_at");
+            entity.Property(e => e.FenCurrent).HasColumnName("fen_current");
+            entity.Property(e => e.FenStart)
+                .HasDefaultValueSql("'startpos'::text")
+                .HasColumnName("fen_start");
+            entity.Property(e => e.GameTypeId).HasColumnName("game_type_id");
+            entity.Property(e => e.PlayerId).HasColumnName("player_id");
+            entity.Property(e => e.PuzzleId).HasColumnName("puzzle_id");
+            entity.Property(e => e.Result).HasColumnName("result");
+            entity.Property(e => e.StartedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("started_at");
+            entity.Property(e => e.Status)
+                .HasDefaultValueSql("'waiting'::text")
+                .HasColumnName("status");
+            entity.Property(e => e.TotalMoves)
+                .HasDefaultValue(0)
+                .HasColumnName("total_moves");
+
+            entity.HasOne(d => d.GameType).WithMany(p => p.Games)
+                .HasForeignKey(d => d.GameTypeId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("games_game_type_id_fkey");
+
+            entity.HasOne(d => d.Player).WithMany(p => p.Games)
+                .HasForeignKey(d => d.PlayerId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("games_player_id_fkey");
+
+            entity.HasOne(d => d.Puzzle).WithMany(p => p.Games)
+                .HasForeignKey(d => d.PuzzleId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("games_puzzle_id_fkey");
+        });
+
+        modelBuilder.Entity<GameMove>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("game_moves_pkey");
+
+            entity.ToTable("game_moves");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+            entity.Property(e => e.FenStr).HasColumnName("fen_str");
+            entity.Property(e => e.FromPiece).HasColumnName("from_piece");
+            entity.Property(e => e.FromSquare).HasColumnName("from_square");
+            entity.Property(e => e.GameId).HasColumnName("game_id");
+            entity.Property(e => e.MoveNumber).HasColumnName("move_number");
+            entity.Property(e => e.Notation).HasColumnName("notation");
+            entity.Property(e => e.PlayerColor).HasColumnName("player_color");
+            entity.Property(e => e.ResultsInCheck).HasColumnName("results_in_check");
+            entity.Property(e => e.ToPiece).HasColumnName("to_piece");
+            entity.Property(e => e.ToSquare).HasColumnName("to_square");
+        });
+
+        modelBuilder.Entity<GameType>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("game_types_pkey");
+
+            entity.ToTable("game_types");
+
+            entity.HasIndex(e => e.Code, "game_types_code_key").IsUnique();
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.Code).HasColumnName("code");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.Name).HasColumnName("name");
+        });
+
+        modelBuilder.Entity<PaymentHistory>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("payment_history_pkey");
+
+            entity.ToTable("payment_history");
+
+            entity.HasIndex(e => e.TransactionId, "payment_history_transaction_id_key").IsUnique();
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.Amount)
+                .HasPrecision(10, 2)
+                .HasColumnName("amount");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Status)
+                .HasDefaultValueSql("'pending'::text")
+                .HasColumnName("status");
+            entity.Property(e => e.TransactionId).HasColumnName("transaction_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.User).WithMany(p => p.PaymentHistories)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("payment_history_user_id_fkey");
+        });
+
+        modelBuilder.Entity<Robot>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("robots_pkey");
+
+            entity.ToTable("robots");
+
+            entity.HasIndex(e => e.RobotCode, "robots_robot_code_key").IsUnique();
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+            entity.Property(e => e.IsOnline)
+                .HasDefaultValue(false)
+                .HasColumnName("is_online");
+            entity.Property(e => e.LastOnlineAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("last_online_at");
+            entity.Property(e => e.Location).HasColumnName("location");
+            entity.Property(e => e.MoveSpeedMs)
+                .HasDefaultValue(1000)
+                .HasColumnName("move_speed_ms");
+            entity.Property(e => e.Name).HasColumnName("name");
+            entity.Property(e => e.RobotCode).HasColumnName("robot_code");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<RobotCommand>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("robot_commands_pkey");
+
+            entity.ToTable("robot_commands");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.Command).HasColumnName("command");
+            entity.Property(e => e.ExecutedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("executed_at");
+            entity.Property(e => e.GameId).HasColumnName("game_id");
+            entity.Property(e => e.RobotId).HasColumnName("robot_id");
+            entity.Property(e => e.SentAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("sent_at");
+            entity.Property(e => e.Status)
+                .HasDefaultValueSql("'pending'::text")
+                .HasColumnName("status");
+
+            entity.HasOne(d => d.Robot).WithMany(p => p.RobotCommands)
+                .HasForeignKey(d => d.RobotId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("robot_commands_robot_id_fkey");
+        });
+
+        modelBuilder.Entity<RobotLog>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("robot_logs_pkey");
+
+            entity.ToTable("robot_logs");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.CommandId).HasColumnName("command_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+            entity.Property(e => e.LogMessage).HasColumnName("log_message");
+            entity.Property(e => e.RobotId).HasColumnName("robot_id");
+
+            entity.HasOne(d => d.Command).WithMany(p => p.RobotLogs)
+                .HasForeignKey(d => d.CommandId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("robot_logs_command_id_fkey");
+
+            entity.HasOne(d => d.Robot).WithMany(p => p.RobotLogs)
+                .HasForeignKey(d => d.RobotId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("robot_logs_robot_id_fkey");
+        });
+
+        modelBuilder.Entity<SavedState>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("saved_states_pkey");
+
+            entity.ToTable("saved_states");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.FenStr).HasColumnName("fen_str");
+            entity.Property(e => e.GameId).HasColumnName("game_id");
+            entity.Property(e => e.LastMoveId).HasColumnName("last_move_id");
+            entity.Property(e => e.PlayerId).HasColumnName("player_id");
+            entity.Property(e => e.SavedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("saved_at");
+
+            entity.HasOne(d => d.LastMove).WithMany(p => p.SavedStates)
+                .HasForeignKey(d => d.LastMoveId)
+                .HasConstraintName("saved_states_last_move_id_fkey");
+
+            entity.HasOne(d => d.Player).WithMany(p => p.SavedStates)
+                .HasForeignKey(d => d.PlayerId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("saved_states_player_id_fkey");
+        });
+
+        modelBuilder.Entity<TrainingPuzzle>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("training_puzzles_pkey");
+
+            entity.ToTable("training_puzzles");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Difficulty)
+                .HasDefaultValueSql("'medium'::text")
+                .HasColumnName("difficulty");
+            entity.Property(e => e.FenStr).HasColumnName("fen_str");
+            entity.Property(e => e.SolutionMove).HasColumnName("solution_move");
+        });
+
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("users_pkey");
+
+            entity.ToTable("users", "auth", tb => tb.HasComment("Auth: Stores user login data within a secure schema."));
+
+            entity.HasIndex(e => e.ConfirmationToken, "confirmation_token_idx")
+                .IsUnique()
+                .HasFilter("((confirmation_token)::text !~ '^[0-9 ]*$'::text)");
+
+            entity.HasIndex(e => e.EmailChangeTokenCurrent, "email_change_token_current_idx")
+                .IsUnique()
+                .HasFilter("((email_change_token_current)::text !~ '^[0-9 ]*$'::text)");
+
+            entity.HasIndex(e => e.EmailChangeTokenNew, "email_change_token_new_idx")
+                .IsUnique()
+                .HasFilter("((email_change_token_new)::text !~ '^[0-9 ]*$'::text)");
+
+            entity.HasIndex(e => e.ReauthenticationToken, "reauthentication_token_idx")
+                .IsUnique()
+                .HasFilter("((reauthentication_token)::text !~ '^[0-9 ]*$'::text)");
+
+            entity.HasIndex(e => e.RecoveryToken, "recovery_token_idx")
+                .IsUnique()
+                .HasFilter("((recovery_token)::text !~ '^[0-9 ]*$'::text)");
+
+            entity.HasIndex(e => e.Email, "users_email_partial_key")
+                .IsUnique()
+                .HasFilter("(is_sso_user = false)");
+
+            entity.HasIndex(e => e.InstanceId, "users_instance_id_idx");
+
+            entity.HasIndex(e => e.IsAnonymous, "users_is_anonymous_idx");
+
+            entity.HasIndex(e => e.Phone, "users_phone_key").IsUnique();
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever()
+                .HasColumnName("id");
+            entity.Property(e => e.Aud)
+                .HasMaxLength(255)
+                .HasColumnName("aud");
+            entity.Property(e => e.BannedUntil).HasColumnName("banned_until");
+            entity.Property(e => e.ConfirmationSentAt).HasColumnName("confirmation_sent_at");
+            entity.Property(e => e.ConfirmationToken)
+                .HasMaxLength(255)
+                .HasColumnName("confirmation_token");
+            entity.Property(e => e.ConfirmedAt)
+                .HasComputedColumnSql("LEAST(email_confirmed_at, phone_confirmed_at)", true)
+                .HasColumnName("confirmed_at");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.Email)
+                .HasMaxLength(255)
+                .HasColumnName("email");
+            entity.Property(e => e.EmailChange)
+                .HasMaxLength(255)
+                .HasColumnName("email_change");
+            entity.Property(e => e.EmailChangeConfirmStatus)
+                .HasDefaultValue((short)0)
+                .HasColumnName("email_change_confirm_status");
+            entity.Property(e => e.EmailChangeSentAt).HasColumnName("email_change_sent_at");
+            entity.Property(e => e.EmailChangeTokenCurrent)
+                .HasMaxLength(255)
+                .HasDefaultValueSql("''::character varying")
+                .HasColumnName("email_change_token_current");
+            entity.Property(e => e.EmailChangeTokenNew)
+                .HasMaxLength(255)
+                .HasColumnName("email_change_token_new");
+            entity.Property(e => e.EmailConfirmedAt).HasColumnName("email_confirmed_at");
+            entity.Property(e => e.EncryptedPassword)
+                .HasMaxLength(255)
+                .HasColumnName("encrypted_password");
+            entity.Property(e => e.InstanceId).HasColumnName("instance_id");
+            entity.Property(e => e.InvitedAt).HasColumnName("invited_at");
+            entity.Property(e => e.IsAnonymous)
+                .HasDefaultValue(false)
+                .HasColumnName("is_anonymous");
+            entity.Property(e => e.IsSsoUser)
+                .HasDefaultValue(false)
+                .HasComment("Auth: Set this column to true when the account comes from SSO. These accounts can have duplicate emails.")
+                .HasColumnName("is_sso_user");
+            entity.Property(e => e.IsSuperAdmin).HasColumnName("is_super_admin");
+            entity.Property(e => e.LastSignInAt).HasColumnName("last_sign_in_at");
+            entity.Property(e => e.Phone)
+                .HasDefaultValueSql("NULL::character varying")
+                .HasColumnName("phone");
+            entity.Property(e => e.PhoneChange)
+                .HasDefaultValueSql("''::character varying")
+                .HasColumnName("phone_change");
+            entity.Property(e => e.PhoneChangeSentAt).HasColumnName("phone_change_sent_at");
+            entity.Property(e => e.PhoneChangeToken)
+                .HasMaxLength(255)
+                .HasDefaultValueSql("''::character varying")
+                .HasColumnName("phone_change_token");
+            entity.Property(e => e.PhoneConfirmedAt).HasColumnName("phone_confirmed_at");
+            entity.Property(e => e.RawAppMetaData)
+                .HasColumnType("jsonb")
+                .HasColumnName("raw_app_meta_data");
+            entity.Property(e => e.RawUserMetaData)
+                .HasColumnType("jsonb")
+                .HasColumnName("raw_user_meta_data");
+            entity.Property(e => e.ReauthenticationSentAt).HasColumnName("reauthentication_sent_at");
+            entity.Property(e => e.ReauthenticationToken)
+                .HasMaxLength(255)
+                .HasDefaultValueSql("''::character varying")
+                .HasColumnName("reauthentication_token");
+            entity.Property(e => e.RecoverySentAt).HasColumnName("recovery_sent_at");
+            entity.Property(e => e.RecoveryToken)
+                .HasMaxLength(255)
+                .HasColumnName("recovery_token");
+            entity.Property(e => e.Role)
+                .HasMaxLength(255)
+                .HasColumnName("role");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<User1>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("users_pkey");
+
+            entity.ToTable("users");
+
+            entity.HasIndex(e => e.Email, "users_email_key").IsUnique();
+
+            entity.HasIndex(e => e.Username, "users_username_key").IsUnique();
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.AvatarUrl).HasColumnName("avatar_url");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Email).HasColumnName("email");
+            entity.Property(e => e.FullName).HasColumnName("full_name");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.Username).HasColumnName("username");
+        });
+        modelBuilder.HasSequence<int>("seq_schema_version", "graphql").IsCyclic();
+
+        OnModelCreatingPartial(modelBuilder);
+    }
+
+    partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
+}
