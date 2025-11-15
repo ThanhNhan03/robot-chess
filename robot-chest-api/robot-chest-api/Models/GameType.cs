@@ -1,17 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace robot_chest_api.Data;
+namespace robot_chest_api.Models;
 
-public partial class TrainingPuzzle
+public partial class GameType
 {
     public Guid Id { get; set; }
 
-    public string FenStr { get; set; } = null!;
+    public string Code { get; set; } = null!;
 
-    public string SolutionMove { get; set; } = null!;
+    public string Name { get; set; } = null!;
 
-    public string? Difficulty { get; set; }
+    public string? Description { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 

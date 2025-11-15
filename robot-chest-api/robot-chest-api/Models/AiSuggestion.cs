@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace robot_chest_api.Data;
+namespace robot_chest_api.Models;
 
 public partial class AiSuggestion
 {

@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace robot_chest_api.Data;
+namespace robot_chest_api.Models;
 
-public partial class User1
+public partial class AppUser
 {
     public Guid Id { get; set; }
 

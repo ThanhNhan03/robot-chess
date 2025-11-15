@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
+using robot_chest_api.Models;
 
 namespace robot_chest_api.Data;
 
@@ -16,6 +17,8 @@ public partial class PostgresContext : DbContext
     }
 
     public virtual DbSet<AiSuggestion> AiSuggestions { get; set; }
+
+    public virtual DbSet<AppUser> AppUsers { get; set; }
 
     public virtual DbSet<Feedback> Feedbacks { get; set; }
 
@@ -38,8 +41,6 @@ public partial class PostgresContext : DbContext
     public virtual DbSet<TrainingPuzzle> TrainingPuzzles { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
-
-    public virtual DbSet<User1> Users1 { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -90,6 +91,33 @@ public partial class PostgresContext : DbContext
                 .HasForeignKey(d => d.MoveId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("ai_suggestions_move_id_fkey");
+        });
+
+        modelBuilder.Entity<AppUser>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("users_pkey");
+
+            entity.ToTable("app_users");
+
+            entity.HasIndex(e => e.Email, "users_email_key").IsUnique();
+
+            entity.HasIndex(e => e.Username, "users_username_key").IsUnique();
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.AvatarUrl).HasColumnName("avatar_url");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Email).HasColumnName("email");
+            entity.Property(e => e.FullName).HasColumnName("full_name");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.Username).HasColumnName("username");
         });
 
         modelBuilder.Entity<Feedback>(entity =>
@@ -489,33 +517,6 @@ public partial class PostgresContext : DbContext
                 .HasMaxLength(255)
                 .HasColumnName("role");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
-        });
-
-        modelBuilder.Entity<User1>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("users_pkey");
-
-            entity.ToTable("users");
-
-            entity.HasIndex(e => e.Email, "users_email_key").IsUnique();
-
-            entity.HasIndex(e => e.Username, "users_username_key").IsUnique();
-
-            entity.Property(e => e.Id)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("id");
-            entity.Property(e => e.AvatarUrl).HasColumnName("avatar_url");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnType("timestamp without time zone")
-                .HasColumnName("created_at");
-            entity.Property(e => e.Email).HasColumnName("email");
-            entity.Property(e => e.FullName).HasColumnName("full_name");
-            entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnType("timestamp without time zone")
-                .HasColumnName("updated_at");
-            entity.Property(e => e.Username).HasColumnName("username");
         });
         modelBuilder.HasSequence<int>("seq_schema_version", "graphql").IsCyclic();
 

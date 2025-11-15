@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace robot_chest_api.Data;
+namespace robot_chest_api.Models;
 
 public partial class Game
 {
@@ -31,7 +31,7 @@ public partial class Game
 
     public virtual GameType? GameType { get; set; }
 
-    public virtual User1? Player { get; set; }
+    public virtual AppUser? Player { get; set; }
 
     public virtual TrainingPuzzle? Puzzle { get; set; }
 }

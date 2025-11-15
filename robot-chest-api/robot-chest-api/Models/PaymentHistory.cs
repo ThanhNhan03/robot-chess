@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace robot_chest_api.Data;
+namespace robot_chest_api.Models;
 
 public partial class PaymentHistory
 {
@@ -17,5 +17,5 @@ public partial class PaymentHistory
 
     public DateTime? CreatedAt { get; set; }
 
-    public virtual User1? User { get; set; }
+    public virtual AppUser? User { get; set; }
 }

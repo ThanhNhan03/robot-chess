@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace robot_chest_api.Data;
+namespace robot_chest_api.Models;
 
 public partial class SavedState
 {
@@ -19,5 +19,5 @@ public partial class SavedState
 
     public virtual GameMove? LastMove { get; set; }
 
-    public virtual User1? Player { get; set; }
+    public virtual AppUser? Player { get; set; }
 }
