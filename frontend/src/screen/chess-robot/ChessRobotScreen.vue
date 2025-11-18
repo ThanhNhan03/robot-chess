@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 import CameraView from '../../components/CameraView.vue'
 import ChessBoard from '../../components/ChessBoard.vue'
 import GameStatus from '../../components/GameStatus.vue'
 import MoveHistory from '../../components/MoveHistory.vue'
 import RobotCommand from '../../components/RobotCommand.vue'
-
-const router = useRouter()
 
 // Ref to access ChessBoard methods and data
 const chessBoardRef = ref<InstanceType<typeof ChessBoard> | null>(null)

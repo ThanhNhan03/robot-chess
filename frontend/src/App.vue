@@ -5,8 +5,8 @@ import { computed } from 'vue'
 
 const authStore = useAuthStore()
 // TEMPORARILY SET isAuthenticated TO TRUE FOR UI TESTING
-//const isAuthenticated = computed(() => authStore.isAuthenticated)
-const isAuthenticated = computed(() => true) // Always show authenticated UI for testing
+const isAuthenticated = computed(() => authStore.isAuthenticated)
+//const isAuthenticated = computed(() => true) // Always show authenticated UI for testing
 </script>
 
 <template>

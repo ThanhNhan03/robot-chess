@@ -1,7 +1,12 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000'
+// Backend API runs on port 5213 (http) or 7096 (https) - see launchSettings.json
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5213'
+
+// if a token exists from previous session, set default Authorization header for axios
+const _savedToken = localStorage.getItem('token')
+if (_savedToken) axios.defaults.headers.common['Authorization'] = `Bearer ${_savedToken}`
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -15,33 +20,90 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     async register(payload) {
       try {
-        const res = await axios.post(`${API_BASE}/api/auth/register`, payload)
+        // Backend expects: { email, password, username } - case sensitive!
+        const requestData = {
+          email: payload.email,
+          password: payload.password,
+          username: payload.username
+        }
+        
+        console.log('🔐 Registering with:', requestData)
+        const res = await axios.post(`${API_BASE}/api/auth/signup`, requestData)
+        console.log('✅ Registration response:', res.data)
+        
+        // Backend returns: { success, token, user: { id, email, username, fullName, avatarUrl }, error }
+        if (!res.data.success) {
+          throw new Error(res.data.error || 'Registration failed')
+        }
+        
         this.user = res.data.user
         this.token = res.data.token
-        localStorage.setItem('user', JSON.stringify(res.data.user))
-        localStorage.setItem('token', res.data.token)
+        
+        // set default auth header for subsequent requests
+        if (this.token) {
+          axios.defaults.headers.common['Authorization'] = `Bearer ${this.token}`
+          localStorage.setItem('token', this.token)
+        }
+        if (this.user) {
+          localStorage.setItem('user', JSON.stringify(this.user))
+        }
+        
         return res.data
       } catch (error) {
-        throw new Error(error.response?.data?.message || 'Registration failed')
+        console.error('❌ Registration error:', error.response?.data || error.message)
+        if (error.response?.data?.error) {
+          throw new Error(error.response.data.error)
+        }
+        if (error.response?.data) {
+          throw new Error(JSON.stringify(error.response.data))
+        }
+        throw new Error(error.message || 'Registration failed')
       }
     },
     async login(payload) {
       try {
+        // Backend expects: { email, password }
         const res = await axios.post(`${API_BASE}/api/auth/login`, payload)
+        
+        // Backend returns: { success, token, user: { id, email, username, fullName, avatarUrl }, error }
+        if (!res.data.success) {
+          throw new Error(res.data.error || 'Login failed')
+        }
+        
         this.user = res.data.user
         this.token = res.data.token
-        localStorage.setItem('user', JSON.stringify(res.data.user))
-        localStorage.setItem('token', res.data.token)
+        
+        if (this.token) {
+          axios.defaults.headers.common['Authorization'] = `Bearer ${this.token}`
+          localStorage.setItem('token', this.token)
+        }
+        if (this.user) {
+          localStorage.setItem('user', JSON.stringify(this.user))
+        }
+        
         return res.data
       } catch (error) {
-        throw new Error(error.response?.data?.message || 'Login failed')
+        if (error.response?.data?.error) {
+          throw new Error(error.response.data.error)
+        }
+        throw new Error(error.message || 'Login failed')
       }
     },
-    logout() {
-      this.user = null
-      this.token = null
-      localStorage.removeItem('user')
-      localStorage.removeItem('token')
+    async logout() {
+      try {
+        // call backend to sign out (backend expects Authorization header)
+        await axios.post(`${API_BASE}/api/auth/logout`, null, {
+          headers: { Authorization: `Bearer ${this.token}` }
+        })
+      } catch (err) {
+        // ignore errors - still clear local state
+      } finally {
+        this.user = null
+        this.token = null
+        delete axios.defaults.headers.common['Authorization']
+        localStorage.removeItem('user')
+        localStorage.removeItem('token')
+      }
     },
   },
 })

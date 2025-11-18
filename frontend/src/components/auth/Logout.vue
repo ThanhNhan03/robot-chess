@@ -30,13 +30,20 @@ import { useAuthStore } from '../../store/auth'
 const router = useRouter()
 const authStore = useAuthStore()
 
-onMounted(() => {
-  authStore.logout()
+// onMounted(() => {
+//   authStore.logout()
   
+//   setTimeout(() => {
+//     router.push('/')
+//   }, 2000)
+// })
+onMounted(async () => {
+  await authStore.logout()
   setTimeout(() => {
     router.push('/')
   }, 2000)
 })
+
 </script>
 
 <style scoped>
