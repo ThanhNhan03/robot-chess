@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using robot_chess_api.Data;
 using robot_chess_api.Services.Interface;
@@ -50,6 +50,9 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Configure Npgsql to handle UTC DateTime with timestamp without timezone
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 // Register DbContext (PostgreSQL via Supabase)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<PostgresContext>(options =>
@@ -75,6 +78,9 @@ builder.Services.AddScoped<IRobotRepository, RobotRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAppUserService, AppUserService>();
 builder.Services.AddScoped<IRobotService, RobotService>();
+
+// Register HttpClient for communication with TCP Server
+builder.Services.AddHttpClient();
 
 // Logging
 builder.Logging.ClearProviders();

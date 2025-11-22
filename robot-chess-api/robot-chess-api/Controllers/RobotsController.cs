@@ -13,11 +13,14 @@ namespace robot_chess_api.Controllers
     {
         private readonly IRobotService _robotService;
         private readonly ILogger<RobotsController> _logger;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly string _tcpServerUrl = "http://localhost:5000";
 
-        public RobotsController(IRobotService robotService, ILogger<RobotsController> logger)
+        public RobotsController(IRobotService robotService, ILogger<RobotsController> logger, IHttpClientFactory httpClientFactory)
         {
             _robotService = robotService;
             _logger = logger;
+            _httpClientFactory = httpClientFactory;
         }
 
         // GET: api/robots
@@ -91,6 +94,41 @@ namespace robot_chess_api.Controllers
                 }
 
                 var updatedConfig = await _robotService.UpdateRobotConfigAsync(id, dto, userId);
+                
+                // Forward config update to TCP Server
+                try
+                {
+                    var httpClient = _httpClientFactory.CreateClient();
+                    var commandPayload = new
+                    {
+                        CommandId = Guid.NewGuid(),
+                        RobotId = id.ToString(),
+                        CommandType = "update_config",
+                        Payload = new 
+                        { 
+                            speed = dto.Speed,
+                            gripperForce = dto.GripperForce,
+                            gripperSpeed = dto.GripperSpeed,
+                            maxSpeed = dto.MaxSpeed
+                        }
+                    };
+                    
+                    var response = await httpClient.PostAsJsonAsync($"{_tcpServerUrl}/internal/command", commandPayload);
+                    
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        _logger.LogWarning($"Failed to forward config update to TCP Server: {response.StatusCode}");
+                    }
+                    else
+                    {
+                        _logger.LogInformation($"Config update forwarded to TCP Server for robot {id}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error forwarding config update to TCP Server");
+                }
+                
                 return Ok(updatedConfig);
             }
             catch (Exception ex)
@@ -120,6 +158,31 @@ namespace robot_chess_api.Controllers
                 }
 
                 var commandId = await _robotService.SendSetSpeedCommandAsync(id, speed, userId);
+                
+                // Forward command to TCP Server
+                try
+                {
+                    var httpClient = _httpClientFactory.CreateClient();
+                    var commandPayload = new
+                    {
+                        CommandId = commandId,
+                        RobotId = id.ToString(),
+                        CommandType = "set_speed",
+                        Payload = new { speed }
+                    };
+                    
+                    var response = await httpClient.PostAsJsonAsync($"{_tcpServerUrl}/internal/command", commandPayload);
+                    
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        _logger.LogWarning($"Failed to forward command to TCP Server: {response.StatusCode}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error forwarding command to TCP Server");
+                }
+                
                 return Ok(new { CommandId = commandId, Message = "Set speed command sent successfully" });
             }
             catch (Exception ex)
