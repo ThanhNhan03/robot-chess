@@ -4,6 +4,7 @@ using robot_chess_api.Data;
 using robot_chess_api.Services.Interface;
 using robot_chess_api.Services.Implement;
 using robot_chess_api.Middleware;
+using robot_chess_api.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -67,9 +68,13 @@ if (string.IsNullOrEmpty(supabaseUrl) || string.IsNullOrEmpty(supabaseAnonKey))
 var supabaseClient = new Supabase.Client(supabaseUrl, supabaseAnonKey);
 builder.Services.AddSingleton(supabaseClient);
 
+//Resigter Repositories
+builder.Services.AddScoped<IRobotRepository, RobotRepository>();
+
 // Register Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAppUserService, AppUserService>();
+builder.Services.AddScoped<IRobotService, RobotService>();
 
 // Logging
 builder.Logging.ClearProviders();

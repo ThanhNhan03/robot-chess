@@ -23,7 +23,25 @@ public partial class Robot
 
     public DateTime? UpdatedAt { get; set; }
 
+    // New fields for robot management
+    public string? IpAddress { get; set; }
+
+    public string? TcpConnectionId { get; set; }
+
+    public string? Status { get; set; } // idle, busy, error, maintenance
+
+    public Guid? CurrentGameId { get; set; }
+
+    // Navigation properties
+    public virtual Game? CurrentGame { get; set; }
+
     public virtual ICollection<RobotCommand> RobotCommands { get; set; } = new List<RobotCommand>();
 
     public virtual ICollection<RobotLog> RobotLogs { get; set; } = new List<RobotLog>();
+
+    public virtual RobotConfig? RobotConfig { get; set; }
+
+    public virtual ICollection<RobotMonitoring> RobotMonitorings { get; set; } = new List<RobotMonitoring>();
+
+    public virtual ICollection<RobotCommandHistory> RobotCommandHistories { get; set; } = new List<RobotCommandHistory>();
 }
