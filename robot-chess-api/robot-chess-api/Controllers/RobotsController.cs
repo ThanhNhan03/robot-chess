@@ -99,20 +99,18 @@ namespace robot_chess_api.Controllers
                 try
                 {
                     var httpClient = _httpClientFactory.CreateClient();
-                    
-                    // Build payload with only non-null values
-                    var payload = new Dictionary<string, object>();
-                    if (dto.Speed.HasValue) payload["speed"] = dto.Speed.Value;
-                    if (dto.GripperForce.HasValue) payload["gripperForce"] = dto.GripperForce.Value;
-                    if (dto.GripperSpeed.HasValue) payload["gripperSpeed"] = dto.GripperSpeed.Value;
-                    if (dto.MaxSpeed.HasValue) payload["maxSpeed"] = dto.MaxSpeed.Value;
-                    
                     var commandPayload = new
                     {
                         CommandId = Guid.NewGuid(),
                         RobotId = id.ToString(),
                         CommandType = "update_config",
-                        Payload = payload
+                        Payload = new 
+                        { 
+                            speed = dto.Speed,
+                            gripperForce = dto.GripperForce,
+                            gripperSpeed = dto.GripperSpeed,
+                            maxSpeed = dto.MaxSpeed
+                        }
                     };
                     
                     var response = await httpClient.PostAsJsonAsync($"{_tcpServerUrl}/internal/command", commandPayload);
