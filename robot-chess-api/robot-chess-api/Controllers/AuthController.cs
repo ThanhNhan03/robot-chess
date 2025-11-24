@@ -95,7 +95,7 @@ public class AuthController : ControllerBase
 
             var createdUser = await _userRepository.CreateUserAsync(appUser);
 
-            _logger.LogInformation($"✅ Sign up successful for: {request.Email}");
+            _logger.LogInformation($"Sign up successful for: {request.Email}");
 
             return Ok(new AuthResponse
             {
@@ -106,7 +106,7 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError($"❌ Sign up exception: {ex.Message}");
+            _logger.LogError($"Sign up exception: {ex.Message}");
             return StatusCode(500, new AuthResponse
             {
                 Success = false,
@@ -156,7 +156,7 @@ public class AuthController : ControllerBase
             var appUser = await _userRepository.GetUserByIdAsync(userId.Value);
             if (appUser == null)
             {
-                _logger.LogError($"❌ User profile not found for: {userId}");
+                _logger.LogError($"User profile not found for: {userId}");
                 return BadRequest(new AuthResponse
                 {
                     Success = false,
@@ -178,7 +178,7 @@ public class AuthController : ControllerBase
             await _userRepository.UpdateLastLoginAsync(userId.Value);
             appUser.LastLoginAt = DateTime.UtcNow; // Update local object for response
 
-            _logger.LogInformation($"✅ Login successful for: {request.Email}");
+            _logger.LogInformation($"Login successful for: {request.Email}");
 
             return Ok(new AuthResponse
             {
@@ -189,7 +189,7 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError($"❌ Login exception: {ex.Message}");
+            _logger.LogError($"Login exception: {ex.Message}");
             return StatusCode(500, new AuthResponse
             {
                 Success = false,
@@ -219,7 +219,7 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError($"❌ Logout exception: {ex.Message}");
+            _logger.LogError($"Logout exception: {ex.Message}");
             return StatusCode(500, new { success = false, error = "Internal server error" });
         }
     }
@@ -254,7 +254,7 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError($"❌ GetCurrentUser exception: {ex.Message}");
+            _logger.LogError($"GetCurrentUser exception: {ex.Message}");
             return StatusCode(500, new { success = false, error = "Internal server error" });
         }
     }
@@ -296,7 +296,7 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError($"❌ UpdateProfile exception: {ex.Message}");
+            _logger.LogError($"UpdateProfile exception: {ex.Message}");
             return StatusCode(500, new { success = false, error = "Internal server error" });
         }
     }
