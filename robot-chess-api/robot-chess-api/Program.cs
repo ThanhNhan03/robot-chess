@@ -78,6 +78,7 @@ builder.Services.AddScoped<IRobotRepository, RobotRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAppUserService, AppUserService>();
 builder.Services.AddScoped<IRobotService, RobotService>();
+builder.Services.AddScoped<IGameService, GameService>();
 
 // Register HttpClient for communication with TCP Server
 builder.Services.AddHttpClient();

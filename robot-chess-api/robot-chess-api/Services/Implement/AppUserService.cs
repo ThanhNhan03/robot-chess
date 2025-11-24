@@ -35,6 +35,16 @@ public class AppUserService : IAppUserService
                 return (false, null, "Username already exists");
             }
 
+            // Check if email already exists
+            var existingEmail = await _context.AppUsers
+                .FirstOrDefaultAsync(u => u.Email == email);
+
+            if (existingEmail != null)
+            {
+                _logger.LogWarning($"Email already exists: {email}");
+                return (false, null, "Email already exists");
+            }
+
             var appUser = new AppUser
             {
                 Id = authUserId,

@@ -154,12 +154,34 @@ public class AuthController : ControllerBase
             var appUser = await _appUserService.GetUserByIdAsync(userId.Value);
             if (appUser == null)
             {
-                _logger.LogError($" User profile not found for: {userId}");
-                return BadRequest(new AuthResponse 
-                { 
-                    Success = false, 
-                    Error = "User profile not found" 
-                });
+                _logger.LogWarning($"User profile not found for: {userId}. Attempting to create one.");
+                
+                // Auto-create profile if missing (e.g. created in Supabase but DB insert failed)
+                var username = request.Email.Split('@')[0]; // Simple username derivation
+                
+                // Ensure username is unique by appending random string if needed
+                if (await _appUserService.UsernameExistsAsync(username))
+                {
+                    username += "_" + Guid.NewGuid().ToString("N").Substring(0, 4);
+                }
+
+                var (createSuccess, newUser, createError) = await _appUserService.CreateUserProfileAsync(
+                    userId.Value,
+                    request.Email,
+                    username
+                );
+
+                if (!createSuccess || newUser == null)
+                {
+                    _logger.LogError($"Failed to auto-create profile for user: {userId}");
+                    return BadRequest(new AuthResponse 
+                    { 
+                        Success = false, 
+                        Error = "User profile not found and could not be created" 
+                    });
+                }
+                
+                appUser = newUser;
             }
 
             _logger.LogInformation($" Login successful for: {request.Email}");
