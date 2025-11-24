@@ -71,13 +71,15 @@ if (string.IsNullOrEmpty(supabaseUrl) || string.IsNullOrEmpty(supabaseAnonKey))
 var supabaseClient = new Supabase.Client(supabaseUrl, supabaseAnonKey);
 builder.Services.AddSingleton(supabaseClient);
 
-//Resigter Repositories
+//Register Repositories
 builder.Services.AddScoped<IRobotRepository, RobotRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 // Register Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAppUserService, AppUserService>();
 builder.Services.AddScoped<IRobotService, RobotService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 // Register HttpClient for communication with TCP Server
 builder.Services.AddHttpClient();
@@ -108,6 +110,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 Console.WriteLine("Robot Chess API is running...");
-Console.WriteLine($"Swagger UI: {(app.Environment.IsDevelopment() ? "https://localhost:7xxx/swagger" : "Available")}");
+Console.WriteLine($"Swagger UI: {(app.Environment.IsDevelopment() ? "https://localhost:7096/swagger" : "Available")}");
 
 app.Run();

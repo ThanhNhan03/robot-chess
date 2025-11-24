@@ -132,6 +132,18 @@ public partial class PostgresContext : DbContext
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("updated_at");
             entity.Property(e => e.Username).HasColumnName("username");
+            
+            // New properties for user management
+            entity.Property(e => e.Role)
+                .HasDefaultValueSql("'player'::text")
+                .HasColumnName("role");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
+            entity.Property(e => e.LastLoginAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("last_login_at");
+            entity.Property(e => e.PhoneNumber).HasColumnName("phone_number");
         });
 
         modelBuilder.Entity<Feedback>(entity =>
@@ -690,7 +702,7 @@ public partial class PostgresContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("robot_command_history_robot_id_fkey");
 
-            entity.HasOne(d => d.ExecutedByUser).WithMany()
+            entity.HasOne(d => d.ExecutedByUser).WithMany(p => p.RobotCommandHistories)
                 .HasForeignKey(d => d.ExecutedBy)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("robot_command_history_executed_by_fkey");
