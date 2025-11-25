@@ -49,6 +49,8 @@ public partial class PostgresContext : DbContext
 
     public virtual DbSet<RobotCommandHistory> RobotCommandHistories { get; set; }
 
+    public virtual DbSet<Faq> Faqs { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         // Connection string is configured in Program.cs from appsettings.json
@@ -706,6 +708,34 @@ public partial class PostgresContext : DbContext
                 .HasForeignKey(d => d.ExecutedBy)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("robot_command_history_executed_by_fkey");
+        });
+
+        modelBuilder.Entity<Faq>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("faqs_pkey");
+
+            entity.ToTable("faqs");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.Question).HasColumnName("question");
+            entity.Property(e => e.Answer).HasColumnName("answer");
+            entity.Property(e => e.Category).HasColumnName("category");
+            entity.Property(e => e.IsPublished)
+                .HasDefaultValue(false)
+                .HasColumnName("is_published");
+            entity.Property(e => e.DisplayOrder)
+                .HasDefaultValue(0)
+                .HasColumnName("display_order");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("updated_at");
         });
 
         modelBuilder.HasSequence<int>("seq_schema_version", "graphql").IsCyclic();

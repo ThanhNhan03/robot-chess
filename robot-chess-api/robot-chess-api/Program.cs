@@ -74,12 +74,14 @@ builder.Services.AddSingleton(supabaseClient);
 //Register Repositories
 builder.Services.AddScoped<IRobotRepository, RobotRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IFaqRepository, FaqRepository>();
 
 // Register Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAppUserService, AppUserService>();
 builder.Services.AddScoped<IRobotService, RobotService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IFaqService, FaqService>();
 
 // Register HttpClient for communication with TCP Server
 builder.Services.AddHttpClient();
