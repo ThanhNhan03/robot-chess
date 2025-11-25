@@ -200,6 +200,9 @@ public partial class PostgresContext : DbContext
             entity.Property(e => e.TotalMoves)
                 .HasDefaultValue(0)
                 .HasColumnName("total_moves");
+            entity.Property(e => e.Difficulty)
+                .HasDefaultValueSql("'medium'::text")
+                .HasColumnName("difficulty");
 
             entity.HasOne(d => d.GameType).WithMany(p => p.Games)
                 .HasForeignKey(d => d.GameTypeId)
