@@ -1,4 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using robot_chess_api.DTOs;
+using robot_chess_api.Services.Interface;
+using System.Security.Claims;
 
 namespace robot_chess_api.Controllers
 {
@@ -7,58 +10,56 @@ namespace robot_chess_api.Controllers
     public class GamesController : ControllerBase
     {
         private readonly ILogger<GamesController> _logger;
-        private readonly IHttpClientFactory _httpClientFactory;
-        private readonly string _tcpServerUrl = "http://localhost:5000";
+        private readonly IGameService _gameService;
 
-        public GamesController(ILogger<GamesController> logger, IHttpClientFactory httpClientFactory)
+        public GamesController(ILogger<GamesController> logger, IGameService gameService)
         {
             _logger = logger;
-            _httpClientFactory = httpClientFactory;
+            _gameService = gameService;
         }
 
         /// <summary>
-        /// Start a new game - sends message to AI via TCP server
+        /// Get all available game types
         /// </summary>
-        /// <param name="difficulty">Game difficulty (easy, medium, hard)</param>
-        /// <returns>Request ID for tracking</returns>
-        [HttpPost("start")]
-        public async Task<ActionResult> StartGame([FromBody] StartGameRequest request)
+        [HttpGet("types")]
+        public async Task<ActionResult<IEnumerable<GameTypeDto>>> GetGameTypes()
         {
             try
             {
-                var requestId = Guid.NewGuid();
-                
-                // Construct message for AI
-                var aiMessage = new
-                {
-                    type = "ai_request",
-                    request_id = requestId.ToString(),
-                    command = "start_game",
-                    payload = new
-                    {
-                        status = "start",
-                        difficulty = request.Difficulty ?? "medium"
-                    }
-                };
+                var gameTypes = await _gameService.GetAllGameTypesAsync();
+                return Ok(gameTypes);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting game types");
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+            }
+        }
 
-                // Send to TCP Server
-                var httpClient = _httpClientFactory.CreateClient();
-                var response = await httpClient.PostAsJsonAsync($"{_tcpServerUrl}/internal/ai-command", aiMessage);
-
-                if (!response.IsSuccessStatusCode)
+        /// <summary>
+        /// Start a new game
+        /// </summary>
+        /// <param name="request">Game start request with game type and difficulty</param>
+        [HttpPost("start")]
+        public async Task<ActionResult<StartGameResponseDto>> StartGame([FromBody] StartGameRequestDto request)
+        {
+            try
+            {
+                // Get player ID from token (if authenticated)
+                Guid? playerId = null;
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+                if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out Guid parsedId))
                 {
-                    _logger.LogWarning($"Failed to send start game command to TCP Server: {response.StatusCode}");
-                    return StatusCode(500, new { message = "Failed to communicate with game server" });
+                    playerId = parsedId;
                 }
 
-                _logger.LogInformation($"Start game command sent successfully. Request ID: {requestId}");
-
-                return Ok(new
-                {
-                    request_id = requestId,
-                    message = "Game start command sent to AI",
-                    difficulty = request.Difficulty ?? "medium"
-                });
+                var response = await _gameService.StartGameAsync(request, playerId);
+                return Ok(response);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Invalid start game request");
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -68,55 +69,26 @@ namespace robot_chess_api.Controllers
         }
 
         /// <summary>
-        /// Resume an existing game - sends message to AI via TCP server
+        /// Resume an existing game
         /// </summary>
-        /// <param name="request">Resume game request with FEN and difficulty</param>
-        /// <returns>Request ID for tracking</returns>
+        /// <param name="request">Resume game request with game ID</param>
         [HttpPost("resume")]
-        public async Task<ActionResult> ResumeGame([FromBody] ResumeGameRequest request)
+        public async Task<ActionResult<StartGameResponseDto>> ResumeGame([FromBody] ResumeGameRequestDto request)
         {
             try
             {
-                if (string.IsNullOrEmpty(request.Fen))
-                {
-                    return BadRequest(new { message = "FEN string is required to resume game" });
-                }
-
-                var requestId = Guid.NewGuid();
-
-                // Construct message for AI
-                var aiMessage = new
-                {
-                    type = "ai_request",
-                    request_id = requestId.ToString(),
-                    command = "resume_game",
-                    payload = new
-                    {
-                        status = "resume",
-                        difficulty = request.Difficulty ?? "medium",
-                        fen = request.Fen
-                    }
-                };
-
-                // Send to TCP Server
-                var httpClient = _httpClientFactory.CreateClient();
-                var response = await httpClient.PostAsJsonAsync($"{_tcpServerUrl}/internal/ai-command", aiMessage);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    _logger.LogWarning($"Failed to send resume game command to TCP Server: {response.StatusCode}");
-                    return StatusCode(500, new { message = "Failed to communicate with game server" });
-                }
-
-                _logger.LogInformation($"Resume game command sent successfully. Request ID: {requestId}");
-
-                return Ok(new
-                {
-                    request_id = requestId,
-                    message = "Game resume command sent to AI",
-                    difficulty = request.Difficulty ?? "medium",
-                    fen = request.Fen
-                });
+                var response = await _gameService.ResumeGameAsync(request);
+                return Ok(response);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Invalid resume game request");
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Cannot resume game");
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -124,17 +96,46 @@ namespace robot_chess_api.Controllers
                 return StatusCode(500, new { message = "Internal server error", error = ex.Message });
             }
         }
-    }
 
-    // DTOs
-    public class StartGameRequest
-    {
-        public string? Difficulty { get; set; }
-    }
+        /// <summary>
+        /// Get game by ID
+        /// </summary>
+        [HttpGet("{id}")]
+        public async Task<ActionResult<GameDto>> GetGameById(Guid id)
+        {
+            try
+            {
+                var game = await _gameService.GetGameByIdAsync(id);
+                if (game == null)
+                {
+                    return NotFound(new { message = $"Game with ID {id} not found" });
+                }
+                return Ok(game);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error getting game {id}");
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+            }
+        }
 
-    public class ResumeGameRequest
-    {
-        public string Fen { get; set; } = string.Empty;
-        public string? Difficulty { get; set; }
+        /// <summary>
+        /// Get all games for a player
+        /// </summary>
+        [HttpGet("player/{playerId}")]
+        public async Task<ActionResult<IEnumerable<GameDto>>> GetPlayerGames(Guid playerId)
+        {
+            try
+            {
+                var games = await _gameService.GetPlayerGamesAsync(playerId);
+                return Ok(games);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error getting games for player {playerId}");
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+            }
+        }
     }
 }
+

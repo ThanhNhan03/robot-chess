@@ -75,6 +75,7 @@ builder.Services.AddSingleton(supabaseClient);
 builder.Services.AddScoped<IRobotRepository, RobotRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IFaqRepository, FaqRepository>();
+builder.Services.AddScoped<IGameRepository, GameRepository>();
 
 // Register Services
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -82,6 +83,7 @@ builder.Services.AddScoped<IAppUserService, AppUserService>();
 builder.Services.AddScoped<IRobotService, RobotService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFaqService, FaqService>();
+builder.Services.AddScoped<IGameService, GameService>();
 
 // Register HttpClient for communication with TCP Server
 builder.Services.AddHttpClient();
