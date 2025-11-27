@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using robot_chess_api.DTOs;
 using robot_chess_api.Services.Interface;
@@ -41,16 +42,16 @@ namespace robot_chess_api.Controllers
         /// </summary>
         /// <param name="request">Game start request with game type and difficulty</param>
         [HttpPost("start")]
+        [Authorize]
         public async Task<ActionResult<StartGameResponseDto>> StartGame([FromBody] StartGameRequestDto request)
         {
             try
             {
-                // Get player ID from token (if authenticated)
-                Guid? playerId = null;
+                // Get player ID from token
                 var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-                if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out Guid parsedId))
+                if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid playerId))
                 {
-                    playerId = parsedId;
+                    return Unauthorized(new { message = "Invalid user token" });
                 }
 
                 var response = await _gameService.StartGameAsync(request, playerId);
@@ -73,6 +74,7 @@ namespace robot_chess_api.Controllers
         /// </summary>
         /// <param name="request">Resume game request with game ID</param>
         [HttpPost("resume")]
+        [Authorize]
         public async Task<ActionResult<StartGameResponseDto>> ResumeGame([FromBody] ResumeGameRequestDto request)
         {
             try
@@ -123,6 +125,7 @@ namespace robot_chess_api.Controllers
         /// Get all games for a player
         /// </summary>
         [HttpGet("player/{playerId}")]
+        [Authorize]
         public async Task<ActionResult<IEnumerable<GameDto>>> GetPlayerGames(Guid playerId)
         {
             try
