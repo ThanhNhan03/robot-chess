@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 import re
 import json
+import asyncio
 import chess
 import chess.engine
 from typing import Any, Dict, List, Tuple, Optional
@@ -44,6 +45,12 @@ class FEN():
         self.tcp_client = None, None
 
         self.last_payload = None
+        
+        # Difficulty settings (default: medium)
+        self.difficulty = "medium"
+        self.skill_level = 10
+        self.analysis_time = 0.1
+        self.depth_limit = 12
 
 # TCP Client Config and Publish
     def tcp_config(self, host: str, port: int):
@@ -55,6 +62,60 @@ class FEN():
             await tcp_client.send(json.dumps(payload) + '\n')
         return
 
+    def compare_fen_positions(self, fen1: str, fen2: str) -> bool:
+        """Compare only the board positions of two FEN strings (ignore turn, castling, etc.)"""
+        pos1 = fen1.split(' ')[0] if ' ' in fen1 else fen1
+        pos2 = fen2.split(' ')[0] if ' ' in fen2 else fen2
+        return pos1 == pos2
+
+    async def send_board_setup_status(self, tcp_client, detected_fen: str, game_id: Optional[str] = None):
+        """Send board setup status to server"""
+        # Get expected initial position based on game mode
+        expected_positions = {
+            1: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR",  # Human White first
+            2: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR",  # Human White second
+            3: "RNBQKBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbqkbnr",  # Human Black second
+            4: "RNBQKBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbqkbnr"   # Human Black first
+        }
+        
+        expected_fen = expected_positions.get(self.id, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR")
+        current_fen = self.getFigure(detected_fen)
+        
+        is_correct = self.compare_fen_positions(current_fen, expected_fen)
+        
+        status_message = {
+            "type": "board_status",
+            "status": "correct" if is_correct else "incorrect",
+            "game_id": game_id,
+            "expected": expected_fen,
+            "detected": current_fen,
+            "message": "Board setup is correct" if is_correct else "Board setup is incorrect - please adjust pieces"
+        }
+        
+        await self.tcp_publish(tcp_client, status_message)
+        print(f"[BOARD STATUS] Sent: {status_message['status']} - Expected: {expected_fen}, Detected: {current_fen}")
+        return is_correct
+
+    async def check_and_send_board_status(self, tcp_client, detected_fen: str, game_id: Optional[str] = None) -> bool:
+        """Check board setup and send status, return True if correct"""
+        return await self.send_board_setup_status(tcp_client, detected_fen, game_id)
+
+    def set_difficulty(self, difficulty: str):
+        """Set AI difficulty level for Stockfish engine"""
+        difficulty_map = {
+            "easy": {"skill": 1, "time": 0.01, "depth": 5},
+            "medium": {"skill": 10, "time": 0.1, "depth": 12},
+            "hard": {"skill": 15, "time": 0.3, "depth": 16}
+        }
+        
+        config = difficulty_map.get(difficulty.lower(), difficulty_map["medium"])
+        self.difficulty = difficulty.lower()
+        self.skill_level = config["skill"]
+        self.analysis_time = config["time"]
+        self.depth_limit = config["depth"]
+        
+        print(f"[AI DIFFICULTY] Set to '{self.difficulty}': Skill Level={self.skill_level}, Time={self.analysis_time}s, Depth={self.depth_limit}")
+
 # Message processing
     def sendOutput(self, stockfish):
         fen_str = self.FEN_last
@@ -64,7 +125,12 @@ class FEN():
         isGameover = self.isGameover
 
         board = chess.Board(self.FEN_last)
-        limit = chess.engine.Limit(time=0.1)
+        
+        # Configure Stockfish with difficulty settings
+        stockfish.configure({"Skill Level": self.skill_level})
+        
+        # Use difficulty-based time and depth limits
+        limit = chess.engine.Limit(time=self.analysis_time, depth=self.depth_limit)
         result = stockfish.analyse(board, limit)
 
         bestmove = result["pv"][0]
@@ -445,7 +511,7 @@ class FEN():
         print(self.change)
         return fenN, checkMove
 
-    async def updateFEN(self, fen: str, stockfish, tcp_client):
+    async def updateFEN(self, fen: str, stockfish, tcp_client, game_id: Optional[str] = None, check_setup: bool = False):
         FEN_check, self.checkMove = self.checkFEN(fen)
         payload = {}
         count = 0

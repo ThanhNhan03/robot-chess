@@ -102,19 +102,36 @@ async def receiveStatus(tcp_client, status):
             # skip invalid JSON
             continue
 
-        if data.get("Type") == "ai_request" and data.get("Command") == "start_game":
+        if data.get("Type") == "ai_request":
+            command = data.get("Command")
             payload = data.get("Payload") or {}
-            st = payload.get("status")
+            
+            if command == "start_game":
+                st = payload.get("status")
+                game_id = payload.get("game_id")
+                difficulty = payload.get("difficulty", "medium")
 
-            if st in ("start", "resume", "end"):
-                status["state"] = st
-                print("updated state:", status["state"])
-                if status["state"] == "end":
-                    break
+                if st in ("start", "resume", "end"):
+                    status["state"] = st
+                    status["game_id"] = game_id
+                    status["difficulty"] = difficulty
+                    print(f"updated state: {status['state']}, game_id: {game_id}, difficulty: {difficulty}")
+                    if status["state"] == "end":
+                        break
+            
+            elif command == "verify_board_setup":
+                game_id = payload.get("game_id")
+                status["verify_board"] = game_id
+                print(f"Received verify board setup request for game: {game_id}")
 
     return
 
-async def playChess(cam, cornersH, hand, piece, fen, stockfish, tcp_client):
+async def playChess(cam, cornersH, hand, piece, fen, stockfish, tcp_client, game_id=None, difficulty="medium"):
+    # Set AI difficulty before starting game
+    fen.set_difficulty(difficulty)
+    
+    board_setup_correct = False
+    
     while True:
         ok, frame = cam.read()
         if not ok:
@@ -128,7 +145,26 @@ async def playChess(cam, cornersH, hand, piece, fen, stockfish, tcp_client):
         FEN_new = fen.getFEN(frame, cornersH, hand, piece)
         if FEN_new is None:
             continue
-        await fen.updateFEN(FEN_new, stockfish, tcp_client)
+        
+        # Render current board state (even if setup not correct)
+        renderFen = render_fen(FEN_new)
+        cv2.imshow("Chess board", renderFen)
+        
+        # Keep checking board setup until correct
+        if not board_setup_correct:
+            is_correct = await fen.check_and_send_board_status(tcp_client, FEN_new, game_id)
+            if is_correct:
+                board_setup_correct = True
+                print("[INFO] Board setup verified as correct - starting game")
+            else:
+                # Wait a bit before checking again
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    await tcp_client.close()
+                    break
+                await asyncio.sleep(1)
+            continue
+        
+        await fen.updateFEN(FEN_new, stockfish, tcp_client, game_id=game_id, check_setup=False)
         renderFen = render_fen(fen.FEN_last)
 
         if fen.isCheck:
@@ -183,14 +219,34 @@ async def main():
     cam = cv2.VideoCapture(0)
     #cam = cv2.VideoCapture("test/video1.mp4")
     
-    status = {"state": "resume"}  # default: waiting
+    status = {"state": "resume", "difficulty": "medium"}  # default: waiting
 
     recv_task = asyncio.create_task(receiveStatus(tcp_client, status))
 
     # # wait until server sends "start" or "end"
     while True:
         current = status.get("state")
-        print("current state:", current)
+        verify_game_id = status.get("verify_board")
+        difficulty = status.get("difficulty", "medium")
+        print(f"current state: {current}, difficulty: {difficulty}")
+
+        # Handle verify board setup request
+        if verify_game_id:
+            print(f"Verifying board setup for game: {verify_game_id}")
+            ok, frame = cam.read()
+            if ok:
+                frame = piece.processFrame(frame)
+                # Get current corners if not already set
+                if 'cornersH' not in locals() or cornersH is None:
+                    cornersH = getCorners(cam, corner)
+                
+                if cornersH is not None:
+                    FEN_new = fen.getFEN(frame, cornersH, hand, piece)
+                    if FEN_new:
+                        await fen.send_board_setup_status(tcp_client, FEN_new, game_id=verify_game_id)
+            
+            # Clear verify request
+            status["verify_board"] = None
 
         if current == "end":
             print("end")
@@ -205,7 +261,9 @@ async def main():
             cornersH = getCorners(cam, corner)
 
             ##### Play Chess
-            await playChess(cam, cornersH, hand, piece, fen, stockfish, tcp_client)
+            game_id = status.get("game_id")
+            difficulty = status.get("difficulty", "medium")
+            await playChess(cam, cornersH, hand, piece, fen, stockfish, tcp_client, game_id=game_id, difficulty=difficulty)
             
         await asyncio.sleep(0.1)
 
