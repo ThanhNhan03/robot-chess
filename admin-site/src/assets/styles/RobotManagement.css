@@ -1,34 +1,407 @@
-﻿/* Robot Management - Flat Design */
-.robot-management { width: 100%; }
-.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 32px; }
-.stat-card { display: flex; align-items: center; gap: 20px; background: white; border: 4px solid #2c3e50; padding: 24px; transition: all 0.2s ease; }
-.stat-card:hover { transform: translateY(-4px); }
-.stat-card.stat-success { border-color: #27ae60; }
-.stat-card.stat-warning { border-color: #f39c12; }
-.stat-card.stat-info { border-color: #3498db; }
-.stat-card.stat-primary { border-color: #9b59b6; }
-.stat-icon { font-size: 48px; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; background: #ecf0f1; border: 3px solid #2c3e50; }
-.stat-content { flex: 1; }
-.stat-value { font-size: 32px; font-weight: 700; color: #2c3e50; margin-bottom: 4px; }
-.stat-label { font-size: 14px; font-weight: 600; color: #7f8c8d; text-transform: uppercase; letter-spacing: 0.5px; }
-.robot-list { display: flex; flex-direction: column; gap: 16px; }
-.robot-card { display: flex; align-items: center; gap: 20px; background: white; border: 3px solid #2c3e50; padding: 20px; transition: all 0.2s ease; }
-.robot-card:hover { border-color: #3498db; transform: translateX(4px); }
-.robot-card.robot-offline { background: #f8f9fa; opacity: 0.7; }
-.robot-status { width: 20px; height: 20px; border: 3px solid #2c3e50; flex-shrink: 0; }
-.robot-status.status-online { background: #27ae60; }
-.robot-status.status-offline { background: #e74c3c; }
-.robot-info { flex: 1; }
-.robot-name { margin: 0 0 8px 0; font-size: 18px; font-weight: 700; color: #2c3e50; }
-.robot-details { display: flex; gap: 16px; margin-bottom: 8px; }
-.robot-id, .robot-ip { font-size: 13px; color: #7f8c8d; font-weight: 600; }
-.robot-meta { display: flex; align-items: center; gap: 12px; }
-.robot-uptime { font-size: 12px; color: #95a5a6; font-weight: 600; }
-.robot-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.command-queue { overflow-x: auto; }
-.table-flat { width: 100%; border-collapse: collapse; border: 3px solid #2c3e50; }
-.table-flat th { background: #2c3e50; color: white; padding: 16px; text-align: left; font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 3px solid #34495e; }
-.table-flat td { padding: 16px; border-bottom: 2px solid #ecf0f1; font-size: 14px; color: #2c3e50; }
-.table-flat tr:last-child td { border-bottom: none; }
-.table-flat tr:hover { background: #f8f9fa; }
-@media (max-width: 768px) { .robot-card { flex-direction: column; align-items: flex-start; } .robot-actions { width: 100%; } .robot-actions button { flex: 1; } .stats-grid { grid-template-columns: 1fr; } }
+﻿/* Robot Management - Modern Clean Design */
+.robot-management {
+  width: 100%;
+  animation: fadeIn 0.4s ease-out;
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--gray-200);
+  padding: 24px;
+  transition: all var(--transition-base);
+  box-shadow: var(--shadow-sm);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.stat-card.stat-success {
+  border-left: 4px solid var(--success);
+}
+
+.stat-card.stat-warning {
+  border-left: 4px solid var(--warning);
+}
+
+.stat-card.stat-info {
+  border-left: 4px solid var(--info);
+}
+
+.stat-card.stat-primary {
+  border-left: 4px solid var(--primary-blue-500);
+}
+
+.stat-icon {
+  font-size: 40px;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gray-50);
+  border-radius: var(--radius-lg);
+  flex-shrink: 0;
+  transition: all var(--transition-base);
+}
+
+.stat-card.stat-success .stat-icon {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.stat-card.stat-warning .stat-icon {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.stat-card.stat-info .stat-icon {
+  background: var(--info-light);
+  color: var(--info);
+}
+
+.stat-card.stat-primary .stat-icon {
+  background: var(--primary-blue-50);
+  color: var(--primary-blue-600);
+}
+
+.stat-card:hover .stat-icon {
+  transform: scale(1.1);
+}
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-value {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--gray-900);
+  margin-bottom: 4px;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--gray-600);
+}
+
+/* Robot List */
+.robot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.robot-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+  padding: 20px;
+  transition: all var(--transition-base);
+  box-shadow: var(--shadow-sm);
+}
+
+.robot-card:hover {
+  border-color: var(--primary-blue-300);
+  transform: translateX(4px);
+  box-shadow: var(--shadow-md);
+}
+
+.robot-card.robot-offline {
+  background: var(--gray-50);
+  opacity: 0.7;
+}
+
+.robot-status {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.robot-status.status-online {
+  background: var(--success);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.robot-status.status-offline {
+  background: var(--error);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.2);
+  }
+}
+
+.robot-info {
+  flex: 1;
+}
+
+.robot-name {
+  margin: 0 0 8px 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--gray-900);
+}
+
+.robot-details {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.robot-id,
+.robot-ip,
+.robot-location {
+  font-size: var(--font-size-sm);
+  color: var(--gray-600);
+  font-weight: var(--font-weight-medium);
+}
+
+.robot-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.robot-uptime {
+  font-size: var(--font-size-xs);
+  color: var(--gray-500);
+  font-weight: var(--font-weight-medium);
+}
+
+.robot-game {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: var(--primary-blue-50);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--primary-blue-500);
+  font-size: var(--font-size-sm);
+  color: var(--primary-blue-700);
+  font-weight: var(--font-weight-medium);
+}
+
+.robot-error {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: var(--error-light);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--error);
+  font-size: var(--font-size-sm);
+  color: var(--error);
+  font-weight: var(--font-weight-medium);
+}
+
+.robot-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Command Queue */
+.command-queue {
+  overflow-x: auto;
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--gray-200);
+}
+
+.table-flat {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-flat thead {
+  background: var(--gray-50);
+  border-bottom: 2px solid var(--gray-200);
+}
+
+.table-flat th {
+  background: transparent;
+  color: var(--gray-700);
+  padding: 16px;
+  text-align: left;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.table-flat td {
+  padding: 16px;
+  border-bottom: 1px solid var(--gray-100);
+  font-size: var(--font-size-sm);
+  color: var(--gray-900);
+}
+
+.table-flat tr:last-child td {
+  border-bottom: none;
+}
+
+.table-flat tbody tr {
+  transition: all var(--transition-base);
+}
+
+.table-flat tbody tr:hover {
+  background: var(--gray-50);
+}
+
+/* Robot Configuration */
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 24px;
+}
+
+.config-card {
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--gray-200);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+}
+
+.config-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.config-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.config-robot-name {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--gray-900);
+}
+
+.config-body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.config-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.config-row:last-child {
+  border-bottom: none;
+}
+
+.config-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--gray-700);
+}
+
+.config-value-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.config-value {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--primary-blue-600);
+  min-width: 50px;
+  text-align: right;
+}
+
+.config-unit {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--gray-500);
+  min-width: 40px;
+}
+
+.config-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: var(--gray-50);
+  border-top: 1px solid var(--gray-200);
+}
+
+.config-updated {
+  font-size: var(--font-size-xs);
+  color: var(--gray-500);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .robot-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .robot-actions {
+    width: 100%;
+  }
+  
+  .robot-actions button {
+    flex: 1;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .config-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .config-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .config-value-group {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

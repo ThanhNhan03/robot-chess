@@ -53,7 +53,7 @@
             <option value="">All Roles</option>
             <option value="admin">Admin</option>
             <option value="player">Player</option>
-            <option value="guest">Guest</option>
+            <option value="viewer">Viewer</option>
           </select>
           <select class="select-flat">
             <option value="">All Status</option>
@@ -75,8 +75,10 @@
               <th>Username</th>
               <th>Email</th>
               <th>Full Name</th>
+              <th>Phone</th>
               <th>Role</th>
               <th>Status</th>
+              <th>Last Login</th>
               <th>Joined</th>
               <th>Actions</th>
             </tr>
@@ -90,8 +92,10 @@
               <td><strong>admin_001</strong></td>
               <td>admin@chessrobot.com</td>
               <td>John Smith</td>
+              <td>+1-555-0101</td>
               <td><span class="badge-flat badge-danger">ADMIN</span></td>
               <td><span class="badge-flat badge-success">ACTIVE</span></td>
+              <td>2024-11-29 09:15</td>
               <td>2024-01-15</td>
               <td>
                 <div class="action-buttons">
@@ -109,8 +113,10 @@
               <td><strong>player_123</strong></td>
               <td>player123@email.com</td>
               <td>Michael Johnson</td>
+              <td>+1-555-0123</td>
               <td><span class="badge-flat badge-primary">PLAYER</span></td>
               <td><span class="badge-flat badge-success">ACTIVE</span></td>
+              <td>2024-11-29 14:30</td>
               <td>2024-03-20</td>
               <td>
                 <div class="action-buttons">
@@ -128,8 +134,10 @@
               <td><strong>chess_master</strong></td>
               <td>sarah.chen@email.com</td>
               <td>Sarah Chen</td>
+              <td>+1-555-0456</td>
               <td><span class="badge-flat badge-primary">PLAYER</span></td>
               <td><span class="badge-flat badge-success">ACTIVE</span></td>
+              <td>2024-11-29 13:45</td>
               <td>2024-05-10</td>
               <td>
                 <div class="action-buttons">
@@ -139,16 +147,18 @@
               </td>
             </tr>
 
-            <!-- User Row 4 - Guest -->
+            <!-- User Row 4 - Viewer -->
             <tr>
               <td>
                 <div class="user-avatar">🧑</div>
               </td>
-              <td><strong>guest_789</strong></td>
-              <td>guest789@email.com</td>
+              <td><strong>viewer_789</strong></td>
+              <td>viewer789@email.com</td>
               <td>Alex Martinez</td>
-              <td><span class="badge-flat badge-info">GUEST</span></td>
+              <td>+1-555-0789</td>
+              <td><span class="badge-flat badge-info">VIEWER</span></td>
               <td><span class="badge-flat badge-success">ACTIVE</span></td>
+              <td>2024-11-28 16:20</td>
               <td>2024-10-28</td>
               <td>
                 <div class="action-buttons">
@@ -166,8 +176,10 @@
               <td><strong>old_player</strong></td>
               <td>old@email.com</td>
               <td>David Wilson</td>
+              <td>-</td>
               <td><span class="badge-flat badge-primary">PLAYER</span></td>
               <td><span class="badge-flat badge-danger">INACTIVE</span></td>
+              <td>2024-08-15 10:30</td>
               <td>2023-12-01</td>
               <td>
                 <div class="action-buttons">

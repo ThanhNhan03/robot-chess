@@ -44,6 +44,20 @@
             <span class="nav-label">User Management</span>
           </button>
           <button 
+            :class="['nav-item', { active: activeTab === 'faq' }]"
+            @click="activeTab = 'faq'"
+          >
+            <span class="nav-icon">❓</span>
+            <span class="nav-label">FAQ Management</span>
+          </button>
+          <button 
+            :class="['nav-item', { active: activeTab === 'notification' }]"
+            @click="activeTab = 'notification'"
+          >
+            <span class="nav-icon">🔔</span>
+            <span class="nav-label">Notifications</span>
+          </button>
+          <button 
             :class="['nav-item', { active: activeTab === 'settings' }]"
             @click="activeTab = 'settings'"
           >
@@ -74,6 +88,12 @@
         <!-- User Management -->
         <UserManagement v-if="activeTab === 'user'" />
         
+        <!-- FAQ Management -->
+        <FAQManagement v-if="activeTab === 'faq'" />
+        
+        <!-- Notification Management -->
+        <NotificationManagement v-if="activeTab === 'notification'" />
+        
         <!-- Settings -->
         <div v-if="activeTab === 'settings'" class="panel">
           <h2 class="panel-title">System Settings</h2>
@@ -96,8 +116,10 @@ import OverviewDashboard from '../../components/admin/OverviewDashboard.vue'
 import RobotManagement from '../../components/admin/RobotManagement.vue'
 import AIManagement from '../../components/admin/AIManagement.vue'
 import UserManagement from '../../components/admin/UserManagement.vue'
+import FAQManagement from '../../components/admin/FAQManagement.vue'
+import NotificationManagement from '../../components/admin/NotificationManagement.vue'
 
-const activeTab = ref<'overview' | 'robot' | 'ai' | 'user' | 'settings' | 'logs'>('overview')
+const activeTab = ref<'overview' | 'robot' | 'ai' | 'user' | 'faq' | 'notification' | 'settings' | 'logs'>('overview')
 </script>
 
 <style scoped>
