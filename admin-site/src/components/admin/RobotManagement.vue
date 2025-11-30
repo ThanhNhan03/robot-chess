@@ -1,37 +1,37 @@
 <template>
   <div class="robot-management">
     <div class="panel-header">
-      <h2 class="panel-title">🤖 Robot Management</h2>
+      <h2 class="panel-title"><Bot :size="32" class="icon-title" /> Robot Management</h2>
       <button class="btn-flat btn-primary">
-        <span>➕</span> Add New Robot
+        <Plus :size="20" /> Add New Robot
       </button>
     </div>
 
     <!-- Statistics Cards -->
     <div class="stats-grid">
       <div class="stat-card stat-success">
-        <div class="stat-icon">✅</div>
+        <div class="stat-icon"><CheckCircle :size="40" /></div>
         <div class="stat-content">
           <div class="stat-value">3</div>
           <div class="stat-label">Connected Robots</div>
         </div>
       </div>
       <div class="stat-card stat-warning">
-        <div class="stat-icon">⚠️</div>
+        <div class="stat-icon"><AlertTriangle :size="40" /></div>
         <div class="stat-content">
           <div class="stat-value">1</div>
           <div class="stat-label">Offline Robots</div>
         </div>
       </div>
       <div class="stat-card stat-info">
-        <div class="stat-icon">📊</div>
+        <div class="stat-icon"><BarChart3 :size="40" /></div>
         <div class="stat-content">
           <div class="stat-value">127</div>
           <div class="stat-label">Total Moves</div>
         </div>
       </div>
       <div class="stat-card stat-primary">
-        <div class="stat-icon">⏱️</div>
+        <div class="stat-icon"><Timer :size="40" /></div>
         <div class="stat-content">
           <div class="stat-value">98%</div>
           <div class="stat-label">Success Rate</div>
@@ -51,7 +51,7 @@
             <div class="robot-details">
               <span class="robot-id">Code: ROBOT_001</span>
               <span class="robot-ip">IP: 192.168.1.100</span>
-              <span class="robot-location">📍 Lab Room A</span>
+              <span class="robot-location"><MapPin :size="16" /> Lab Room A</span>
             </div>
             <div class="robot-meta">
               <span class="badge-flat badge-success">IDLE</span>
@@ -74,16 +74,16 @@
             <div class="robot-details">
               <span class="robot-id">Code: ROBOT_002</span>
               <span class="robot-ip">IP: 192.168.1.101</span>
-              <span class="robot-location">📍 Lab Room B</span>
+              <span class="robot-location"><MapPin :size="16" /> Lab Room B</span>
             </div>
             <div class="robot-meta">
               <span class="badge-flat badge-warning">BUSY</span>
               <span class="badge-flat badge-info">ONLINE</span>
-              <span class="badge-flat badge-primary">🔄 MOVING</span>
+              <span class="badge-flat badge-primary"><RotateCw :size="14" /> MOVING</span>
               <span class="robot-uptime">Last seen: 2024-11-29 15:18</span>
             </div>
             <div class="robot-game">
-              🎮 Playing game: abc123-def456-ghi789
+              <Gamepad2 :size="16" /> Playing game: abc123-def456-ghi789
             </div>
           </div>
           <div class="robot-actions">
@@ -101,7 +101,7 @@
             <div class="robot-details">
               <span class="robot-id">Code: ROBOT_003</span>
               <span class="robot-ip">IP: 192.168.1.102</span>
-              <span class="robot-location">📍 Testing Area</span>
+              <span class="robot-location"><MapPin :size="16" /> Testing Area</span>
             </div>
             <div class="robot-meta">
               <span class="badge-flat badge-info">CALIBRATING</span>
@@ -124,16 +124,16 @@
             <div class="robot-details">
               <span class="robot-id">Code: ROBOT_004</span>
               <span class="robot-ip">IP: 192.168.1.103</span>
-              <span class="robot-location">📍 Storage</span>
+              <span class="robot-location"><MapPin :size="16" /> Storage</span>
             </div>
             <div class="robot-meta">
               <span class="badge-flat badge-secondary">DISCONNECTED</span>
               <span class="badge-flat badge-danger">OFFLINE</span>
-              <span class="badge-flat badge-danger">⚠️ ERROR</span>
+              <span class="badge-flat badge-danger"><AlertTriangle :size="14" /> ERROR</span>
               <span class="robot-uptime">Last seen: 2024-11-29 14:45</span>
             </div>
             <div class="robot-error">
-              ⚠️ Connection timeout - Unable to reach robot
+              <AlertTriangle :size="16" /> Connection timeout - Unable to reach robot
             </div>
           </div>
           <div class="robot-actions">
@@ -210,7 +210,7 @@
         <!-- Config Card 1 -->
         <div class="config-card">
           <div class="config-header">
-            <h4 class="config-robot-name">🤖 Chess Robot #1</h4>
+            <h4 class="config-robot-name"><Bot :size="24" /> Chess Robot #1</h4>
             <span class="badge-flat badge-success">ACTIVE</span>
           </div>
           <div class="config-body">
@@ -263,7 +263,7 @@
         <!-- Config Card 2 -->
         <div class="config-card">
           <div class="config-header">
-            <h4 class="config-robot-name">🤖 Chess Robot #2</h4>
+            <h4 class="config-robot-name"><Bot :size="24" /> Chess Robot #2</h4>
             <span class="badge-flat badge-success">ACTIVE</span>
           </div>
           <div class="config-body">
@@ -316,7 +316,7 @@
         <!-- Config Card 3 -->
         <div class="config-card">
           <div class="config-header">
-            <h4 class="config-robot-name">🤖 Chess Robot #3</h4>
+            <h4 class="config-robot-name"><Bot :size="24" /> Chess Robot #3</h4>
             <span class="badge-flat badge-success">ACTIVE</span>
           </div>
           <div class="config-body">
@@ -371,6 +371,18 @@
 </template>
 
 <script setup lang="ts">
+import {
+  Bot,
+  Plus,
+  CheckCircle,
+  AlertTriangle,
+  BarChart3,
+  Timer,
+  MapPin,
+  RotateCw,
+  Gamepad2
+} from 'lucide-vue-next';
+
 // Component logic will be implemented later
 </script>
 
