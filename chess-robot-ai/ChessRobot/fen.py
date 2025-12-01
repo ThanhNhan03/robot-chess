@@ -519,6 +519,8 @@ class FEN():
         FEN_lastF = self.getFigure(self.FEN_last)
         FEN_checkF = self.getFigure(FEN_check)
         check = True
+        illegal_move_info = None
+        
         if len(self.change[0]) > 1 or len(self.change[1]) > 1 or len(self.change[2]) > 1:
             check = False
             if len(self.change[0]) == 0 and len(self.change[2]) == 0 and len(self.change[1]) == 2:
@@ -533,6 +535,25 @@ class FEN():
         elif not self.checkMove:
             check = False
             print("No valid move detected, FEN not updated.")
+            
+            # Capture illegal move details
+            if len(self.change[1]) > 0:  # Regular move
+                (sqI, pieceI, pieceIN, sqJ, pieceJ, pieceJN) = self.change[1][0]
+                illegal_move_info = {
+                    "from": sqI,
+                    "to": sqJ,
+                    "piece": pieceI if pieceI else pieceIN,
+                    "move_type": "move"
+                }
+            elif len(self.change[2]) > 0:  # Attack move
+                (sqI, pieceI, pieceIN, sqJ, pieceJ, pieceJN) = self.change[2][0]
+                illegal_move_info = {
+                    "from": sqI,
+                    "to": sqJ,
+                    "piece": pieceI if pieceI else pieceIN,
+                    "captured": pieceJ if pieceJ else pieceJN,
+                    "move_type": "attack"
+                }
 
         if FEN_checkF != FEN_lastF and check:
             self.FEN_last = FEN_check
@@ -550,6 +571,23 @@ class FEN():
                 print("Same payload, not sending.")
 
             self.last_payload = payload
+        
+        # Send illegal move notification
+        elif illegal_move_info is not None:
+            # Determine whose turn it is (human's turn when move detected)
+            current_player = "white" if self.side == "b" else "black"
+            
+            illegal_payload = {
+                "type": "illegal_move",
+                "game_id": game_id,
+                "player": current_player,
+                "move": illegal_move_info,
+                "current_fen": self.FEN_last,
+                "message": f"Illegal move detected: {illegal_move_info['piece']} from {illegal_move_info['from']} to {illegal_move_info['to']}"
+            }
+            
+            await self.tcp_publish(tcp_client, illegal_payload)
+            print(f"[ILLEGAL MOVE] {illegal_payload['message']}")
             
         return
 

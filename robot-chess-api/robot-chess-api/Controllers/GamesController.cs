@@ -139,6 +139,31 @@ namespace robot_chess_api.Controllers
                 return StatusCode(500, new { message = "Internal server error", error = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Request AI to verify board setup for a game
+        /// </summary>
+        /// <param name="request">Request with game ID to verify</param>
+        [HttpPost("verify-board-setup")]
+        [Authorize]
+        public async Task<ActionResult<BoardSetupStatusDto>> VerifyBoardSetup([FromBody] VerifyBoardSetupRequestDto request)
+        {
+            try
+            {
+                var result = await _gameService.VerifyBoardSetupAsync(request.GameId);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, $"Invalid game ID: {request.GameId}");
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error verifying board setup for game {request.GameId}");
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+            }
+        }
     }
 }
 

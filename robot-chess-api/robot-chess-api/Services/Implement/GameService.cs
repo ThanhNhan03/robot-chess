@@ -241,5 +241,73 @@ namespace robot_chess_api.Services.Implement
                 } : null
             });
         }
+
+        public async Task<BoardSetupStatusDto> VerifyBoardSetupAsync(Guid gameId)
+        {
+            // Get game to verify it exists
+            var game = await _gameRepository.GetByIdAsync(gameId);
+            if (game == null)
+            {
+                throw new ArgumentException($"Game with ID {gameId} not found");
+            }
+
+            // Send verify board setup command to AI via TCP Server
+            var requestId = Guid.NewGuid();
+            try
+            {
+                var aiMessage = new
+                {
+                    type = "ai_request",
+                    request_id = requestId.ToString(),
+                    command = "verify_board_setup",
+                    payload = new
+                    {
+                        game_id = gameId.ToString()
+                    }
+                };
+
+                var httpClient = _httpClientFactory.CreateClient();
+                var response = await httpClient.PostAsJsonAsync($"{_tcpServerUrl}/internal/ai-command", aiMessage);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning($"Failed to send verify board setup command to TCP Server: {response.StatusCode}");
+                    
+                    return new BoardSetupStatusDto
+                    {
+                        GameId = gameId,
+                        Status = "unknown",
+                        Message = "Failed to communicate with AI service",
+                        Timestamp = DateTime.UtcNow
+                    };
+                }
+                else
+                {
+                    _logger.LogInformation($"Verify board setup command sent successfully. Game ID: {gameId}");
+                    
+                    // Note: The actual status will be received via WebSocket from TCP Server
+                    // This endpoint just triggers the verification
+                    return new BoardSetupStatusDto
+                    {
+                        GameId = gameId,
+                        Status = "pending",
+                        Message = "Board setup verification requested - status will be sent via WebSocket",
+                        Timestamp = DateTime.UtcNow
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending verify board setup command to TCP Server");
+                
+                return new BoardSetupStatusDto
+                {
+                    GameId = gameId,
+                    Status = "error",
+                    Message = $"Error requesting verification: {ex.Message}",
+                    Timestamp = DateTime.UtcNow
+                };
+            }
+        }
     }
 }

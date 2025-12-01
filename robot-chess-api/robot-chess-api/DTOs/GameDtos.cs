@@ -57,4 +57,21 @@ namespace robot_chess_api.DTOs
     {
         public Guid GameId { get; set; }
     }
+
+    // Request to verify board setup
+    public class VerifyBoardSetupRequestDto
+    {
+        public Guid GameId { get; set; }
+    }
+
+    // Response for board setup verification
+    public class BoardSetupStatusDto
+    {
+        public Guid GameId { get; set; }
+        public string Status { get; set; } = string.Empty; // "correct" or "incorrect"
+        public string? Expected { get; set; }
+        public string? Detected { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public DateTime Timestamp { get; set; }
+    }
 }

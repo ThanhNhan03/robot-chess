@@ -9,5 +9,6 @@ namespace robot_chess_api.Services.Interface
         Task<StartGameResponseDto> ResumeGameAsync(ResumeGameRequestDto request);
         Task<GameDto?> GetGameByIdAsync(Guid id);
         Task<IEnumerable<GameDto>> GetPlayerGamesAsync(Guid playerId);
+        Task<BoardSetupStatusDto> VerifyBoardSetupAsync(Guid gameId);
     }
 }
