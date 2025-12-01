@@ -74,4 +74,11 @@ namespace robot_chess_api.DTOs
         public string Message { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; }
     }
+
+    // Request to test training puzzle (for development/testing only)
+    public class TestPuzzleRequestDto
+    {
+        public string PuzzleFen { get; set; } = string.Empty;
+        public string Difficulty { get; set; } = "medium";
+    }
 }

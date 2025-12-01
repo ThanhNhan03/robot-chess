@@ -164,6 +164,67 @@ namespace robot_chess_api.Controllers
                 return StatusCode(500, new { message = "Internal server error", error = ex.Message });
             }
         }
+
+        /// <summary>
+        /// TEST ONLY: Start a training puzzle game without auth or database
+        /// Fixed puzzle FEN: "5r1k/1b2Nppp/8/2R5/4Q3/8/5PPP/6K1 w - - 0 1"
+        /// </summary>
+        [HttpPost("test-puzzle")]
+        public async Task<ActionResult> TestPuzzle()
+        {
+            try
+            {
+                var gameId = Guid.NewGuid();
+                var requestId = Guid.NewGuid();
+                var puzzleFen = "5r1k/1b2Nppp/8/2R5/4Q3/8/5PPP/6K1 w - - 0 1";
+                var difficulty = "medium";
+
+                // Send command to AI via TCP Server
+                var aiMessage = new
+                {
+                    Type = "ai_request",
+                    Command = "start_game",
+                    Payload = new
+                    {
+                        game_id = gameId.ToString(),
+                        status = "start",
+                        game_type = "training_puzzle",
+                        difficulty = difficulty,
+                        puzzle_fen = puzzleFen
+                    }
+                };
+
+                var httpClient = new HttpClient();
+                var tcpServerUrl = "http://localhost:5000"; // TCP Server URL
+
+                var response = await httpClient.PostAsJsonAsync($"{tcpServerUrl}/internal/ai-command", aiMessage);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning($"Failed to send test puzzle command to TCP Server: {response.StatusCode}");
+                    return StatusCode(500, new { message = "Failed to communicate with TCP Server" });
+                }
+
+                _logger.LogInformation($"Test puzzle command sent. Game ID: {gameId}, FEN: {puzzleFen}");
+
+                return Ok(new
+                {
+                    game_id = gameId,
+                    request_id = requestId,
+                    game_type = "training_puzzle",
+                    puzzle_fen = puzzleFen,
+                    difficulty = difficulty,
+                    status = "sent",
+                    message = "Test puzzle command sent to AI successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending test puzzle command");
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+            }
+        }
     }
 }
 
+ 

@@ -110,12 +110,18 @@ async def receiveStatus(tcp_client, status):
                 st = payload.get("status")
                 game_id = payload.get("game_id")
                 difficulty = payload.get("difficulty", "medium")
+                game_type = payload.get("game_type", "normal_game")
+                puzzle_fen = payload.get("puzzle_fen")
 
                 if st in ("start", "resume", "end"):
                     status["state"] = st
                     status["game_id"] = game_id
                     status["difficulty"] = difficulty
-                    print(f"updated state: {status['state']}, game_id: {game_id}, difficulty: {difficulty}")
+                    status["game_type"] = game_type
+                    status["puzzle_fen"] = puzzle_fen
+                    print(f"updated state: {status['state']}, game_id: {game_id}, difficulty: {difficulty}, game_type: {game_type}")
+                    if puzzle_fen:
+                        print(f"Puzzle FEN: {puzzle_fen}")
                     if status["state"] == "end":
                         break
             
@@ -126,9 +132,14 @@ async def receiveStatus(tcp_client, status):
 
     return
 
-async def playChess(cam, cornersH, hand, piece, fen, stockfish, tcp_client, game_id=None, difficulty="medium"):
+async def playChess(cam, cornersH, hand, piece, fen, stockfish, tcp_client, game_id=None, difficulty="medium", game_type="normal_game", puzzle_fen=None):
     # Set AI difficulty before starting game
     fen.set_difficulty(difficulty)
+    
+    # Set initial FEN for puzzle mode
+    if game_type == "training_puzzle" and puzzle_fen:
+        fen.FEN_last = puzzle_fen
+        print(f"[PUZZLE MODE] Starting with FEN: {puzzle_fen}")
     
     board_setup_correct = False
     
@@ -219,7 +230,7 @@ async def main():
     cam = cv2.VideoCapture(0)
     #cam = cv2.VideoCapture("test/video1.mp4")
     
-    status = {"state": "resume", "difficulty": "medium"}  # default: waiting
+    status = {"state": "resume", "difficulty": "medium", "game_type": "normal_game", "puzzle_fen": None}  # default: waiting
 
     recv_task = asyncio.create_task(receiveStatus(tcp_client, status))
 
@@ -263,7 +274,9 @@ async def main():
             ##### Play Chess
             game_id = status.get("game_id")
             difficulty = status.get("difficulty", "medium")
-            await playChess(cam, cornersH, hand, piece, fen, stockfish, tcp_client, game_id=game_id, difficulty=difficulty)
+            game_type = status.get("game_type", "normal_game")
+            puzzle_fen = status.get("puzzle_fen")
+            await playChess(cam, cornersH, hand, piece, fen, stockfish, tcp_client, game_id=game_id, difficulty=difficulty, game_type=game_type, puzzle_fen=puzzle_fen)
             
         await asyncio.sleep(0.1)
 

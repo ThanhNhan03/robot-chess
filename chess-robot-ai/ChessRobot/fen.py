@@ -69,16 +69,10 @@ class FEN():
         return pos1 == pos2
 
     async def send_board_setup_status(self, tcp_client, detected_fen: str, game_id: Optional[str] = None):
-        """Send board setup status to server"""
-        # Get expected initial position based on game mode
-        expected_positions = {
-            1: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR",  # Human White first
-            2: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR",  # Human White second
-            3: "RNBQKBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbqkbnr",  # Human Black second
-            4: "RNBQKBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbqkbnr"   # Human Black first
-        }
-        
-        expected_fen = expected_positions.get(self.id, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR")
+        """Send board setup status to server - compares with expected initial position"""
+        # FEN_last contains either initial position (normal game) or puzzle FEN (puzzle mode)
+        # So we always compare detected board with FEN_last
+        expected_fen = self.getFigure(self.FEN_last)
         current_fen = self.getFigure(detected_fen)
         
         is_correct = self.compare_fen_positions(current_fen, expected_fen)
