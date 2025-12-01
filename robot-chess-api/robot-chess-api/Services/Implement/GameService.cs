@@ -59,7 +59,7 @@ namespace robot_chess_api.Services.Implement
                 PuzzleId = request.PuzzleId,
                 Difficulty = request.Difficulty,
                 Status = "waiting",
-                FenStart = "startpos",
+                FenStart = "5r1k/1b2Nppp/8/2R5/4Q3/8/5PPP/6K1 w - - 0 1",
                 TotalMoves = 0,
                 CreatedAt = DateTime.UtcNow,
                 StartedAt = DateTime.UtcNow
@@ -146,7 +146,7 @@ namespace robot_chess_api.Services.Implement
                         game_id = game.Id.ToString(),
                         status = "resume",
                         difficulty = game.Difficulty ?? "medium",
-                        fen = game.FenCurrent ?? game.FenStart ?? "startpos"
+                        fen = game.FenCurrent ?? game.FenStart ?? "5r1k/1b2Nppp/8/2R5/4Q3/8/5PPP/6K1 w - - 0 1"
                     }
                 };
 

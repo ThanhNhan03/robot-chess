@@ -21,6 +21,7 @@ from hand import Hand
 from fen import FEN
 from network.socket_client import TCPClient
 from renderFen2Img import render_fen
+from camera_stream import CameraStream, MJPEGStreamServer
 
 def getCorners(cam, corner):
     cornersH = []
@@ -230,6 +231,14 @@ async def main():
     cam = cv2.VideoCapture(0)
     #cam = cv2.VideoCapture("test/video1.mp4")
     
+    # Start camera streaming server (low resolution for smooth streaming)
+    camera_stream = CameraStream(camera_index=0, width=480, height=360, fps=25)
+    camera_stream.start_capture(cam=cam)
+    
+    stream_server = MJPEGStreamServer(camera_stream, host='0.0.0.0', port=8000)
+    stream_server.start()
+    print("[INFO] Camera stream available at http://localhost:8000")
+    
     status = {"state": "resume", "difficulty": "medium", "game_type": "normal_game", "puzzle_fen": None}  # default: waiting
 
     recv_task = asyncio.create_task(receiveStatus(tcp_client, status))
@@ -263,6 +272,8 @@ async def main():
             print("end")
             await tcp_client.close()
             recv_task.cancel()
+            stream_server.stop()
+            camera_stream.stop()
             cam.release()
             cv2.destroyAllWindows()
             return
