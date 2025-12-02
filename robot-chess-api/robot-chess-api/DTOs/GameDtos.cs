@@ -102,4 +102,21 @@ namespace robot_chess_api.DTOs
         public DateTime? EndedAt { get; set; }
         public string Message { get; set; } = string.Empty;
     }
+
+    // Request to end game
+    public class EndGameRequestDto
+    {
+        public Guid GameId { get; set; }
+        public string Reason { get; set; } = "user_ended"; // resign, timeout, abandoned, user_ended
+    }
+
+    // Response after ending game
+    public class EndGameResponseDto
+    {
+        public Guid GameId { get; set; }
+        public Guid RequestId { get; set; }
+        public string Status { get; set; } = string.Empty; // sent, error
+        public string Message { get; set; } = string.Empty;
+        public string Reason { get; set; } = string.Empty;
+    }
 }

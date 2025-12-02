@@ -345,6 +345,144 @@ namespace robot_chess_api.Controllers
                 return StatusCode(500, new { message = "Internal server error", error = ex.Message });
             }
         }
+
+        /// <summary>
+        /// TEST ONLY: Start a normal game without auth or database
+        /// </summary>
+        [HttpPost("test-start")]
+        public async Task<ActionResult> TestStartGame()
+        {
+            try
+            {
+                var gameId = Guid.NewGuid();
+                var requestId = Guid.NewGuid();
+                var difficulty = "medium";
+
+                // Send start command to AI via TCP Server
+                var aiMessage = new
+                {
+                    Type = "ai_request",
+                    Command = "start_game",
+                    Payload = new
+                    {
+                        game_id = gameId.ToString(),
+                        status = "start",
+                        game_type = "normal_game",
+                        difficulty = difficulty
+                    }
+                };
+
+                var httpClient = new HttpClient();
+                var tcpServerUrl = "http://localhost:5000"; // TCP Server URL
+
+                var response = await httpClient.PostAsJsonAsync($"{tcpServerUrl}/internal/ai-command", aiMessage);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning($"Failed to send test start command to TCP Server: {response.StatusCode}");
+                    return StatusCode(500, new { message = "Failed to communicate with TCP Server" });
+                }
+
+                _logger.LogInformation($"Test start command sent. Game ID: {gameId}");
+
+                return Ok(new
+                {
+                    game_id = gameId,
+                    request_id = requestId,
+                    game_type = "normal_game",
+                    difficulty = difficulty,
+                    status = "start",
+                    message = "Test start command sent to AI successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending test start command");
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// End a game and notify AI to reset (e.g., when user resigns)
+        /// </summary>
+        [HttpPost("{gameId}/end")]
+        [Authorize]
+        public async Task<ActionResult<EndGameResponseDto>> EndGame(Guid gameId, [FromBody] EndGameRequestDto? request = null)
+        {
+            try
+            {
+                var reason = request?.Reason ?? "user_ended";
+                var result = await _gameService.EndGameAsync(gameId, reason);
+                
+                if (result.Status == "error")
+                {
+                    return StatusCode(500, result);
+                }
+                
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, $"Invalid game ID: {gameId}");
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error ending game {gameId}");
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// TEST ONLY: Send end game command to AI (reset to waiting state)
+        /// </summary>
+        [HttpPost("test-end")]
+        public async Task<ActionResult> TestEndGame([FromQuery] string? gameId = null)
+        {
+            try
+            {
+                var endGameId = string.IsNullOrEmpty(gameId) ? Guid.NewGuid().ToString() : gameId;
+                var requestId = Guid.NewGuid();
+
+                // Send end command to AI via TCP Server
+                var aiMessage = new
+                {
+                    Type = "ai_request",
+                    Command = "start_game",
+                    Payload = new
+                    {
+                        game_id = endGameId,
+                        status = "end"
+                    }
+                };
+
+                var httpClient = new HttpClient();
+                var tcpServerUrl = "http://localhost:5000"; // TCP Server URL
+
+                var response = await httpClient.PostAsJsonAsync($"{tcpServerUrl}/internal/ai-command", aiMessage);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning($"Failed to send end game command to TCP Server: {response.StatusCode}");
+                    return StatusCode(500, new { message = "Failed to communicate with TCP Server" });
+                }
+
+                _logger.LogInformation($"End game command sent. Game ID: {endGameId}");
+
+                return Ok(new
+                {
+                    game_id = endGameId,
+                    request_id = requestId,
+                    status = "end",
+                    message = "End game command sent to AI - AI will reset to waiting state"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending end game command");
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+            }
+        }
     }
 }
 

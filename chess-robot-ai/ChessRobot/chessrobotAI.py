@@ -23,16 +23,36 @@ from network.socket_client import TCPClient
 from renderFen2Img import render_fen
 from camera_stream import CameraStream, MJPEGStreamServer
 
-def getCorners(cam, corner):
-    cornersH = []
+async def getCorners(cam, corner, status=None, timeout=30):
+    """Get corners with timeout and state checking"""
+    cornersH = None
+    start_time = asyncio.get_event_loop().time()
+    
     while True:
+        # Check if game was cancelled
+        if status and status.get("state") == "end":
+            print("[INFO] Corner detection cancelled - game ended")
+            cv2.destroyAllWindows()
+            return None
+            
+        # Check timeout
+        if asyncio.get_event_loop().time() - start_time > timeout:
+            print("[WARNING] Corner detection timeout")
+            return None
+            
         ok, frame = cam.read()
         if not ok:
-            break
+            await asyncio.sleep(0.1)
+            continue
+            
         cornersH = corner.getCorners(frame, 2)
         if cornersH is not None:
             print("Corners found:", cornersH)
-            break
+            return cornersH
+            
+        # Yield control to allow other tasks to run
+        await asyncio.sleep(0.05)
+    
     return cornersH
 
 def sendOutput(fen, stockfish):
@@ -116,15 +136,18 @@ async def receiveStatus(tcp_client, status):
 
                 if st in ("start", "resume", "end"):
                     status["state"] = st
-                    status["game_id"] = game_id
-                    status["difficulty"] = difficulty
-                    status["game_type"] = game_type
-                    status["puzzle_fen"] = puzzle_fen
-                    print(f"updated state: {status['state']}, game_id: {game_id}, difficulty: {difficulty}, game_type: {game_type}")
-                    if puzzle_fen:
-                        print(f"Puzzle FEN: {puzzle_fen}")
-                    if status["state"] == "end":
-                        break
+                    if st == "end":
+                        # For end command, just update state - don't update other fields
+                        print(f"[RECEIVE] End command received for game: {game_id}")
+                    else:
+                        # For start/resume, update all fields
+                        status["game_id"] = game_id
+                        status["difficulty"] = difficulty
+                        status["game_type"] = game_type
+                        status["puzzle_fen"] = puzzle_fen
+                        print(f"updated state: {status['state']}, game_id: {game_id}, difficulty: {difficulty}, game_type: {game_type}")
+                        if puzzle_fen:
+                            print(f"Puzzle FEN: {puzzle_fen}")
             
             elif command == "verify_board_setup":
                 game_id = payload.get("game_id")
@@ -133,21 +156,38 @@ async def receiveStatus(tcp_client, status):
 
     return
 
-async def playChess(cam, cornersH, hand, piece, fen, stockfish, tcp_client, game_id=None, difficulty="medium", game_type="normal_game", puzzle_fen=None):
-    # Set AI difficulty before starting game
-    fen.set_difficulty(difficulty)
-    
-    # Set initial FEN for puzzle mode
+async def playChess(cam, cornersH, hand, piece, fen, stockfish, tcp_client, game_id=None, difficulty="medium", game_type="normal_game", puzzle_fen=None, status=None):
+    # Reset FEN to initial position for new game
     if game_type == "training_puzzle" and puzzle_fen:
         fen.FEN_last = puzzle_fen
         print(f"[PUZZLE MODE] Starting with FEN: {puzzle_fen}")
+    else:
+        # Reset to standard starting position for normal game
+        fen.FEN_last = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+        print("[NEW GAME] Reset FEN to initial position")
+    
+    # Reset game state flags
+    fen.isCheck = False
+    fen.isCheckmate = False
+    fen.isStalemate = False
+    fen.isGameover = False
+    
+    # Set AI difficulty before starting game
+    fen.set_difficulty(difficulty)
     
     board_setup_correct = False
     
     while True:
+        # Check if game should end
+        if status and status.get("state") == "end":
+            print("[INFO] Game ended - stopping detection")
+            break
+            
         ok, frame = cam.read()
         if not ok:
-            break  
+            await asyncio.sleep(0.1)
+            continue
+            
         # Process Frame
         frame = piece.processFrame(frame)
         # frame = cv2.rotate(frame, cv2.ROTATE_180)
@@ -156,6 +196,7 @@ async def playChess(cam, cornersH, hand, piece, fen, stockfish, tcp_client, game
         # Get FEN new
         FEN_new = fen.getFEN(frame, cornersH, hand, piece)
         if FEN_new is None:
+            await asyncio.sleep(0.05)
             continue
         
         # Render current board state (even if setup not correct)
@@ -173,11 +214,16 @@ async def playChess(cam, cornersH, hand, piece, fen, stockfish, tcp_client, game
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     await tcp_client.close()
                     break
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.5)
             continue
         
         await fen.updateFEN(FEN_new, stockfish, tcp_client, game_id=game_id, check_setup=False)
         renderFen = render_fen(fen.FEN_last)
+
+        # Check for end state again after move processing
+        if status and status.get("state") == "end":
+            print("[INFO] Game ended during move processing - stopping detection")
+            break
 
         if fen.isCheck:
             print("Current state is check")
@@ -198,8 +244,14 @@ async def playChess(cam, cornersH, hand, piece, fen, stockfish, tcp_client, game
 
         cv2.imshow("Chess board", renderFen)
         if cv2.waitKey(1) & 0xFF == ord('q'):
-            await tcp_client.close()
             break
+            
+        # Yield control to allow receiving new messages
+        await asyncio.sleep(0.01)
+    
+    # Cleanup: close all OpenCV windows
+    cv2.destroyAllWindows()
+    print("[INFO] Exiting playChess - game ended, windows closed")
     return
 
 async def main():
@@ -239,7 +291,7 @@ async def main():
     stream_server.start()
     print("[INFO] Camera stream available at http://localhost:8000")
     
-    status = {"state": "resume", "difficulty": "medium", "game_type": "normal_game", "puzzle_fen": None}  # default: waiting
+    status = {"state": "waiting", "difficulty": "medium", "game_type": "normal_game", "puzzle_fen": None}  # default: waiting for start command
 
     recv_task = asyncio.create_task(receiveStatus(tcp_client, status))
 
@@ -258,7 +310,7 @@ async def main():
                 frame = piece.processFrame(frame)
                 # Get current corners if not already set
                 if 'cornersH' not in locals() or cornersH is None:
-                    cornersH = getCorners(cam, corner)
+                    cornersH = await getCorners(cam, corner, status=status, timeout=10)
                 
                 if cornersH is not None:
                     FEN_new = fen.getFEN(frame, cornersH, hand, piece)
@@ -269,25 +321,59 @@ async def main():
             status["verify_board"] = None
 
         if current == "end":
-            print("end")
-            await tcp_client.close()
-            recv_task.cancel()
-            stream_server.stop()
-            camera_stream.stop()
-            cam.release()
+            print("[INFO] Received end command - resetting to waiting state")
+            # Close all OpenCV windows and reset status
             cv2.destroyAllWindows()
-            return
+            # Reset FEN to initial position
+            fen.FEN_last = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+            fen.isCheck = False
+            fen.isCheckmate = False
+            fen.isStalemate = False
+            fen.isGameover = False
+            status["state"] = "waiting"
+            status["game_id"] = None
+            status["difficulty"] = "medium"
+            status["game_type"] = "normal_game"
+            status["puzzle_fen"] = None
+            print("[INFO] AI is now in waiting state, ready for next game")
+            await asyncio.sleep(0.5)
+            continue
 
         if current == "start":
             ##### Get Corners
-            cornersH = getCorners(cam, corner)
+            cornersH = await getCorners(cam, corner, status=status, timeout=30)
+            
+            # Check if corner detection was cancelled or timed out
+            if cornersH is None:
+                print("[INFO] Corner detection failed or cancelled - returning to waiting state")
+                cv2.destroyAllWindows()
+                status["state"] = "waiting"
+                status["game_id"] = None
+                continue
 
             ##### Play Chess
             game_id = status.get("game_id")
             difficulty = status.get("difficulty", "medium")
             game_type = status.get("game_type", "normal_game")
             puzzle_fen = status.get("puzzle_fen")
-            await playChess(cam, cornersH, hand, piece, fen, stockfish, tcp_client, game_id=game_id, difficulty=difficulty, game_type=game_type, puzzle_fen=puzzle_fen)
+            
+            # Pass status to playChess so it can check for end state
+            await playChess(cam, cornersH, hand, piece, fen, stockfish, tcp_client, 
+                          game_id=game_id, difficulty=difficulty, game_type=game_type, 
+                          puzzle_fen=puzzle_fen, status=status)
+            
+            # After playChess ends, reset to waiting state
+            print("[INFO] Game finished - returning to waiting state")
+            cv2.destroyAllWindows()
+            # Reset FEN to initial position
+            fen.FEN_last = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+            fen.isCheck = False
+            fen.isCheckmate = False
+            fen.isStalemate = False
+            fen.isGameover = False
+            status["state"] = "waiting"
+            status["game_id"] = None
+            continue
             
         await asyncio.sleep(0.1)
 

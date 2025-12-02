@@ -19,5 +19,8 @@ namespace robot_chess_api.Services.Interface
         
         // Update game result
         Task<UpdateGameResultResponseDto> UpdateGameResultAsync(UpdateGameResultRequestDto request);
+        
+        // End game and notify AI
+        Task<EndGameResponseDto> EndGameAsync(Guid gameId, string reason);
     }
 }

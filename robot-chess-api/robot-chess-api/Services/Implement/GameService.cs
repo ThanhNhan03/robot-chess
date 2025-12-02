@@ -511,6 +511,38 @@ namespace robot_chess_api.Services.Implement
 
             _logger.LogInformation($"Game {request.GameId} updated - Result: {game.Result}, Status: {game.Status}, Total Moves: {game.TotalMoves}");
 
+            // Send end command to AI via TCP Server
+            try
+            {
+                var aiMessage = new
+                {
+                    Type = "ai_request",
+                    Command = "start_game",
+                    Payload = new
+                    {
+                        game_id = request.GameId.ToString(),
+                        status = "end"
+                    }
+                };
+
+                var httpClient = _httpClientFactory.CreateClient();
+                var response = await httpClient.PostAsJsonAsync($"{_tcpServerUrl}/internal/ai-command", aiMessage);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation($"End game command sent to AI for game {request.GameId}");
+                }
+                else
+                {
+                    _logger.LogWarning($"Failed to send end game command to AI: {response.StatusCode}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error sending end game command to AI for game {request.GameId}");
+                // Don't throw - game result was saved successfully
+            }
+
             return new UpdateGameResultResponseDto
             {
                 GameId = game.Id,
@@ -520,6 +552,71 @@ namespace robot_chess_api.Services.Implement
                 EndedAt = game.EndedAt,
                 Message = $"Game result updated successfully to '{game.Result}'"
             };
+        }
+
+        public async Task<EndGameResponseDto> EndGameAsync(Guid gameId, string reason)
+        {
+            // Validate game exists
+            var game = await _gameRepository.GetByIdAsync(gameId);
+            if (game == null)
+            {
+                throw new ArgumentException($"Game with ID {gameId} not found");
+            }
+
+            // Send end command to AI via TCP Server
+            var requestId = Guid.NewGuid();
+            try
+            {
+                var aiMessage = new
+                {
+                    Type = "ai_request",
+                    Command = "start_game",
+                    Payload = new
+                    {
+                        game_id = gameId.ToString(),
+                        status = "end"
+                    }
+                };
+
+                var httpClient = _httpClientFactory.CreateClient();
+                var response = await httpClient.PostAsJsonAsync($"{_tcpServerUrl}/internal/ai-command", aiMessage);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning($"Failed to send end game command to TCP Server: {response.StatusCode}");
+                    return new EndGameResponseDto
+                    {
+                        GameId = gameId,
+                        RequestId = requestId,
+                        Status = "error",
+                        Message = "Failed to communicate with AI service",
+                        Reason = reason
+                    };
+                }
+
+                _logger.LogInformation($"End game command sent successfully. Game ID: {gameId}, Reason: {reason}");
+
+                return new EndGameResponseDto
+                {
+                    GameId = gameId,
+                    RequestId = requestId,
+                    Status = "sent",
+                    Message = "End game command sent to AI successfully",
+                    Reason = reason
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error sending end game command to TCP Server for game {gameId}");
+                return new EndGameResponseDto
+                {
+                    GameId = gameId,
+                    RequestId = requestId,
+                    Status = "error",
+                    Message = $"Error: {ex.Message}",
+                    Reason = reason
+                };
+            }
         }
     }
 }
