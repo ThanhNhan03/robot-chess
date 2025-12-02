@@ -8,16 +8,19 @@ namespace robot_chess_api.Services.Implement
     public class GameService : IGameService
     {
         private readonly IGameRepository _gameRepository;
+        private readonly IGameMoveRepository _gameMoveRepository;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<GameService> _logger;
         private readonly string _tcpServerUrl = "http://localhost:5000";
 
         public GameService(
             IGameRepository gameRepository,
+            IGameMoveRepository gameMoveRepository,
             IHttpClientFactory httpClientFactory,
             ILogger<GameService> logger)
         {
             _gameRepository = gameRepository;
+            _gameMoveRepository = gameMoveRepository;
             _httpClientFactory = httpClientFactory;
             _logger = logger;
         }
@@ -308,6 +311,157 @@ namespace robot_chess_api.Services.Implement
                     Timestamp = DateTime.UtcNow
                 };
             }
+        }
+
+        public async Task<GameMoveDto> SaveMoveAsync(CreateGameMoveDto moveDto)
+        {
+            // Validate game exists
+            var game = await _gameRepository.GetByIdAsync(moveDto.GameId);
+            if (game == null)
+            {
+                throw new ArgumentException($"Game with ID {moveDto.GameId} not found");
+            }
+
+            // Create game move entity
+            var move = new GameMove
+            {
+                Id = Guid.NewGuid(),
+                GameId = moveDto.GameId,
+                MoveNumber = moveDto.MoveNumber,
+                PlayerColor = moveDto.PlayerColor,
+                FromSquare = moveDto.FromSquare,
+                ToSquare = moveDto.ToSquare,
+                FromPiece = moveDto.FromPiece,
+                ToPiece = moveDto.ToPiece,
+                Notation = moveDto.Notation,
+                ResultsInCheck = moveDto.ResultsInCheck,
+                FenStr = moveDto.FenStr,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _gameMoveRepository.CreateAsync(move);
+
+            // Update game's current FEN and total moves
+            game.FenCurrent = moveDto.FenStr;
+            game.TotalMoves = moveDto.MoveNumber;
+            await _gameRepository.UpdateAsync(game);
+
+            _logger.LogInformation($"Saved move {moveDto.MoveNumber} for game {moveDto.GameId}: {moveDto.Notation}");
+
+            return new GameMoveDto
+            {
+                Id = move.Id,
+                GameId = move.GameId ?? Guid.Empty,
+                MoveNumber = move.MoveNumber ?? 0,
+                PlayerColor = move.PlayerColor ?? "",
+                FromSquare = move.FromSquare ?? "",
+                ToSquare = move.ToSquare ?? "",
+                FromPiece = move.FromPiece,
+                ToPiece = move.ToPiece,
+                Notation = move.Notation ?? "",
+                ResultsInCheck = move.ResultsInCheck ?? false,
+                FenStr = move.FenStr ?? "",
+                CreatedAt = move.CreatedAt ?? DateTime.UtcNow
+            };
+        }
+
+        public async Task<IEnumerable<GameMoveDto>> SaveMovesAsync(SaveMovesRequestDto request)
+        {
+            // Validate game exists
+            var game = await _gameRepository.GetByIdAsync(request.GameId);
+            if (game == null)
+            {
+                throw new ArgumentException($"Game with ID {request.GameId} not found");
+            }
+
+            var moves = request.Moves.Select(moveDto => new GameMove
+            {
+                Id = Guid.NewGuid(),
+                GameId = moveDto.GameId,
+                MoveNumber = moveDto.MoveNumber,
+                PlayerColor = moveDto.PlayerColor,
+                FromSquare = moveDto.FromSquare,
+                ToSquare = moveDto.ToSquare,
+                FromPiece = moveDto.FromPiece,
+                ToPiece = moveDto.ToPiece,
+                Notation = moveDto.Notation,
+                ResultsInCheck = moveDto.ResultsInCheck,
+                FenStr = moveDto.FenStr,
+                CreatedAt = DateTime.UtcNow
+            }).ToList();
+
+            await _gameMoveRepository.CreateManyAsync(moves);
+
+            // Update game with latest FEN and total moves
+            if (moves.Any())
+            {
+                var latestMove = moves.OrderByDescending(m => m.MoveNumber).First();
+                game.FenCurrent = latestMove.FenStr;
+                game.TotalMoves = latestMove.MoveNumber;
+                await _gameRepository.UpdateAsync(game);
+            }
+
+            _logger.LogInformation($"Saved {moves.Count} moves for game {request.GameId}");
+
+            return moves.Select(m => new GameMoveDto
+            {
+                Id = m.Id,
+                GameId = m.GameId ?? Guid.Empty,
+                MoveNumber = m.MoveNumber ?? 0,
+                PlayerColor = m.PlayerColor ?? "",
+                FromSquare = m.FromSquare ?? "",
+                ToSquare = m.ToSquare ?? "",
+                FromPiece = m.FromPiece,
+                ToPiece = m.ToPiece,
+                Notation = m.Notation ?? "",
+                ResultsInCheck = m.ResultsInCheck ?? false,
+                FenStr = m.FenStr ?? "",
+                CreatedAt = m.CreatedAt ?? DateTime.UtcNow
+            });
+        }
+
+        public async Task<IEnumerable<GameMoveDto>> GetGameMovesAsync(Guid gameId)
+        {
+            var moves = await _gameMoveRepository.GetByGameIdAsync(gameId);
+            return moves.Select(m => new GameMoveDto
+            {
+                Id = m.Id,
+                GameId = m.GameId ?? Guid.Empty,
+                MoveNumber = m.MoveNumber ?? 0,
+                PlayerColor = m.PlayerColor ?? "",
+                FromSquare = m.FromSquare ?? "",
+                ToSquare = m.ToSquare ?? "",
+                FromPiece = m.FromPiece,
+                ToPiece = m.ToPiece,
+                Notation = m.Notation ?? "",
+                ResultsInCheck = m.ResultsInCheck ?? false,
+                FenStr = m.FenStr ?? "",
+                CreatedAt = m.CreatedAt ?? DateTime.UtcNow
+            });
+        }
+
+        public async Task<IEnumerable<GameMoveDto>> GetGameMovesRangeAsync(GetMovesRequestDto request)
+        {
+            var moves = await _gameMoveRepository.GetByGameIdRangeAsync(
+                request.GameId,
+                request.FromMoveNumber,
+                request.ToMoveNumber);
+
+            return moves.Select(m => new GameMoveDto
+            {
+                Id = m.Id,
+                GameId = m.GameId ?? Guid.Empty,
+                MoveNumber = m.MoveNumber ?? 0,
+                PlayerColor = m.PlayerColor ?? "",
+                FromSquare = m.FromSquare ?? "",
+                ToSquare = m.ToSquare ?? "",
+                FromPiece = m.FromPiece,
+                ToPiece = m.ToPiece,
+                Notation = m.Notation ?? "",
+                ResultsInCheck = m.ResultsInCheck ?? false,
+                FenStr = m.FenStr ?? "",
+                CreatedAt = m.CreatedAt ?? DateTime.UtcNow
+            });
         }
     }
 }

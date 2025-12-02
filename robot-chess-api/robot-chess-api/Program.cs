@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using robot_chess_api.Data;
 using robot_chess_api.Services.Interface;
 using robot_chess_api.Services.Implement;
@@ -50,6 +51,40 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Configure Authentication (for [Authorize] attribute support)
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        // We're using custom JWT validation in JwtMiddleware
+        // This is just to satisfy the [Authorize] attribute requirement
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                // Skip default JWT validation - our middleware handles it
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                // Token validation is done by JwtMiddleware
+                return Task.CompletedTask;
+            }
+        };
+        options.RequireHttpsMetadata = false;
+        options.SaveToken = false;
+        options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+        {
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = false,
+            ValidateIssuerSigningKey = false,
+            RequireExpirationTime = false,
+            RequireSignedTokens = false
+        };
+    });
+
+builder.Services.AddAuthorization();
+
 // Configure Npgsql to handle UTC DateTime with timestamp without timezone
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
@@ -76,6 +111,7 @@ builder.Services.AddScoped<IRobotRepository, RobotRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IFaqRepository, FaqRepository>();
 builder.Services.AddScoped<IGameRepository, GameRepository>();
+builder.Services.AddScoped<IGameMoveRepository, GameMoveRepository>();
 
 // Register Services
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -107,10 +143,13 @@ app.UseCors("AllowAll");
 
 app.UseHttpsRedirection();
 
-// Use JWT Middleware
+// Use JWT Middleware (custom validation with Supabase)
 app.UseMiddleware<JwtMiddleware>();
 
+// Use Authentication & Authorization
+app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 
 Console.WriteLine("Robot Chess API is running...");

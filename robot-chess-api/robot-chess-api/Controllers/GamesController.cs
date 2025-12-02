@@ -166,6 +166,90 @@ namespace robot_chess_api.Controllers
         }
 
         /// <summary>
+        /// Save a single move to the database
+        /// </summary>
+        [HttpPost("moves")]
+        [Authorize]
+        public async Task<ActionResult<GameMoveDto>> SaveMove([FromBody] CreateGameMoveDto moveDto)
+        {
+            try
+            {
+                var savedMove = await _gameService.SaveMoveAsync(moveDto);
+                return Ok(savedMove);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Invalid move data");
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving move");
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Save multiple moves in batch
+        /// </summary>
+        [HttpPost("moves/batch")]
+        [Authorize]
+        public async Task<ActionResult<IEnumerable<GameMoveDto>>> SaveMoves([FromBody] SaveMovesRequestDto request)
+        {
+            try
+            {
+                var savedMoves = await _gameService.SaveMovesAsync(request);
+                return Ok(savedMoves);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Invalid moves data");
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving moves");
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get all moves for a game
+        /// </summary>
+        [HttpGet("{gameId}/moves")]
+        public async Task<ActionResult<IEnumerable<GameMoveDto>>> GetGameMoves(Guid gameId)
+        {
+            try
+            {
+                var moves = await _gameService.GetGameMovesAsync(gameId);
+                return Ok(moves);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error getting moves for game {gameId}");
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get moves for a game within a specific range
+        /// </summary>
+        [HttpPost("moves/range")]
+        public async Task<ActionResult<IEnumerable<GameMoveDto>>> GetGameMovesRange([FromBody] GetMovesRequestDto request)
+        {
+            try
+            {
+                var moves = await _gameService.GetGameMovesRangeAsync(request);
+                return Ok(moves);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error getting move range for game {request.GameId}");
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// TEST ONLY: Start a training puzzle game without auth or database
         /// Fixed puzzle FEN: "5r1k/1b2Nppp/8/2R5/4Q3/8/5PPP/6K1 w - - 0 1"
         /// </summary>
