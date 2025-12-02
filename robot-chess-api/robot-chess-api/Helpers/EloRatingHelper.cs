@@ -65,8 +65,8 @@ public class EloRatingHelper
         int ratingChange = CalculateRatingChange(currentRating, opponentRating, result);
         int newRating = currentRating + ratingChange;
         
-        // Ensure rating doesn't go below 100
-        return Math.Max(newRating, 100);
+        // Ensure rating doesn't go below 0
+        return Math.Max(newRating, 0);
     }
 
     /// <summary>
@@ -94,14 +94,15 @@ public class EloRatingHelper
     {
         return rating switch
         {
-            < 1200 => "Beginner",
-            < 1400 => "Novice",
-            < 1600 => "Intermediate",
-            < 1800 => "Advanced",
-            < 2000 => "Expert",
-            < 2200 => "Master",
-            < 2400 => "International Master",
-            _ => "Grandmaster"
+            < 800 => "Beginner",
+            < 1200 => "Novice",
+            < 1400 => "Intermediate",
+            < 1600 => "Advanced",
+            < 1800 => "Expert",
+            < 2000 => "Master",
+            < 2200 => "International Master",
+            < 2400 => "Grandmaster",
+            _ => "Super Grandmaster"
         };
     }
 
@@ -120,7 +121,8 @@ public class EloRatingHelper
             "Expert" => "Very strong player",
             "Master" => "Master level player",
             "International Master" => "Near grandmaster level",
-            "Grandmaster" => "Highest chess level",
+            "Grandmaster" => "Grandmaster level",
+            "Super Grandmaster" => "Elite world-class player",
             _ => "Unknown rating"
         };
         return (category, description);
@@ -133,14 +135,15 @@ public class EloRatingHelper
     {
         return rating switch
         {
-            < 1200 => "#8B4513", // Brown
-            < 1400 => "#FF0000", // Red
-            < 1600 => "#FF8C00", // Orange
-            < 1800 => "#FFD700", // Gold
-            < 2000 => "#32CD32", // Green
-            < 2200 => "#1E90FF", // Blue
-            < 2400 => "#9932CC", // Purple
-            _ => "#FF1493"       // Deep Pink - Grandmaster
+            < 800 => "#8B4513", // Brown - Beginner
+            < 1200 => "#FF0000", // Red - Novice
+            < 1400 => "#FF8C00", // Orange - Intermediate
+            < 1600 => "#FFD700", // Gold - Advanced
+            < 1800 => "#32CD32", // Green - Expert
+            < 2000 => "#1E90FF", // Blue - Master
+            < 2200 => "#9932CC", // Purple - International Master
+            < 2400 => "#FF1493", // Deep Pink - Grandmaster
+            _ => "#FFD700"       // Gold - Super Grandmaster
         };
     }
 }
