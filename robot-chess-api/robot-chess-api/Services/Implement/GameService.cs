@@ -2,6 +2,7 @@ using robot_chess_api.DTOs;
 using robot_chess_api.Models;
 using robot_chess_api.Repositories;
 using robot_chess_api.Services.Interface;
+using robot_chess_api.Helpers;
 
 namespace robot_chess_api.Services.Implement
 {
@@ -9,6 +10,7 @@ namespace robot_chess_api.Services.Implement
     {
         private readonly IGameRepository _gameRepository;
         private readonly IGameMoveRepository _gameMoveRepository;
+        private readonly IUserRepository _userRepository;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<GameService> _logger;
         private readonly string _tcpServerUrl = "http://localhost:5000";
@@ -16,11 +18,13 @@ namespace robot_chess_api.Services.Implement
         public GameService(
             IGameRepository gameRepository,
             IGameMoveRepository gameMoveRepository,
+            IUserRepository userRepository,
             IHttpClientFactory httpClientFactory,
             ILogger<GameService> logger)
         {
             _gameRepository = gameRepository;
             _gameMoveRepository = gameMoveRepository;
+            _userRepository = userRepository;
             _httpClientFactory = httpClientFactory;
             _logger = logger;
         }
@@ -206,6 +210,9 @@ namespace robot_chess_api.Services.Implement
                 GameTypeId = game.GameTypeId,
                 PuzzleId = game.PuzzleId,
                 Difficulty = game.Difficulty,
+                PlayerRatingBefore = game.PlayerRatingBefore,
+                PlayerRatingAfter = game.PlayerRatingAfter,
+                RatingChange = game.RatingChange,
                 GameType = game.GameType != null ? new GameTypeDto
                 {
                     Id = game.GameType.Id,
@@ -235,6 +242,9 @@ namespace robot_chess_api.Services.Implement
                 GameTypeId = game.GameTypeId,
                 PuzzleId = game.PuzzleId,
                 Difficulty = game.Difficulty,
+                PlayerRatingBefore = game.PlayerRatingBefore,
+                PlayerRatingAfter = game.PlayerRatingAfter,
+                RatingChange = game.RatingChange,
                 GameType = game.GameType != null ? new GameTypeDto
                 {
                     Id = game.GameType.Id,
@@ -480,6 +490,75 @@ namespace robot_chess_api.Services.Implement
                 throw new ArgumentException($"Game with ID {request.GameId} not found");
             }
 
+            // Calculate and update Elo rating if player exists
+            if (game.PlayerId.HasValue)
+            {
+                var player = await _userRepository.GetUserByIdAsync(game.PlayerId.Value);
+                if (player != null)
+                {
+                    // Save rating before game
+                    game.PlayerRatingBefore = player.EloRating;
+
+                    // Determine AI opponent rating based on difficulty
+                    int aiRating = game.Difficulty?.ToLower() switch
+                    {
+                        "easy" => 1200,
+                        "medium" => 2000,
+                        "hard" => 2600,
+                        _ => 2000
+                    };
+
+                    // Convert result to GameResult enum
+                    GameResult gameResult = request.Result.ToLower() switch
+                    {
+                        "win" => GameResult.Win,
+                        "lose" => GameResult.Loss,
+                        "draw" => GameResult.Draw,
+                        _ => GameResult.Draw
+                    };
+
+                    // Calculate new rating
+                    int newRating = EloRatingHelper.UpdateRating(player.EloRating, aiRating, gameResult);
+                    int ratingChange = newRating - player.EloRating;
+
+                    // Update game rating info
+                    game.PlayerRatingAfter = newRating;
+                    game.RatingChange = ratingChange;
+
+                    // Update player stats
+                    player.EloRating = newRating;
+                    player.TotalGamesPlayed++;
+
+                    // Update win/loss/draw counters
+                    switch (gameResult)
+                    {
+                        case GameResult.Win:
+                            player.Wins++;
+                            break;
+                        case GameResult.Loss:
+                            player.Losses++;
+                            break;
+                        case GameResult.Draw:
+                            player.Draws++;
+                            break;
+                    }
+
+                    // Update peak Elo if necessary
+                    if (!player.PeakElo.HasValue || newRating > player.PeakElo.Value)
+                    {
+                        player.PeakElo = newRating;
+                    }
+
+                    // Save player updates
+                    await _userRepository.UpdateUserAsync(player);
+
+                    _logger.LogInformation(
+                        $"Player {player.Username} Elo updated: {game.PlayerRatingBefore} -> {newRating} (" +
+                        $"{(ratingChange >= 0 ? "+" : "")}{ratingChange}) | Result: {request.Result} vs AI ({aiRating})"
+                    );
+                }
+            }
+
             // Update game properties
             game.Result = request.Result.ToLower();
             // Map status to database constraint values: 'waiting', 'in_progress', 'finished'
@@ -509,7 +588,7 @@ namespace robot_chess_api.Services.Implement
 
             await _gameRepository.UpdateAsync(game);
 
-            _logger.LogInformation($"Game {request.GameId} updated - Result: {game.Result}, Status: {game.Status}, Total Moves: {game.TotalMoves}");
+            _logger.LogInformation($"Game {request.GameId} updated - Result: {game.Result}, Status: {game.Status}, Total Moves: {game.TotalMoves}, Rating Change: {game.RatingChange}");
 
             // Send end command to AI via TCP Server
             try
@@ -550,7 +629,10 @@ namespace robot_chess_api.Services.Implement
                 Status = game.Status ?? "",
                 TotalMoves = game.TotalMoves,
                 EndedAt = game.EndedAt,
-                Message = $"Game result updated successfully to '{game.Result}'"
+                Message = $"Game result updated successfully to '{game.Result}'",
+                PlayerRatingBefore = game.PlayerRatingBefore,
+                PlayerRatingAfter = game.PlayerRatingAfter,
+                RatingChange = game.RatingChange
             };
         }
 

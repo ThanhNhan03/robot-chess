@@ -18,6 +18,14 @@ public class UserDto
     public DateTime? LastLoginAt { get; set; }
     public string? PhoneNumber { get; set; }
     public DateTime? CreatedAt { get; set; }
+    
+    // Elo Rating information
+    public int EloRating { get; set; }
+    public int? PeakElo { get; set; }
+    public int TotalGamesPlayed { get; set; }
+    public int Wins { get; set; }
+    public int Losses { get; set; }
+    public int Draws { get; set; }
 }
 
 /// <summary>
@@ -95,4 +103,53 @@ public class UpdateUserStatusDto
 {
     [Required]
     public bool IsActive { get; set; }
+}
+
+/// <summary>
+/// DTO for player statistics and Elo rating
+/// </summary>
+public class PlayerStatsDto
+{
+    public Guid PlayerId { get; set; }
+    public string Username { get; set; } = null!;
+    public string? FullName { get; set; }
+    public string? AvatarUrl { get; set; }
+    
+    // Elo Rating
+    public int EloRating { get; set; }
+    public int? PeakElo { get; set; }
+    public string RatingCategory { get; set; } = null!;
+    public string RatingDescription { get; set; } = null!;
+    public string RatingColor { get; set; } = null!;
+    
+    // Game Statistics
+    public int TotalGamesPlayed { get; set; }
+    public int Wins { get; set; }
+    public int Losses { get; set; }
+    public int Draws { get; set; }
+    public double WinRate { get; set; }
+    
+    // Recent performance
+    public int? LastRatingChange { get; set; }
+    public DateTime? LastGameAt { get; set; }
+}
+
+/// <summary>
+/// DTO for leaderboard entry
+/// </summary>
+public class LeaderboardEntryDto
+{
+    public int Rank { get; set; }
+    public Guid PlayerId { get; set; }
+    public string Username { get; set; } = null!;
+    public string? FullName { get; set; }
+    public string? AvatarUrl { get; set; }
+    public int EloRating { get; set; }
+    public int? PeakElo { get; set; }
+    public string RatingCategory { get; set; } = null!;
+    public int TotalGamesPlayed { get; set; }
+    public int Wins { get; set; }
+    public int Losses { get; set; }
+    public int Draws { get; set; }
+    public double WinRate { get; set; }
 }

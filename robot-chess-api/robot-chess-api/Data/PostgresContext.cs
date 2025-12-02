@@ -146,6 +146,31 @@ public partial class PostgresContext : DbContext
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("last_login_at");
             entity.Property(e => e.PhoneNumber).HasColumnName("phone_number");
+            
+            // Points System
+            entity.Property(e => e.PointsBalance)
+                .HasDefaultValue(0)
+                .HasColumnName("points_balance");
+            
+            // Elo Rating System
+            entity.Property(e => e.EloRating)
+                .HasDefaultValue(1200)
+                .HasColumnName("elo_rating");
+            entity.Property(e => e.PeakElo)
+                .HasDefaultValue(1200)
+                .HasColumnName("peak_elo");
+            entity.Property(e => e.TotalGamesPlayed)
+                .HasDefaultValue(0)
+                .HasColumnName("total_games_played");
+            entity.Property(e => e.Wins)
+                .HasDefaultValue(0)
+                .HasColumnName("wins");
+            entity.Property(e => e.Losses)
+                .HasDefaultValue(0)
+                .HasColumnName("losses");
+            entity.Property(e => e.Draws)
+                .HasDefaultValue(0)
+                .HasColumnName("draws");
         });
 
         modelBuilder.Entity<Feedback>(entity =>
@@ -203,6 +228,11 @@ public partial class PostgresContext : DbContext
             entity.Property(e => e.Difficulty)
                 .HasDefaultValueSql("'medium'::text")
                 .HasColumnName("difficulty");
+            
+            // Elo Rating tracking
+            entity.Property(e => e.PlayerRatingBefore).HasColumnName("player_rating_before");
+            entity.Property(e => e.PlayerRatingAfter).HasColumnName("player_rating_after");
+            entity.Property(e => e.RatingChange).HasColumnName("rating_change");
 
             entity.HasOne(d => d.GameType).WithMany(p => p.Games)
                 .HasForeignKey(d => d.GameTypeId)

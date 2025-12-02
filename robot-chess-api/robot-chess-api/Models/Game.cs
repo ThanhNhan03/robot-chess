@@ -31,6 +31,13 @@ public partial class Game
 
     public string? Difficulty { get; set; }
 
+    // Elo Rating tracking
+    public int? PlayerRatingBefore { get; set; }
+
+    public int? PlayerRatingAfter { get; set; }
+
+    public int? RatingChange { get; set; }
+
     public virtual GameType? GameType { get; set; }
 
     public virtual AppUser? Player { get; set; }

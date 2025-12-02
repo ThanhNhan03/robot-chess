@@ -27,6 +27,11 @@ namespace robot_chess_api.DTOs
         public Guid? PuzzleId { get; set; }
         public string? Difficulty { get; set; }
         
+        // Elo Rating tracking
+        public int? PlayerRatingBefore { get; set; }
+        public int? PlayerRatingAfter { get; set; }
+        public int? RatingChange { get; set; }
+        
         // Navigation properties
         public GameTypeDto? GameType { get; set; }
         public string? PlayerName { get; set; }
@@ -101,6 +106,11 @@ namespace robot_chess_api.DTOs
         public int? TotalMoves { get; set; }
         public DateTime? EndedAt { get; set; }
         public string Message { get; set; } = string.Empty;
+        
+        // Elo Rating information
+        public int? PlayerRatingBefore { get; set; }
+        public int? PlayerRatingAfter { get; set; }
+        public int? RatingChange { get; set; }
     }
 
     // Request to end game
