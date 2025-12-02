@@ -81,4 +81,25 @@ namespace robot_chess_api.DTOs
         public string PuzzleFen { get; set; } = string.Empty;
         public string Difficulty { get; set; } = "medium";
     }
+
+    // Request to update game result and status
+    public class UpdateGameResultRequestDto
+    {
+        public Guid GameId { get; set; }
+        public string Result { get; set; } = string.Empty; // "win", "lose", "draw"
+        public string Status { get; set; } = "completed"; // "completed" (auto-mapped to "finished"), "abandoned", "waiting", "in_progress"
+        public int? TotalMoves { get; set; }
+        public string? FenCurrent { get; set; }
+    }
+
+    // Response after updating game result
+    public class UpdateGameResultResponseDto
+    {
+        public Guid GameId { get; set; }
+        public string Result { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public int? TotalMoves { get; set; }
+        public DateTime? EndedAt { get; set; }
+        public string Message { get; set; } = string.Empty;
+    }
 }

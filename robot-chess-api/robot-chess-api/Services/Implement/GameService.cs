@@ -463,5 +463,63 @@ namespace robot_chess_api.Services.Implement
                 CreatedAt = m.CreatedAt ?? DateTime.UtcNow
             });
         }
+
+        public async Task<UpdateGameResultResponseDto> UpdateGameResultAsync(UpdateGameResultRequestDto request)
+        {
+            // Validate result value
+            var validResults = new[] { "win", "lose", "draw", "abandoned" };
+            if (!validResults.Contains(request.Result.ToLower()))
+            {
+                throw new ArgumentException($"Invalid result value. Must be one of: {string.Join(", ", validResults)}");
+            }
+
+            // Get existing game
+            var game = await _gameRepository.GetByIdAsync(request.GameId);
+            if (game == null)
+            {
+                throw new ArgumentException($"Game with ID {request.GameId} not found");
+            }
+
+            // Update game properties
+            game.Result = request.Result.ToLower();
+            // Map status to database constraint values: 'waiting', 'in_progress', 'finished'
+            game.Status = request.Status == "completed" ? "finished" : request.Status;
+            game.EndedAt = DateTime.UtcNow;
+
+            // Update FEN if provided
+            if (!string.IsNullOrEmpty(request.FenCurrent))
+            {
+                game.FenCurrent = request.FenCurrent;
+            }
+
+            // Update total moves if provided, otherwise keep existing or calculate from moves
+            if (request.TotalMoves.HasValue)
+            {
+                game.TotalMoves = request.TotalMoves.Value;
+            }
+            else if (!game.TotalMoves.HasValue || game.TotalMoves == 0)
+            {
+                // Try to get from database moves
+                var moves = await _gameMoveRepository.GetByGameIdAsync(request.GameId);
+                if (moves.Any())
+                {
+                    game.TotalMoves = moves.Max(m => m.MoveNumber ?? 0);
+                }
+            }
+
+            await _gameRepository.UpdateAsync(game);
+
+            _logger.LogInformation($"Game {request.GameId} updated - Result: {game.Result}, Status: {game.Status}, Total Moves: {game.TotalMoves}");
+
+            return new UpdateGameResultResponseDto
+            {
+                GameId = game.Id,
+                Result = game.Result ?? "",
+                Status = game.Status ?? "",
+                TotalMoves = game.TotalMoves,
+                EndedAt = game.EndedAt,
+                Message = $"Game result updated successfully to '{game.Result}'"
+            };
+        }
     }
 }

@@ -100,6 +100,43 @@ namespace robot_chess_api.Controllers
         }
 
         /// <summary>
+        /// Update game result (win/lose/draw) and total moves
+        /// NOTE: This must come BEFORE [HttpGet("{id}")] to avoid route conflicts
+        /// </summary>
+        [HttpPut("{gameId}/result")]
+        [Authorize]
+        public async Task<ActionResult<UpdateGameResultResponseDto>> UpdateGameResult(
+            Guid gameId,
+            [FromBody] UpdateGameResultRequestDto request)
+        {
+            try
+            {
+                // Ensure gameId in route matches request body
+                if (request.GameId == Guid.Empty)
+                {
+                    request.GameId = gameId;
+                }
+                else if (request.GameId != gameId)
+                {
+                    return BadRequest(new { message = "Game ID in route does not match request body" });
+                }
+
+                var result = await _gameService.UpdateGameResultAsync(request);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, $"Invalid request for updating game {gameId} result");
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error updating game {gameId} result");
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Get game by ID
         /// </summary>
         [HttpGet("{id}")]
