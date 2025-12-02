@@ -2,41 +2,41 @@
   <div class="user-management">
     <div class="panel-header">
       <h2 class="panel-title">
-        <span>�</span>
+        <Users :size="24" />
         User Management
       </h2>
       <button class="btn-flat btn-primary" title="Add a new user to the system">
-        <span>➕</span> Add New User
+        <Plus :size="18" /> Add New User
       </button>
     </div>
 
     <!-- Statistics Cards -->
     <div class="stats-grid">
       <div class="stat-card stat-success">
-        <div class="stat-icon">👥</div>
+        <div class="stat-icon"><Users :size="32" /></div>
         <div class="stat-content">
-          <div class="stat-value">156</div>
+          <div class="stat-value">{{ stats.totalUsers }}</div>
           <div class="stat-label">Total Users</div>
         </div>
       </div>
       <div class="stat-card stat-info">
-        <div class="stat-icon">🟢</div>
+        <div class="stat-icon"><UserCheck :size="32" /></div>
         <div class="stat-content">
-          <div class="stat-value">89</div>
+          <div class="stat-value">{{ stats.activeUsers }}</div>
           <div class="stat-label">Active Users</div>
         </div>
       </div>
       <div class="stat-card stat-warning">
-        <div class="stat-icon">👨‍💼</div>
+        <div class="stat-icon"><Shield :size="32" /></div>
         <div class="stat-content">
-          <div class="stat-value">5</div>
+          <div class="stat-value">{{ stats.adminUsers }}</div>
           <div class="stat-label">Admins</div>
         </div>
       </div>
       <div class="stat-card stat-primary">
-        <div class="stat-icon">🆕</div>
+        <div class="stat-icon"><UserPlus :size="32" /></div>
         <div class="stat-content">
-          <div class="stat-value">12</div>
+          <div class="stat-value">{{ stats.newUsersThisWeek }}</div>
           <div class="stat-label">New This Week</div>
         </div>
       </div>
@@ -46,16 +46,23 @@
     <div class="panel-section">
       <div class="search-filter-bar">
         <div class="search-box">
-          <input type="text" class="input-flat" placeholder="Search users by name or email..." />
+          <Search :size="20" class="search-icon" />
+          <input 
+            type="text" 
+            class="input-flat" 
+            placeholder="Search users by name or email..." 
+            v-model="searchQuery"
+            @input="filterUsers"
+          />
         </div>
         <div class="filter-controls">
-          <select class="select-flat">
+          <select class="select-flat" v-model="filterRole" @change="filterUsers">
             <option value="">All Roles</option>
             <option value="admin">Admin</option>
             <option value="player">Player</option>
             <option value="viewer">Viewer</option>
           </select>
-          <select class="select-flat">
+          <select class="select-flat" v-model="filterStatus" @change="filterUsers">
             <option value="">All Status</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
@@ -66,8 +73,25 @@
 
     <!-- Users List -->
     <div class="panel-section">
-      <h3 class="section-title">Users List</h3>
-      <div class="users-table">
+      <h3 class="section-title">Users List ({{ filteredUsers.length }})</h3>
+      
+      <!-- Loading State -->
+      <div v-if="isLoading" class="loading-state">
+        <div class="spinner-large"></div>
+        <p>Loading users...</p>
+      </div>
+
+      <!-- Error State -->
+      <div v-else-if="error" class="error-state">
+        <AlertCircle :size="48" class="error-icon" />
+        <p>{{ error }}</p>
+        <button class="btn-flat btn-primary" @click="loadUsers">
+          <RefreshCw :size="16" /> Retry
+        </button>
+      </div>
+
+      <!-- Users Table -->
+      <div v-else class="users-table">
         <table class="table-flat">
           <thead>
             <tr>
@@ -84,107 +108,72 @@
             </tr>
           </thead>
           <tbody>
-            <!-- User Row 1 - Admin -->
-            <tr>
-              <td>
-                <div class="user-avatar">👨‍💼</div>
-              </td>
-              <td><strong>admin_001</strong></td>
-              <td>admin@chessrobot.com</td>
-              <td>John Smith</td>
-              <td>+1-555-0101</td>
-              <td><span class="badge-flat badge-danger">ADMIN</span></td>
-              <td><span class="badge-flat badge-success">ACTIVE</span></td>
-              <td>2024-11-29 09:15</td>
-              <td>2024-01-15</td>
-              <td>
-                <div class="action-buttons">
-                  <button class="btn-flat btn-sm btn-primary" title="Edit user details">✏️ Edit</button>
-                  <button class="btn-flat btn-sm btn-warning" title="Suspend user account">⏸️ Suspend</button>
-                </div>
+            <tr v-if="filteredUsers.length === 0">
+              <td colspan="10" style="text-align: center; padding: 40px;">
+                No users found
               </td>
             </tr>
-
-            <!-- User Row 2 - Player -->
-            <tr>
+            <tr 
+              v-for="user in paginatedUsers" 
+              :key="user.id"
+              :class="{ 'user-inactive': !user.isActive }"
+            >
               <td>
-                <div class="user-avatar">👨</div>
-              </td>
-              <td><strong>player_123</strong></td>
-              <td>player123@email.com</td>
-              <td>Michael Johnson</td>
-              <td>+1-555-0123</td>
-              <td><span class="badge-flat badge-primary">PLAYER</span></td>
-              <td><span class="badge-flat badge-success">ACTIVE</span></td>
-              <td>2024-11-29 14:30</td>
-              <td>2024-03-20</td>
-              <td>
-                <div class="action-buttons">
-                  <button class="btn-flat btn-sm btn-primary" title="Edit user details">✏️ Edit</button>
-                  <button class="btn-flat btn-sm btn-warning" title="Suspend user account">⏸️ Suspend</button>
+                <div class="user-avatar">
+                  {{ user.avatarUrl || getUserInitial(user.username) }}
                 </div>
               </td>
-            </tr>
-
-            <!-- User Row 3 - Player -->
-            <tr>
+              <td><strong>{{ user.username }}</strong></td>
+              <td>{{ user.email }}</td>
+              <td>{{ user.fullName || '-' }}</td>
+              <td>{{ user.phoneNumber || '-' }}</td>
               <td>
-                <div class="user-avatar">👩</div>
+                <span 
+                  class="badge-flat"
+                  :class="{
+                    'badge-danger': user.role === 'admin',
+                    'badge-primary': user.role === 'player',
+                    'badge-info': user.role === 'viewer'
+                  }"
+                >
+                  {{ user.role.toUpperCase() }}
+                </span>
               </td>
-              <td><strong>chess_master</strong></td>
-              <td>sarah.chen@email.com</td>
-              <td>Sarah Chen</td>
-              <td>+1-555-0456</td>
-              <td><span class="badge-flat badge-primary">PLAYER</span></td>
-              <td><span class="badge-flat badge-success">ACTIVE</span></td>
-              <td>2024-11-29 13:45</td>
-              <td>2024-05-10</td>
+              <td>
+                <span 
+                  class="badge-flat"
+                  :class="user.isActive ? 'badge-success' : 'badge-danger'"
+                >
+                  {{ user.isActive ? 'ACTIVE' : 'INACTIVE' }}
+                </span>
+              </td>
+              <td>{{ formatDate(user.lastLoginAt) }}</td>
+              <td>{{ formatDate(user.createdAt) }}</td>
               <td>
                 <div class="action-buttons">
-                  <button class="btn-flat btn-sm btn-primary" title="Edit user details">✏️ Edit</button>
-                  <button class="btn-flat btn-sm btn-warning" title="Suspend user account">⏸️ Suspend</button>
-                </div>
-              </td>
-            </tr>
-
-            <!-- User Row 4 - Viewer -->
-            <tr>
-              <td>
-                <div class="user-avatar">🧑</div>
-              </td>
-              <td><strong>viewer_789</strong></td>
-              <td>viewer789@email.com</td>
-              <td>Alex Martinez</td>
-              <td>+1-555-0789</td>
-              <td><span class="badge-flat badge-info">VIEWER</span></td>
-              <td><span class="badge-flat badge-success">ACTIVE</span></td>
-              <td>2024-11-28 16:20</td>
-              <td>2024-10-28</td>
-              <td>
-                <div class="action-buttons">
-                  <button class="btn-flat btn-sm btn-primary" title="Edit user details">✏️ Edit</button>
-                  <button class="btn-flat btn-sm btn-warning" title="Suspend user account">⏸️ Suspend</button>
-                </div>
-              </td>
-            </tr>
-
-            <!-- User Row 5 - Inactive Player -->
-            <tr class="user-inactive">
-              <td>
-                <div class="user-avatar">👤</div>
-              </td>
-              <td><strong>old_player</strong></td>
-              <td>old@email.com</td>
-              <td>David Wilson</td>
-              <td>-</td>
-              <td><span class="badge-flat badge-primary">PLAYER</span></td>
-              <td><span class="badge-flat badge-danger">INACTIVE</span></td>
-              <td>2024-08-15 10:30</td>
-              <td>2023-12-01</td>
-              <td>
-                <div class="action-buttons">
-                  <button class="btn-flat btn-sm btn-primary" title="Edit user details">✏️ Edit</button>
-                  <button class="btn-flat btn-sm btn-success" title="Activate user account">▶️ Activate</button>
+                  <button 
+                    class="btn-flat btn-sm btn-primary" 
+                    @click="editUser(user)"
+                    title="Edit user details"
+                  >
+                    <Edit2 :size="14" /> Edit
+                  </button>
+                  <button 
+                    v-if="user.isActive"
+                    class="btn-flat btn-sm btn-warning" 
+                    @click="toggleUserStatus(user)"
+                    title="Suspend user account"
+                  >
+                    <UserX :size="14" /> Suspend
+                  </button>
+                  <button 
+                    v-else
+                    class="btn-flat btn-sm btn-success" 
+                    @click="toggleUserStatus(user)"
+                    title="Activate user account"
+                  >
+                    <UserCheck2 :size="14" /> Activate
+                  </button>
                 </div>
               </td>
             </tr>
@@ -193,78 +182,323 @@
       </div>
 
       <!-- Pagination -->
-      <div class="pagination">
-        <button class="btn-flat btn-sm btn-secondary" disabled title="Go to previous page">⬅️ Previous</button>
+      <div class="pagination" v-if="totalPages > 1">
+        <button 
+          class="btn-flat btn-sm btn-secondary" 
+          @click="currentPage--"
+          :disabled="currentPage === 1"
+          title="Go to previous page"
+        >
+          <ChevronLeft :size="16" /> Previous
+        </button>
         <div class="page-numbers">
-          <button class="btn-flat btn-sm btn-primary" title="Current page">1</button>
-          <button class="btn-flat btn-sm" title="Go to page 2">2</button>
-          <button class="btn-flat btn-sm" title="Go to page 3">3</button>
-          <button class="btn-flat btn-sm" title="Go to page 4">4</button>
-          <button class="btn-flat btn-sm" title="Go to page 5">5</button>
+          <button 
+            v-for="page in displayedPages"
+            :key="page"
+            class="btn-flat btn-sm"
+            :class="{ 'btn-primary': page === currentPage }"
+            @click="currentPage = page"
+            :title="`Go to page ${page}`"
+          >
+            {{ page }}
+          </button>
         </div>
-        <button class="btn-flat btn-sm btn-secondary" title="Go to next page">Next ➡️</button>
+        <button 
+          class="btn-flat btn-sm btn-secondary" 
+          @click="currentPage++"
+          :disabled="currentPage === totalPages"
+          title="Go to next page"
+        >
+          Next <ChevronRight :size="16" />
+        </button>
       </div>
     </div>
 
-    <!-- User Activity Log -->
-    <div class="panel-section">
-      <h3 class="section-title">Recent User Activity</h3>
-      <div class="activity-log">
-        <table class="table-flat">
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>User</th>
-              <th>Action</th>
-              <th>Details</th>
-              <th>IP Address</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>11:23:45</td>
-              <td>player_123</td>
-              <td><span class="badge-flat badge-info">LOGIN</span></td>
-              <td>Successful login</td>
-              <td>192.168.1.105</td>
-            </tr>
-            <tr>
-              <td>11:15:22</td>
-              <td>chess_master</td>
-              <td><span class="badge-flat badge-success">GAME_START</span></td>
-              <td>Started game vs Robot #1</td>
-              <td>192.168.1.110</td>
-            </tr>
-            <tr>
-              <td>11:10:11</td>
-              <td>guest_789</td>
-              <td><span class="badge-flat badge-warning">PROFILE_UPDATE</span></td>
-              <td>Updated profile picture</td>
-              <td>192.168.1.115</td>
-            </tr>
-            <tr>
-              <td>11:05:33</td>
-              <td>admin_001</td>
-              <td><span class="badge-flat badge-danger">USER_SUSPEND</span></td>
-              <td>Suspended user: old_player</td>
-              <td>192.168.1.100</td>
-            </tr>
-            <tr>
-              <td>10:58:12</td>
-              <td>player_123</td>
-              <td><span class="badge-flat badge-success">GAME_END</span></td>
-              <td>Won against Robot #2</td>
-              <td>192.168.1.105</td>
-            </tr>
-          </tbody>
-        </table>
+    <!-- Create/Edit User Dialog -->
+    <div v-if="showCreateDialog || showEditDialog" class="modal-overlay" @click.self="closeDialogs">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3>{{ showEditDialog ? 'Edit User' : 'Create New User' }}</h3>
+          <button class="btn-close" @click="closeDialogs">
+            <X :size="20" />
+          </button>
+        </div>
+        <div class="modal-body">
+          <form @submit.prevent="showEditDialog ? updateUserSubmit() : createUserSubmit()">
+            <div class="form-group">
+              <label>Email *</label>
+              <input v-model="userForm.email" type="email" class="input-flat" required />
+            </div>
+            <div class="form-group">
+              <label>Username *</label>
+              <input v-model="userForm.username" type="text" class="input-flat" required />
+            </div>
+            <div class="form-group" v-if="!showEditDialog">
+              <label>Password *</label>
+              <input v-model="userForm.password" type="password" class="input-flat" required minlength="6" />
+            </div>
+            <div class="form-group">
+              <label>Full Name</label>
+              <input v-model="userForm.fullName" type="text" class="input-flat" />
+            </div>
+            <div class="form-group">
+              <label>Phone Number</label>
+              <input v-model="userForm.phoneNumber" type="tel" class="input-flat" />
+            </div>
+            <div class="form-group">
+              <label>Role *</label>
+              <select v-model="userForm.role" class="select-flat" required>
+                <option value="player">Player</option>
+                <option value="admin">Admin</option>
+                <option value="viewer">Viewer</option>
+              </select>
+            </div>
+            <div class="modal-actions">
+              <button type="button" class="btn-flat btn-secondary" @click="closeDialogs">Cancel</button>
+              <button type="submit" class="btn-flat btn-primary" :disabled="isSaving">
+                {{ isSaving ? 'Saving...' : (showEditDialog ? 'Update' : 'Create') }}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-// Component logic will be implemented later
+import { ref, computed, onMounted } from 'vue'
+import { 
+  Users, Plus, UserCheck, Shield, UserPlus, Search,
+  Edit2, UserX, UserCheck2, AlertCircle, RefreshCw,
+  ChevronLeft, ChevronRight, X
+} from 'lucide-vue-next'
+import { userService, type User, type CreateUserRequest, type UpdateUserRequest, type UserStats } from '../../services/userService'
+
+// State
+const users = ref<User[]>([])
+const filteredUsers = ref<User[]>([])
+const stats = ref<UserStats>({
+  totalUsers: 0,
+  activeUsers: 0,
+  adminUsers: 0,
+  newUsersThisWeek: 0
+})
+const isLoading = ref(false)
+const error = ref('')
+
+// Filters
+const searchQuery = ref('')
+const filterRole = ref('')
+const filterStatus = ref('')
+
+// Pagination
+const currentPage = ref(1)
+const pageSize = 10
+
+// Dialogs
+const showCreateDialog = ref(false)
+const showEditDialog = ref(false)
+const isSaving = ref(false)
+
+// User Form
+const userForm = ref({
+  id: '',
+  email: '',
+  username: '',
+  password: '',
+  fullName: '',
+  phoneNumber: '',
+  role: 'player'
+})
+
+// Computed
+const totalPages = computed(() => Math.ceil(filteredUsers.value.length / pageSize))
+
+const paginatedUsers = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  const end = start + pageSize
+  return filteredUsers.value.slice(start, end)
+})
+
+const displayedPages = computed(() => {
+  const pages = []
+  const maxPages = 5
+  let startPage = Math.max(1, currentPage.value - 2)
+  let endPage = Math.min(totalPages.value, startPage + maxPages - 1)
+  
+  if (endPage - startPage < maxPages - 1) {
+    startPage = Math.max(1, endPage - maxPages + 1)
+  }
+  
+  for (let i = startPage; i <= endPage; i++) {
+    pages.push(i)
+  }
+  
+  return pages
+})
+
+// Methods
+const loadUsers = async () => {
+  isLoading.value = true
+  error.value = ''
+  
+  try {
+    const [usersData, statsData] = await Promise.all([
+      userService.getAllUsers(true),
+      userService.getUserStats()
+    ])
+    
+    users.value = usersData
+    stats.value = statsData
+    filterUsers()
+  } catch (err: any) {
+    error.value = err.message || 'Failed to load users'
+    console.error('Load users error:', err)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const filterUsers = () => {
+  let result = [...users.value]
+  
+  // Search filter
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    result = result.filter(u => 
+      u.username.toLowerCase().includes(query) ||
+      u.email.toLowerCase().includes(query) ||
+      (u.fullName && u.fullName.toLowerCase().includes(query))
+    )
+  }
+  
+  // Role filter
+  if (filterRole.value) {
+    result = result.filter(u => u.role === filterRole.value)
+  }
+  
+  // Status filter
+  if (filterStatus.value) {
+    const isActive = filterStatus.value === 'active'
+    result = result.filter(u => u.isActive === isActive)
+  }
+  
+  filteredUsers.value = result
+  currentPage.value = 1 // Reset to first page
+}
+
+const getUserInitial = (username: string) => {
+  return username.charAt(0).toUpperCase()
+}
+
+const formatDate = (dateStr?: string) => {
+  if (!dateStr) return '-'
+  
+  const date = new Date(dateStr)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  
+  return `${year}-${month}-${day} ${hours}:${minutes}`
+}
+
+const editUser = (user: User) => {
+  userForm.value = {
+    id: user.id,
+    email: user.email,
+    username: user.username,
+    password: '',
+    fullName: user.fullName || '',
+    phoneNumber: user.phoneNumber || '',
+    role: user.role
+  }
+  showEditDialog.value = true
+}
+
+const toggleUserStatus = async (user: User) => {
+  const action = user.isActive ? 'suspend' : 'activate'
+  
+  if (!confirm(`Are you sure you want to ${action} user ${user.username}?`)) {
+    return
+  }
+  
+  try {
+    await userService.updateUserStatus(user.id, !user.isActive)
+    await loadUsers()
+    alert(`User ${action}d successfully`)
+  } catch (err: any) {
+    alert(`Failed to ${action} user: ${err.message}`)
+  }
+}
+
+const createUserSubmit = async () => {
+  isSaving.value = true
+  
+  try {
+    const data: CreateUserRequest = {
+      email: userForm.value.email,
+      username: userForm.value.username,
+      password: userForm.value.password,
+      fullName: userForm.value.fullName || undefined,
+      phoneNumber: userForm.value.phoneNumber || undefined,
+      role: userForm.value.role
+    }
+    
+    await userService.createUser(data)
+    await loadUsers()
+    closeDialogs()
+    alert('User created successfully')
+  } catch (err: any) {
+    alert(`Failed to create user: ${err.message}`)
+  } finally {
+    isSaving.value = false
+  }
+}
+
+const updateUserSubmit = async () => {
+  isSaving.value = true
+  
+  try {
+    const data: UpdateUserRequest = {
+      email: userForm.value.email,
+      username: userForm.value.username,
+      fullName: userForm.value.fullName || undefined,
+      phoneNumber: userForm.value.phoneNumber || undefined,
+      role: userForm.value.role
+    }
+    
+    await userService.updateUser(userForm.value.id, data)
+    await loadUsers()
+    closeDialogs()
+    alert('User updated successfully')
+  } catch (err: any) {
+    alert(`Failed to update user: ${err.message}`)
+  } finally {
+    isSaving.value = false
+  }
+}
+
+const closeDialogs = () => {
+  showCreateDialog.value = false
+  showEditDialog.value = false
+  userForm.value = {
+    id: '',
+    email: '',
+    username: '',
+    password: '',
+    fullName: '',
+    phoneNumber: '',
+    role: 'player'
+  }
+}
+
+// Lifecycle
+onMounted(() => {
+  loadUsers()
+})
 </script>
 
 <style scoped>

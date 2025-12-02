@@ -5,7 +5,17 @@
       <div class="header-content">
         <h1 class="admin-title">ADMIN DASHBOARD</h1>
         <div class="header-actions">
-          <button class="btn-flat btn-danger">Logout</button>
+          <div class="user-info">
+            <span class="user-avatar">{{ userInitial }}</span>
+            <div class="user-details">
+              <span class="user-name">{{ userName }}</span>
+              <span class="user-role">Administrator</span>
+            </div>
+          </div>
+          <button class="btn-flat btn-danger" @click="handleLogout">
+            <span class="logout-icon">🚪</span>
+            Logout
+          </button>
         </div>
       </div>
     </header>
@@ -111,7 +121,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../../store/auth'
 import OverviewDashboard from '../../components/admin/OverviewDashboard.vue'
 import RobotManagement from '../../components/admin/RobotManagement.vue'
 import AIManagement from '../../components/admin/AIManagement.vue'
@@ -119,7 +131,33 @@ import UserManagement from '../../components/admin/UserManagement.vue'
 import FAQManagement from '../../components/admin/FAQManagement.vue'
 import NotificationManagement from '../../components/admin/NotificationManagement.vue'
 
+const router = useRouter()
+const authStore = useAuthStore()
+
 const activeTab = ref<'overview' | 'robot' | 'ai' | 'user' | 'faq' | 'notification' | 'settings' | 'logs'>('overview')
+
+const userName = computed(() => {
+  return authStore.user.value?.fullName || authStore.user.value?.username || 'Admin'
+})
+
+const userInitial = computed(() => {
+  const name = userName.value
+  return name.charAt(0).toUpperCase()
+})
+
+const handleLogout = async () => {
+  if (confirm('Are you sure you want to logout?')) {
+    await authStore.logout()
+    router.push('/login')
+  }
+}
+
+onMounted(() => {
+  // Verify user is still authenticated
+  if (!authStore.isAuthenticated.value || !authStore.isAdmin.value) {
+    router.push('/login')
+  }
+})
 </script>
 
 <style scoped>
