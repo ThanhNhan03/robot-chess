@@ -81,11 +81,33 @@ class StreamingHandler(BaseHTTPRequestHandler):
     
     camera_stream = None
     
+    def _set_cors_headers(self):
+        """Set CORS headers to allow cross-origin requests"""
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header('Cross-Origin-Resource-Policy', 'cross-origin')
+        self.send_header('Cross-Origin-Embedder-Policy', 'unsafe-none')
+    
+    def do_OPTIONS(self):
+        """Handle OPTIONS requests for CORS preflight"""
+        self.send_response(200)
+        self._set_cors_headers()
+        self.end_headers()
+    
+    def do_HEAD(self):
+        """Handle HEAD requests for connection testing"""
+        self.send_response(200)
+        self.send_header('Content-type', 'multipart/x-mixed-replace; boundary=--jpgboundary')
+        self._set_cors_headers()
+        self.end_headers()
+    
     def do_GET(self):
         """Handle GET requests"""
         if self.path == '/':
             self.send_response(200)
             self.send_header('Content-type', 'text/html')
+            self._set_cors_headers()
             self.end_headers()
             self.wfile.write(b"""
                 <html>
@@ -122,6 +144,7 @@ class StreamingHandler(BaseHTTPRequestHandler):
         elif self.path == '/stream':
             self.send_response(200)
             self.send_header('Content-type', 'multipart/x-mixed-replace; boundary=--jpgboundary')
+            self._set_cors_headers()
             self.end_headers()
             
             try:
@@ -130,9 +153,9 @@ class StreamingHandler(BaseHTTPRequestHandler):
                         frame_bytes = self.camera_stream.get_frame()
                         if frame_bytes:
                             self.wfile.write(b"--jpgboundary\r\n")
-                            self.send_header('Content-type', 'image/jpeg')
-                            self.send_header('Content-length', str(len(frame_bytes)))
-                            self.end_headers()
+                            self.wfile.write(b"Content-type: image/jpeg\r\n")
+                            self.wfile.write(f"Content-length: {len(frame_bytes)}\r\n".encode())
+                            self.wfile.write(b"\r\n")
                             self.wfile.write(frame_bytes)
                             self.wfile.write(b"\r\n")
                     time.sleep(0.033)  # ~30fps
