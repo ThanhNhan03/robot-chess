@@ -96,3 +96,14 @@ public class UpdateUserStatusDto
     [Required]
     public bool IsActive { get; set; }
 }
+
+/// <summary>
+/// DTO for user statistics
+/// </summary>
+public class UserStatsDto
+{
+    public int TotalUsers { get; set; }
+    public int ActiveUsers { get; set; }
+    public int AdminUsers { get; set; }
+    public int NewUsersThisWeek { get; set; }
+}

@@ -207,5 +207,21 @@ namespace robot_chess_api.Controllers
                 return StatusCode(500, "Internal server error");
             }
         }
+
+        // GET: api/robots/{id}/commands
+        [HttpGet("{id}/commands")]
+        public async Task<ActionResult<IEnumerable<RobotCommandHistoryDto>>> GetCommandHistory(Guid id, [FromQuery] int limit = 50)
+        {
+            try
+            {
+                var commands = await _robotService.GetCommandHistoryAsync(id, limit);
+                return Ok(commands);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error getting command history for robot {id}");
+                return StatusCode(500, "Internal server error");
+            }
+        }
     }
 }

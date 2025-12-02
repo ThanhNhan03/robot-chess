@@ -229,6 +229,25 @@ public class UserService : IUserService
         };
     }
 
+    public async Task<UserStatsDto> GetUserStatsAsync()
+    {
+        var allUsers = await _userRepository.GetAllUsersAsync(includeInactive: true);
+        var activeUsers = allUsers.Where(u => u.IsActive).ToList();
+        
+        var weekAgo = DateTime.UtcNow.AddDays(-7);
+        var newUsersThisWeek = activeUsers
+            .Where(u => u.CreatedAt.HasValue && u.CreatedAt.Value >= weekAgo)
+            .Count();
+
+        return new UserStatsDto
+        {
+            TotalUsers = activeUsers.Count,
+            ActiveUsers = activeUsers.Count, // Same as active users (IsActive = true)
+            AdminUsers = activeUsers.Count(u => u.Role == "admin"),
+            NewUsersThisWeek = newUsersThisWeek
+        };
+    }
+
     private static UserDto MapToDto(AppUser user)
     {
         return new UserDto
