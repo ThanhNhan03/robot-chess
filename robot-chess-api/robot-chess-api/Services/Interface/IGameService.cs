@@ -22,5 +22,8 @@ namespace robot_chess_api.Services.Interface
         
         // End game and notify AI
         Task<EndGameResponseDto> EndGameAsync(Guid gameId, string reason);
+        
+        // Game replay
+        Task<GameReplayDto?> GetGameReplayAsync(Guid gameId);
     }
 }

@@ -269,6 +269,35 @@ namespace robot_chess_api.Controllers
         }
 
         /// <summary>
+        /// Get complete game replay data with all moves (optimized for replay feature)
+        /// </summary>
+        [HttpGet("{gameId}/replay")]
+        public async Task<ActionResult<GameReplayDto>> GetGameReplay(Guid gameId)
+        {
+            try
+            {
+                var replayData = await _gameService.GetGameReplayAsync(gameId);
+                if (replayData == null)
+                {
+                    return NotFound(new { message = $"Game with ID {gameId} not found" });
+                }
+
+                // Validate that game is finished before allowing replay
+                if (replayData.Status != "finished" && replayData.Status != "aborted")
+                {
+                    return BadRequest(new { message = "Game must be finished before replay" });
+                }
+
+                return Ok(replayData);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error getting replay data for game {gameId}");
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Get moves for a game within a specific range
         /// </summary>
         [HttpPost("moves/range")]

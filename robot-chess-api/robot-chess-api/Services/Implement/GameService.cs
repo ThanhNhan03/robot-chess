@@ -66,7 +66,7 @@ namespace robot_chess_api.Services.Implement
                 PuzzleId = request.PuzzleId,
                 Difficulty = request.Difficulty,
                 Status = "waiting",
-                FenStart = "5r1k/1b2Nppp/8/2R5/4Q3/8/5PPP/6K1 w - - 0 1",
+                FenStart = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
                 TotalMoves = 0,
                 CreatedAt = DateTime.UtcNow,
                 StartedAt = DateTime.UtcNow
@@ -153,7 +153,7 @@ namespace robot_chess_api.Services.Implement
                         game_id = game.Id.ToString(),
                         status = "resume",
                         difficulty = game.Difficulty ?? "medium",
-                        fen = game.FenCurrent ?? game.FenStart ?? "5r1k/1b2Nppp/8/2R5/4Q3/8/5PPP/6K1 w - - 0 1"
+                        fen = game.FenCurrent ?? game.FenStart ?? "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
                     }
                 };
 
@@ -699,6 +699,128 @@ namespace robot_chess_api.Services.Implement
                     Reason = reason
                 };
             }
+        }
+
+        public async Task<GameReplayDto?> GetGameReplayAsync(Guid gameId)
+        {
+            // Get game details
+            var game = await _gameRepository.GetByIdAsync(gameId);
+            if (game == null) return null;
+
+            // Get all moves for the game
+            var moves = await _gameMoveRepository.GetByGameIdAsync(gameId);
+            var movesList = moves.OrderBy(m => m.MoveNumber).ToList();
+
+            // Calculate duration
+            int? durationSeconds = null;
+            if (game.StartedAt.HasValue && game.EndedAt.HasValue)
+            {
+                durationSeconds = (int)(game.EndedAt.Value - game.StartedAt.Value).TotalSeconds;
+            }
+
+            // Calculate statistics
+            var statistics = CalculateGameStatistics(movesList, durationSeconds);
+
+            return new GameReplayDto
+            {
+                GameId = game.Id,
+                PlayerId = game.PlayerId,
+                PlayerName = game.Player?.FullName ?? game.Player?.Username,
+                Status = game.Status,
+                Result = game.Result,
+                Difficulty = game.Difficulty,
+                StartedAt = game.StartedAt,
+                EndedAt = game.EndedAt,
+                DurationSeconds = durationSeconds,
+                FenStart = game.FenStart,
+                FenCurrent = game.FenCurrent,
+                TotalMoves = game.TotalMoves,
+                PlayerRatingBefore = game.PlayerRatingBefore,
+                PlayerRatingAfter = game.PlayerRatingAfter,
+                RatingChange = game.RatingChange,
+                GameType = game.GameType != null ? new GameTypeDto
+                {
+                    Id = game.GameType.Id,
+                    Code = game.GameType.Code,
+                    Name = game.GameType.Name,
+                    Description = game.GameType.Description
+                } : null,
+                Moves = movesList.Select(m => new GameMoveDto
+                {
+                    Id = m.Id,
+                    GameId = m.GameId ?? Guid.Empty,
+                    MoveNumber = m.MoveNumber ?? 0,
+                    PlayerColor = m.PlayerColor ?? "",
+                    FromSquare = m.FromSquare ?? "",
+                    ToSquare = m.ToSquare ?? "",
+                    FromPiece = m.FromPiece,
+                    ToPiece = m.ToPiece,
+                    Notation = m.Notation ?? "",
+                    ResultsInCheck = m.ResultsInCheck ?? false,
+                    FenStr = m.FenStr ?? "",
+                    CreatedAt = m.CreatedAt ?? DateTime.UtcNow
+                }).ToList(),
+                Statistics = statistics
+            };
+        }
+
+        private GameStatisticsDto CalculateGameStatistics(List<GameMove> moves, int? totalDurationSeconds)
+        {
+            if (!moves.Any())
+            {
+                return new GameStatisticsDto
+                {
+                    TotalMoves = 0,
+                    WhiteMoves = 0,
+                    BlackMoves = 0,
+                    Captures = 0,
+                    Checks = 0,
+                    AverageMoveTimeSeconds = 0,
+                    LongestThinkingMove = null,
+                    LongestThinkingTimeSeconds = 0
+                };
+            }
+
+            var whiteMoves = moves.Count(m => m.PlayerColor?.ToLower() == "white");
+            var blackMoves = moves.Count(m => m.PlayerColor?.ToLower() == "black");
+            var captures = moves.Count(m => !string.IsNullOrEmpty(m.ToPiece));
+            var checks = moves.Count(m => m.ResultsInCheck == true);
+
+            // Calculate average move time
+            double avgMoveTime = 0;
+            string? longestMove = null;
+            double longestTime = 0;
+
+            if (totalDurationSeconds.HasValue && moves.Count > 0)
+            {
+                avgMoveTime = (double)totalDurationSeconds.Value / moves.Count;
+
+                // Try to find longest thinking time between moves
+                for (int i = 1; i < moves.Count; i++)
+                {
+                    if (moves[i].CreatedAt.HasValue && moves[i - 1].CreatedAt.HasValue)
+                    {
+                        var timeDiff = (moves[i].CreatedAt.Value - moves[i - 1].CreatedAt.Value).TotalSeconds;
+                        if (timeDiff > longestTime)
+                        {
+                            longestTime = timeDiff;
+                            longestMove = $"Move {moves[i].MoveNumber}: {moves[i].Notation}";
+                        }
+                    }
+                }
+            }
+
+            return new GameStatisticsDto
+            {
+                TotalMoves = moves.Count,
+                WhiteMoves = whiteMoves,
+                BlackMoves = blackMoves,
+                Captures = captures,
+                Checks = checks,
+                AverageMoveTimeSeconds = Math.Round(avgMoveTime, 2),
+                LongestThinkingMove = longestMove,
+                LongestThinkingTimeSeconds = Math.Round(longestTime, 2)
+            };
         }
     }
 }

@@ -129,4 +129,52 @@ namespace robot_chess_api.DTOs
         public string Message { get; set; } = string.Empty;
         public string Reason { get; set; } = string.Empty;
     }
+
+    // DTO for game replay with full details
+    public class GameReplayDto
+    {
+        public Guid GameId { get; set; }
+        public Guid? PlayerId { get; set; }
+        public string? PlayerName { get; set; }
+        public string? Status { get; set; }
+        public string? Result { get; set; }
+        public string? Difficulty { get; set; }
+        
+        // Game timing
+        public DateTime? StartedAt { get; set; }
+        public DateTime? EndedAt { get; set; }
+        public int? DurationSeconds { get; set; }
+        
+        // Board information
+        public string? FenStart { get; set; }
+        public string? FenCurrent { get; set; }
+        public int? TotalMoves { get; set; }
+        
+        // Elo Rating
+        public int? PlayerRatingBefore { get; set; }
+        public int? PlayerRatingAfter { get; set; }
+        public int? RatingChange { get; set; }
+        
+        // Game type
+        public GameTypeDto? GameType { get; set; }
+        
+        // All moves for replay
+        public List<GameMoveDto> Moves { get; set; } = new List<GameMoveDto>();
+        
+        // Statistics
+        public GameStatisticsDto? Statistics { get; set; }
+    }
+
+    // DTO for game statistics
+    public class GameStatisticsDto
+    {
+        public int TotalMoves { get; set; }
+        public int WhiteMoves { get; set; }
+        public int BlackMoves { get; set; }
+        public int Captures { get; set; }
+        public int Checks { get; set; }
+        public double AverageMoveTimeSeconds { get; set; }
+        public string? LongestThinkingMove { get; set; }
+        public double LongestThinkingTimeSeconds { get; set; }
+    }
 }
