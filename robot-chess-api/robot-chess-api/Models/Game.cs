@@ -29,6 +29,8 @@ public partial class Game
 
     public Guid? PuzzleId { get; set; }
 
+    public string? Difficulty { get; set; }
+
     public virtual GameType? GameType { get; set; }
 
     public virtual AppUser? Player { get; set; }
