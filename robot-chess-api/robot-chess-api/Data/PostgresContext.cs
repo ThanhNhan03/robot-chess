@@ -171,6 +171,23 @@ public partial class PostgresContext : DbContext
             entity.Property(e => e.Draws)
                 .HasDefaultValue(0)
                 .HasColumnName("draws");
+            
+            // Email Verification
+            entity.Property(e => e.EmailVerified)
+                .HasDefaultValue(false)
+                .HasColumnName("email_verified");
+            entity.Property(e => e.EmailVerificationToken)
+                .HasColumnName("email_verification_token");
+            entity.Property(e => e.EmailVerificationTokenExpiry)
+                .HasColumnType("timestamp with time zone")
+                .HasColumnName("email_verification_token_expiry");
+            
+            // Password Reset
+            entity.Property(e => e.PasswordResetToken)
+                .HasColumnName("password_reset_token");
+            entity.Property(e => e.PasswordResetTokenExpiry)
+                .HasColumnType("timestamp with time zone")
+                .HasColumnName("password_reset_token_expiry");
         });
 
         modelBuilder.Entity<Feedback>(entity =>

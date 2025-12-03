@@ -120,6 +120,7 @@ builder.Services.AddScoped<IRobotService, RobotService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFaqService, FaqService>();
 builder.Services.AddScoped<IGameService, GameService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 // Register HttpClient for communication with TCP Server
 builder.Services.AddHttpClient();
