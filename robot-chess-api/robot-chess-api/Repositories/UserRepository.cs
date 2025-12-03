@@ -122,4 +122,32 @@ public class UserRepository : IUserRepository
             await _context.SaveChangesAsync();
         }
     }
+
+    public async Task<AppUser?> GetUserByVerificationTokenAsync(string token)
+    {
+        return await _context.AppUsers
+            .FirstOrDefaultAsync(u => u.EmailVerificationToken == token);
+    }
+
+    public async Task UpdateEmailVerificationAsync(Guid userId, bool verified)
+    {
+        var user = await GetUserByIdAsync(userId);
+        if (user != null)
+        {
+            user.EmailVerified = verified;
+            if (verified)
+            {
+                user.EmailVerificationToken = null;
+                user.EmailVerificationTokenExpiry = null;
+            }
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    public async Task<AppUser?> GetUserByPasswordResetTokenAsync(string token)
+    {
+        return await _context.AppUsers
+            .FirstOrDefaultAsync(u => u.PasswordResetToken == token);
+    }
 }

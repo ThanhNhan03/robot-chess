@@ -5,6 +5,7 @@ using robot_chess_api.DTOs;
 using robot_chess_api.Models;
 using robot_chess_api.Repositories;
 using robot_chess_api.Services.Interface;
+using System.Security.Cryptography;
 
 namespace robot_chess_api.Services.Implement;
 
@@ -13,12 +14,21 @@ public class UserService : IUserService
     private readonly IUserRepository _userRepository;
     private readonly PostgresContext _context;
     private readonly IConfiguration _configuration;
+    private readonly IEmailService _emailService;
+    private readonly ILogger<UserService> _logger;
 
-    public UserService(IUserRepository userRepository, PostgresContext context, IConfiguration configuration)
+    public UserService(
+        IUserRepository userRepository, 
+        PostgresContext context, 
+        IConfiguration configuration,
+        IEmailService emailService,
+        ILogger<UserService> logger)
     {
         _userRepository = userRepository;
         _context = context;
         _configuration = configuration;
+        _emailService = emailService;
+        _logger = logger;
     }
 
     public async Task<List<UserDto>> GetAllUsersAsync(bool includeInactive = false)
@@ -67,10 +77,30 @@ public class UserService : IUserService
                 AvatarUrl = dto.AvatarUrl,
                 Role = dto.Role,
                 PhoneNumber = dto.PhoneNumber,
-                IsActive = true
+                IsActive = true,
+                EmailVerified = false,
+                EmailVerificationToken = GenerateVerificationToken(),
+                EmailVerificationTokenExpiry = DateTime.UtcNow.AddHours(24)
             };
 
             var createdUser = await _userRepository.CreateUserAsync(user);
+
+            // Send verification email
+            try
+            {
+                await _emailService.SendVerificationEmailAsync(
+                    createdUser.Email,
+                    createdUser.Username,
+                    createdUser.EmailVerificationToken!
+                );
+                _logger.LogInformation($"Verification email sent to admin-created user: {createdUser.Email}");
+            }
+            catch (Exception emailEx)
+            {
+                _logger.LogError($"Failed to send verification email to {createdUser.Email}: {emailEx.Message}");
+                // Continue anyway - user is created
+            }
+
             return MapToDto(createdUser);
         }
         catch (Exception ex)
@@ -244,5 +274,16 @@ public class UserService : IUserService
             PhoneNumber = user.PhoneNumber,
             CreatedAt = user.CreatedAt
         };
+    }
+
+    private static string GenerateVerificationToken()
+    {
+        var randomBytes = new byte[32];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomBytes);
+        return Convert.ToBase64String(randomBytes)
+            .Replace("+", "-")
+            .Replace("/", "_")
+            .Replace("=", "");
     }
 }

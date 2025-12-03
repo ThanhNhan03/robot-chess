@@ -43,6 +43,18 @@ public partial class AppUser
 
     public DateTime? UpdatedAt { get; set; }
 
+    // Email verification properties
+    public bool EmailVerified { get; set; } = false;
+
+    public string? EmailVerificationToken { get; set; }
+
+    public DateTime? EmailVerificationTokenExpiry { get; set; }
+
+    // Password reset properties
+    public string? PasswordResetToken { get; set; }
+
+    public DateTime? PasswordResetTokenExpiry { get; set; }
+
     // Navigation properties
     public virtual ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
 
