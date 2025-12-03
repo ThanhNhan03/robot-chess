@@ -68,6 +68,59 @@ class FEN():
         pos2 = fen2.split(' ')[0] if ' ' in fen2 else fen2
         return pos1 == pos2
 
+    async def send_check_notification(self, tcp_client, game_id: Optional[str] = None):
+        """Send check notification to server"""
+        board = chess.Board(self.FEN_last)
+        
+        # Determine which player is in check
+        player_in_check = "white" if board.turn == chess.WHITE else "black"
+        
+        check_message = {
+            "type": "check_detected",
+            "game_id": game_id,
+            "player_in_check": player_in_check,
+            "fen_str": self.FEN_last,
+            "message": f"Check! {player_in_check.capitalize()} king is in check"
+        }
+        
+        await self.tcp_publish(tcp_client, check_message)
+        print(f"[CHECK NOTIFICATION] Sent: {player_in_check} king is in check")
+        return
+
+    async def send_game_over_notification(self, tcp_client, game_id: Optional[str] = None):
+        """Send game over notification to server when checkmate or stalemate occurs"""
+        board = chess.Board(self.FEN_last)
+        
+        # Determine game over reason and winner
+        if board.is_checkmate():
+            # The player whose turn it is has been checkmated (they lose)
+            loser = "white" if board.turn == chess.WHITE else "black"
+            winner = "black" if loser == "white" else "white"
+            reason = "checkmate"
+            message = f"Checkmate! {winner.capitalize()} wins"
+        elif board.is_stalemate():
+            winner = None
+            reason = "stalemate"
+            message = "Stalemate! Game is a draw"
+        else:
+            # Other game over conditions (insufficient material, etc.)
+            winner = None
+            reason = "draw"
+            message = "Game over - Draw"
+        
+        game_over_message = {
+            "type": "game_over",
+            "game_id": game_id,
+            "reason": reason,
+            "winner": winner,
+            "fen_str": self.FEN_last,
+            "message": message
+        }
+        
+        await self.tcp_publish(tcp_client, game_over_message)
+        print(f"[GAME OVER] {message} - Reason: {reason}")
+        return
+
     async def send_board_setup_status(self, tcp_client, detected_fen: str, game_id: Optional[str] = None):
         """Send board setup status to server - compares with expected initial position"""
         # FEN_last contains either initial position (normal game) or puzzle FEN (puzzle mode)
@@ -87,7 +140,7 @@ class FEN():
         }
         
         await self.tcp_publish(tcp_client, status_message)
-        print(f"[BOARD STATUS] Sent: {status_message['status']} - Expected: {expected_fen}, Detected: {current_fen}")
+        print(f"[BOARD_STATUS] {status_message['status'].upper()} - Expected: {expected_fen}, Detected: {current_fen}")
         return is_correct
 
     async def check_and_send_board_status(self, tcp_client, detected_fen: str, game_id: Optional[str] = None) -> bool:
@@ -505,6 +558,21 @@ class FEN():
         print(self.change)
         return fenN, checkMove
 
+    async def send_move_to_server(self, move_data: dict, tcp_client, game_id: Optional[str] = None):
+        """Send move notification to server with game_id"""
+        message = {
+            "type": "new_move",
+            "game_id": game_id,
+            "fen_str": move_data.get("fen_str"),
+            "move": move_data.get("move")
+        }
+        
+        await self.tcp_publish(tcp_client, message)
+        
+        move_info = move_data.get("move", {})
+        print(f"[MOVE] {move_info.get('notation', 'N/A')} - {move_info.get('from', '')} to {move_info.get('to', '')}")
+        return
+
     async def updateFEN(self, fen: str, stockfish, tcp_client, game_id: Optional[str] = None, check_setup: bool = False):
         FEN_check, self.checkMove = self.checkFEN(fen)
         payload = {}
@@ -560,28 +628,33 @@ class FEN():
                 payload = {"fen_str": self.FEN_last}
                 # payload = self.sendOutput(stockfish)
             if payload != self.last_payload:
-                await self.tcp_publish(tcp_client, payload)
+                await self.send_move_to_server(payload, tcp_client, game_id)
             else:
-                print("Same payload, not sending.")
+                print("[MOVE] Same payload detected - skipping send")
 
             self.last_payload = payload
         
-        # Send illegal move notification
+        # Send illegal move notification (only for human player - white)
         elif illegal_move_info is not None:
             # Determine whose turn it is (human's turn when move detected)
             current_player = "white" if self.side == "b" else "black"
             
-            illegal_payload = {
-                "type": "illegal_move",
-                "game_id": game_id,
-                "player": current_player,
-                "move": illegal_move_info,
-                "current_fen": self.FEN_last,
-                "message": f"Illegal move detected: {illegal_move_info['piece']} from {illegal_move_info['from']} to {illegal_move_info['to']}"
-            }
-            
-            await self.tcp_publish(tcp_client, illegal_payload)
-            print(f"[ILLEGAL MOVE] {illegal_payload['message']}")
+            # Only send illegal move notification for human player (white)
+            # Robot (black) always moves correctly via Stockfish
+            if current_player == "white":
+                illegal_payload = {
+                    "type": "illegal_move",
+                    "game_id": game_id,
+                    "player": current_player,
+                    "move": illegal_move_info,
+                    "current_fen": self.FEN_last,
+                    "message": f"Illegal move detected: {illegal_move_info['piece']} from {illegal_move_info['from']} to {illegal_move_info['to']}"
+                }
+                
+                await self.tcp_publish(tcp_client, illegal_payload)
+                print(f"[ILLEGAL_MOVE] {illegal_payload['message']}")
+            else:
+                print(f"[INFO] Robot move validation failed - skipping (robot moves are always valid)")
             
         return
 

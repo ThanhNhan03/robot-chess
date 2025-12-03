@@ -86,6 +86,46 @@ namespace RobotChessServer.Services
                     return;
                 }
 
+                // Check detected from AI
+                if (root.TryGetProperty("type", out type) && type.GetString() == "check_detected")
+                {
+                    var playerInCheck = root.TryGetProperty("player_in_check", out var pic) ? pic.GetString() : "unknown";
+                    LoggerHelper.LogInfo($"Check detected - Player in check: {playerInCheck}");
+
+                    // Broadcast to WebSocket clients
+                    await broadcastWs(new
+                    {
+                        type = "check_detected",
+                        game_id = root.TryGetProperty("game_id", out var gid) ? gid.GetString() : null,
+                        player_in_check = playerInCheck,
+                        fen_str = root.TryGetProperty("fen_str", out var checkFen) ? checkFen.GetString() : null,
+                        message = root.TryGetProperty("message", out var msg) ? msg.GetString() : null,
+                        timestamp = DateTime.UtcNow
+                    });
+                    return;
+                }
+
+                // Game over from AI (checkmate/stalemate)
+                if (root.TryGetProperty("type", out type) && type.GetString() == "game_over")
+                {
+                    var reason = root.TryGetProperty("reason", out var r) ? r.GetString() : "unknown";
+                    var winner = root.TryGetProperty("winner", out var w) ? w.GetString() : null;
+                    LoggerHelper.LogInfo($"Game over - Reason: {reason}, Winner: {winner ?? "draw"}");
+
+                    // Broadcast to WebSocket clients
+                    await broadcastWs(new
+                    {
+                        type = "game_over",
+                        game_id = root.TryGetProperty("game_id", out var gid) ? gid.GetString() : null,
+                        reason = reason,
+                        winner = winner,
+                        fen_str = root.TryGetProperty("fen_str", out var gameOverFen) ? gameOverFen.GetString() : null,
+                        message = root.TryGetProperty("message", out var msg) ? msg.GetString() : null,
+                        timestamp = DateTime.UtcNow
+                    });
+                    return;
+                }
+
                 // Illegal move from AI
                 if (root.TryGetProperty("type", out type) && type.GetString() == "illegal_move")
                 {

@@ -226,15 +226,22 @@ async def playChess(cam, cornersH, hand, piece, fen, stockfish, tcp_client, game
             break
 
         if fen.isCheck:
-            print("Current state is check")
+            print("[CHECK] Check detected")
+            # Send check notification
+            await fen.send_check_notification(tcp_client, game_id)
+        
+        # Check for game over conditions
         if fen.isCheckmate:
-            print("Current state is checkmate")
+            print("[GAME OVER] Checkmate detected")
+            await fen.send_game_over_notification(tcp_client, game_id)
             break
         if fen.isStalemate:
-            print("Current state is stalemate")
+            print("[GAME OVER] Stalemate detected")
+            await fen.send_game_over_notification(tcp_client, game_id)
             break
         if fen.isGameover:
-            print("Current state is game over")
+            print("[GAME OVER] Game over detected")
+            await fen.send_game_over_notification(tcp_client, game_id)
             break
 
         if fen.side == "w":
