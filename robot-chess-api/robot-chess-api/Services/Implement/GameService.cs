@@ -718,9 +718,6 @@ namespace robot_chess_api.Services.Implement
                 durationSeconds = (int)(game.EndedAt.Value - game.StartedAt.Value).TotalSeconds;
             }
 
-            // Calculate statistics
-            var statistics = CalculateGameStatistics(movesList, durationSeconds);
-
             return new GameReplayDto
             {
                 GameId = game.Id,
@@ -760,66 +757,7 @@ namespace robot_chess_api.Services.Implement
                     FenStr = m.FenStr ?? "",
                     CreatedAt = m.CreatedAt ?? DateTime.UtcNow
                 }).ToList(),
-                Statistics = statistics
-            };
-        }
-
-        private GameStatisticsDto CalculateGameStatistics(List<GameMove> moves, int? totalDurationSeconds)
-        {
-            if (!moves.Any())
-            {
-                return new GameStatisticsDto
-                {
-                    TotalMoves = 0,
-                    WhiteMoves = 0,
-                    BlackMoves = 0,
-                    Captures = 0,
-                    Checks = 0,
-                    AverageMoveTimeSeconds = 0,
-                    LongestThinkingMove = null,
-                    LongestThinkingTimeSeconds = 0
-                };
-            }
-
-            var whiteMoves = moves.Count(m => m.PlayerColor?.ToLower() == "white");
-            var blackMoves = moves.Count(m => m.PlayerColor?.ToLower() == "black");
-            var captures = moves.Count(m => !string.IsNullOrEmpty(m.ToPiece));
-            var checks = moves.Count(m => m.ResultsInCheck == true);
-
-            // Calculate average move time
-            double avgMoveTime = 0;
-            string? longestMove = null;
-            double longestTime = 0;
-
-            if (totalDurationSeconds.HasValue && moves.Count > 0)
-            {
-                avgMoveTime = (double)totalDurationSeconds.Value / moves.Count;
-
-                // Try to find longest thinking time between moves
-                for (int i = 1; i < moves.Count; i++)
-                {
-                    if (moves[i].CreatedAt.HasValue && moves[i - 1].CreatedAt.HasValue)
-                    {
-                        var timeDiff = (moves[i].CreatedAt.Value - moves[i - 1].CreatedAt.Value).TotalSeconds;
-                        if (timeDiff > longestTime)
-                        {
-                            longestTime = timeDiff;
-                            longestMove = $"Move {moves[i].MoveNumber}: {moves[i].Notation}";
-                        }
-                    }
-                }
-            }
-
-            return new GameStatisticsDto
-            {
-                TotalMoves = moves.Count,
-                WhiteMoves = whiteMoves,
-                BlackMoves = blackMoves,
-                Captures = captures,
-                Checks = checks,
-                AverageMoveTimeSeconds = Math.Round(avgMoveTime, 2),
-                LongestThinkingMove = longestMove,
-                LongestThinkingTimeSeconds = Math.Round(longestTime, 2)
+                Statistics = null
             };
         }
     }
