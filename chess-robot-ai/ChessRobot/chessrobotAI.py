@@ -277,7 +277,7 @@ async def main():
     engine_path = "/usr/games/stockfish"
     stockfish = chess.engine.SimpleEngine.popen_uci(engine_path)
 
-    tcp_client = TCPClient(host="127.0.0.1", port=8080)
+    tcp_client = TCPClient(host="10.17.0.187", port=8080)
     await tcp_client.connect()
 
     ai_identity = {
@@ -296,7 +296,7 @@ async def main():
     
     stream_server = MJPEGStreamServer(camera_stream, host='0.0.0.0', port=8000)
     stream_server.start()
-    print("[INFO] Camera stream available at http://localhost:8000")
+    print("[INFO] Camera stream available at http://10.17.0.187:8000")
     
     status = {"state": "waiting", "difficulty": "medium", "game_type": "normal_game", "puzzle_fen": None}  # default: waiting for start command
 

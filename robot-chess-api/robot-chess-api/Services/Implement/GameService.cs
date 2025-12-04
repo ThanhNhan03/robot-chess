@@ -99,7 +99,7 @@ namespace robot_chess_api.Services.Implement
                 PuzzleId = puzzleId,
                 Difficulty = request.Difficulty,
                 Status = "waiting",
-                FenStart = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                FenStart = fenStart,
                 TotalMoves = 0,
                 CreatedAt = DateTime.UtcNow,
                 StartedAt = DateTime.UtcNow
@@ -123,7 +123,7 @@ namespace robot_chess_api.Services.Implement
                         difficulty = request.Difficulty,
                         game_type = request.GameTypeCode,
                         puzzle_id = puzzleId?.ToString(),
-                        fen_start = fenStart
+                        puzzle_fen = fenStart  // Changed from fen_start to puzzle_fen for consistency with AI
                     }
                 };
 
