@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AdminScreen from '../view/admin/AdminScreen.vue'
 import Login from '../view/admin/Login.vue'
+import PaymentManagement from '../view/admin/PaymentManagement.vue'
+import PointManagement from '../view/admin/PointManagement.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -19,6 +21,18 @@ const router = createRouter({
       path: '/admin',
       name: 'AdminDashboard',
       component: AdminScreen,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/admin/payments',
+      name: 'PaymentManagement',
+      component: PaymentManagement,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/admin/points',
+      name: 'PointManagement',
+      component: PointManagement,
       meta: { requiresAuth: true }
     },
     // Redirect any unknown routes to admin

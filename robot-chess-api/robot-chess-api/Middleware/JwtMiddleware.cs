@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 using robot_chess_api.Services.Interface;
+using robot_chess_api.Repositories;
 
 namespace robot_chess_api.Middleware;
 
@@ -15,7 +16,7 @@ public class JwtMiddleware
         _logger = logger;
     }
 
-    public async Task InvokeAsync(HttpContext context, Supabase.Client supabaseClient)
+    public async Task InvokeAsync(HttpContext context, Supabase.Client supabaseClient, IUserRepository userRepository)
     {
         var token = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
 
@@ -34,10 +35,23 @@ public class JwtMiddleware
                         new Claim(ClaimTypes.Email, user.Email ?? "")
                     };
 
+                    // Get user from database to retrieve role
+                    if (Guid.TryParse(user.Id, out var userId))
+                    {
+                        var appUser = await userRepository.GetUserByIdAsync(userId);
+                        if (appUser != null && !string.IsNullOrEmpty(appUser.Role))
+                        {
+                            claims.Add(new Claim(ClaimTypes.Role, appUser.Role));
+                            _logger.LogInformation("JWT validated successfully for user: {UserId} with role: {Role}", user.Id, appUser.Role);
+                        }
+                        else
+                        {
+                            _logger.LogInformation("JWT validated successfully for user: {UserId} (no role)", user.Id);
+                        }
+                    }
+
                     var identity = new ClaimsIdentity(claims, "jwt");
                     context.User = new ClaimsPrincipal(identity);
-
-                    _logger.LogInformation("JWT validated successfully for user: {UserId}", user.Id);
                 }
             }
             catch (Exception ex)

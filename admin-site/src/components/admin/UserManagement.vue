@@ -274,7 +274,7 @@ import {
   Edit2, UserX, UserCheck2, AlertCircle, RefreshCw,
   ChevronLeft, ChevronRight, X
 } from 'lucide-vue-next'
-import { userService, type User, type CreateUserRequest, type UpdateUserRequest, type UserStats } from '../../services/userService'
+import { userService, type User, type UpdateUserRequest, type UserStats } from '../../services/userService'
 
 // State
 const users = ref<User[]>([])

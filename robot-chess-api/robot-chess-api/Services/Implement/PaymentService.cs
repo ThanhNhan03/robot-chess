@@ -201,15 +201,16 @@ public class PaymentService : IPaymentService
         {
             try
             {
-                // Call PayOS API to get payment info
-                var request = new HttpRequestMessage(HttpMethod.Get, $"{_payOsBaseUrl}/v2/payment-requests/{orderCode}");
+                // Call PayOS API to get payment info - use OrderCode (numeric) not TransactionId
+                var payOsOrderCode = payment.OrderCode ?? orderCode;
+                var request = new HttpRequestMessage(HttpMethod.Get, $"{_payOsBaseUrl}/v2/payment-requests/{payOsOrderCode}");
                 request.Headers.Add("x-client-id", _payOsClientId);
                 request.Headers.Add("x-api-key", _payOsApiKey);
 
                 var response = await _httpClient.SendAsync(request);
                 var responseContent = await response.Content.ReadAsStringAsync();
 
-                _logger.LogInformation("PayOS Get Payment Response: {Content}", responseContent);
+                _logger.LogInformation("PayOS Get Payment Response for OrderCode {OrderCode}: {Content}", payOsOrderCode, responseContent);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -368,6 +369,23 @@ public class PaymentService : IPaymentService
         _logger.LogInformation("Generated signature: {Signature}", signature);
         
         return signature;
+    }
+
+    public async Task<IEnumerable<PaymentHistory>> GetAllPaymentsAsync(
+        DateTime? startDate = null, 
+        DateTime? endDate = null, 
+        string? status = null)
+    {
+        var paymentRepo = new PaymentHistoryRepository(_context);
+        return await paymentRepo.GetAllAsync(startDate, endDate, status);
+    }
+
+    public async Task<PaymentStatisticsDto> GetPaymentStatisticsAsync(
+        DateTime? startDate = null, 
+        DateTime? endDate = null)
+    {
+        var paymentRepo = new PaymentHistoryRepository(_context);
+        return await paymentRepo.GetStatisticsAsync(startDate, endDate);
     }
 }
 

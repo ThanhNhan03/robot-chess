@@ -2,39 +2,39 @@
   <div class="notification-management">
     <div class="panel-header">
       <h2 class="panel-title">
-        <span>🔔</span>
+        <span class="material-icons">notifications</span>
         Notification Management
       </h2>
       <button class="btn-flat btn-primary" @click="showCreateModal = true">
-        <span>➕</span> Create Notification
+        <span class="material-icons">add</span> Create Notification
       </button>
     </div>
 
     <!-- Statistics Cards -->
     <div class="stats-grid">
       <div class="stat-card stat-success">
-        <div class="stat-icon">📬</div>
+        <div class="stat-icon"><span class="material-icons">mail</span></div>
         <div class="stat-content">
           <div class="stat-value">156</div>
           <div class="stat-label">Total Sent</div>
         </div>
       </div>
       <div class="stat-card stat-info">
-        <div class="stat-icon">⏰</div>
+        <div class="stat-icon"><span class="material-icons">schedule</span></div>
         <div class="stat-content">
           <div class="stat-value">8</div>
           <div class="stat-label">Scheduled</div>
         </div>
       </div>
       <div class="stat-card stat-warning">
-        <div class="stat-icon">📝</div>
+        <div class="stat-icon"><span class="material-icons">drafts</span></div>
         <div class="stat-content">
           <div class="stat-value">3</div>
           <div class="stat-label">Draft</div>
         </div>
       </div>
       <div class="stat-card stat-primary">
-        <div class="stat-icon">👥</div>
+        <div class="stat-icon"><span class="material-icons">people</span></div>
         <div class="stat-content">
           <div class="stat-value">1,234</div>
           <div class="stat-label">Total Recipients</div>
@@ -93,7 +93,7 @@
             <!-- Notification 1 - Sent -->
             <tr>
               <td>
-                <span class="type-badge type-info">ℹ️ INFO</span>
+                <span class="type-badge type-info"><span class="material-icons-outlined">info</span> INFO</span>
               </td>
               <td><strong>System Maintenance</strong></td>
               <td class="message-cell">Scheduled maintenance on Nov 30, 2024 from 2:00 AM to 4:00 AM</td>
@@ -106,8 +106,8 @@
               <td>2024-11-28 10:00</td>
               <td>
                 <div class="action-buttons">
-                  <button class="btn-flat btn-sm btn-primary">✏️ Edit</button>
-                  <button class="btn-flat btn-sm btn-danger">🗑️ Delete</button>
+                  <button class="btn-flat btn-sm btn-primary"><span class="material-icons">edit</span> Edit</button>
+                  <button class="btn-flat btn-sm btn-danger"><span class="material-icons">delete</span> Delete</button>
                 </div>
               </td>
             </tr>
@@ -115,7 +115,7 @@
             <!-- Notification 2 - Scheduled -->
             <tr>
               <td>
-                <span class="type-badge type-warning">⚠️ WARNING</span>
+                <span class="type-badge type-warning"><span class="material-icons-outlined">warning</span> WARNING</span>
               </td>
               <td><strong>Session Expiry</strong></td>
               <td class="message-cell">Your session will expire in 5 minutes. Please save your work.</td>
@@ -128,9 +128,9 @@
               <td>2024-11-30 14:00</td>
               <td>
                 <div class="action-buttons">
-                  <button class="btn-flat btn-sm btn-primary">✏️ Edit</button>
-                  <button class="btn-flat btn-sm btn-danger">🗑️ Delete</button>
-                  <button class="btn-flat btn-sm btn-success">📤 Send Now</button>
+                  <button class="btn-flat btn-sm btn-primary"><span class="material-icons">edit</span> Edit</button>
+                  <button class="btn-flat btn-sm btn-danger"><span class="material-icons">delete</span> Delete</button>
+                  <button class="btn-flat btn-sm btn-success"><span class="material-icons">send</span> Send Now</button>
                 </div>
               </td>
             </tr>
@@ -138,7 +138,7 @@
             <!-- Notification 3 - Sent -->
             <tr>
               <td>
-                <span class="type-badge type-success">✅ SUCCESS</span>
+                <span class="type-badge type-success"><span class="material-icons-outlined">check_circle</span> SUCCESS</span>
               </td>
               <td><strong>Profile Updated</strong></td>
               <td class="message-cell">Your profile has been successfully updated.</td>
@@ -151,8 +151,8 @@
               <td>2024-11-29 09:30</td>
               <td>
                 <div class="action-buttons">
-                  <button class="btn-flat btn-sm btn-primary">✏️ Edit</button>
-                  <button class="btn-flat btn-sm btn-danger">🗑️ Delete</button>
+                  <button class="btn-flat btn-sm btn-primary"><span class="material-icons">edit</span> Edit</button>
+                  <button class="btn-flat btn-sm btn-danger"><span class="material-icons">delete</span> Delete</button>
                 </div>
               </td>
             </tr>
@@ -160,7 +160,7 @@
             <!-- Notification 4 - Sent -->
             <tr>
               <td>
-                <span class="type-badge type-error">❌ ERROR</span>
+                <span class="type-badge type-error"><span class="material-icons-outlined">error</span> ERROR</span>
               </td>
               <td><strong>Connection Lost</strong></td>
               <td class="message-cell">Connection to robot ROBOT_004 has been lost. Please check the robot status.</td>
@@ -173,8 +173,8 @@
               <td>2024-11-29 14:45</td>
               <td>
                 <div class="action-buttons">
-                  <button class="btn-flat btn-sm btn-primary">✏️ Edit</button>
-                  <button class="btn-flat btn-sm btn-danger">🗑️ Delete</button>
+                  <button class="btn-flat btn-sm btn-primary"><span class="material-icons">edit</span> Edit</button>
+                  <button class="btn-flat btn-sm btn-danger"><span class="material-icons">delete</span> Delete</button>
                 </div>
               </td>
             </tr>
@@ -182,7 +182,7 @@
             <!-- Notification 5 - Draft -->
             <tr class="notification-draft">
               <td>
-                <span class="type-badge type-info">ℹ️ INFO</span>
+                <span class="type-badge type-info"><span class="material-icons-outlined">info</span> INFO</span>
               </td>
               <td><strong>New Feature Release</strong></td>
               <td class="message-cell">We've added new AI difficulty levels! Try them out in your next game.</td>
@@ -195,9 +195,9 @@
               <td>-</td>
               <td>
                 <div class="action-buttons">
-                  <button class="btn-flat btn-sm btn-primary">✏️ Edit</button>
-                  <button class="btn-flat btn-sm btn-danger">🗑️ Delete</button>
-                  <button class="btn-flat btn-sm btn-success">📤 Send</button>
+                  <button class="btn-flat btn-sm btn-primary"><span class="material-icons">edit</span> Edit</button>
+                  <button class="btn-flat btn-sm btn-danger"><span class="material-icons">delete</span> Delete</button>
+                  <button class="btn-flat btn-sm btn-success"><span class="material-icons">send</span> Send</button>
                 </div>
               </td>
             </tr>
@@ -207,13 +207,13 @@
 
       <!-- Pagination -->
       <div class="pagination">
-        <button class="btn-flat btn-sm btn-secondary" disabled>⬅️ Previous</button>
+        <button class="btn-flat btn-sm btn-secondary" disabled><span class="material-icons">arrow_back</span> Previous</button>
         <div class="page-numbers">
           <button class="btn-flat btn-sm btn-primary">1</button>
           <button class="btn-flat btn-sm">2</button>
           <button class="btn-flat btn-sm">3</button>
         </div>
-        <button class="btn-flat btn-sm btn-secondary">Next ➡️</button>
+        <button class="btn-flat btn-sm btn-secondary">Next <span class="material-icons">arrow_forward</span></button>
       </div>
     </div>
 
@@ -222,7 +222,7 @@
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h3>Create Notification</h3>
-          <button class="modal-close" @click="showCreateModal = false">✕</button>
+          <button class="modal-close" @click="showCreateModal = false"><span class="material-icons">close</span></button>
         </div>
         <div class="modal-body">
           <div class="form-group">

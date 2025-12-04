@@ -74,3 +74,29 @@ public class PointTransactionDto
     public Guid? RelatedPaymentId { get; set; }
     public DateTime CreatedAt { get; set; }
 }
+
+public class PaymentStatisticsDto
+{
+    public int TotalPayments { get; set; }
+    public int SuccessfulPayments { get; set; }
+    public int PendingPayments { get; set; }
+    public int FailedPayments { get; set; }
+    public decimal TotalRevenue { get; set; }
+    public decimal TodayRevenue { get; set; }
+    public decimal ThisMonthRevenue { get; set; }
+}
+
+public class AdjustPointsDto
+{
+    [Required]
+    public Guid UserId { get; set; }
+    
+    [Required]
+    [Range(-1000000, 1000000, ErrorMessage = "Amount must be between -1000000 and 1000000")]
+    public int Amount { get; set; }
+    
+    [Required]
+    [MaxLength(500)]
+    public string Reason { get; set; } = null!;
+}
+
