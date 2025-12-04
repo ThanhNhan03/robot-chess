@@ -217,6 +217,98 @@ public class EmailService : IEmailService
         }
     }
 
+    public async Task<bool> SendAccountCreatedEmailAsync(string toEmail, string username, string password)
+    {
+        try
+        {
+            var subject = "Tài khoản Robot Chess của bạn đã được tạo";
+            var body = $@"
+                <html>
+                <head>
+                    <style>
+                        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                        .header {{ background-color: #673AB7; color: white; padding: 20px; text-align: center; }}
+                        .content {{ padding: 20px; background-color: #f9f9f9; }}
+                        .credentials {{ 
+                            background-color: #fff; 
+                            padding: 15px; 
+                            border-left: 4px solid #673AB7;
+                            margin: 20px 0;
+                        }}
+                        .button {{ 
+                            display: inline-block; 
+                            padding: 12px 24px; 
+                            background-color: #673AB7; 
+                            color: white; 
+                            text-decoration: none; 
+                            border-radius: 4px;
+                            margin: 20px 0;
+                        }}
+                        .warning {{ 
+                            background-color: #fff3cd; 
+                            padding: 10px; 
+                            border-left: 4px solid #ffc107;
+                            margin: 20px 0;
+                        }}
+                        .footer {{ padding: 20px; text-align: center; font-size: 12px; color: #666; }}
+                    </style>
+                </head>
+                <body>
+                    <div class='container'>
+                        <div class='header'>
+                            <h1>🤖 Robot Chess</h1>
+                        </div>
+                        <div class='content'>
+                            <h2>Xin chào {username}!</h2>
+                            <p>Tài khoản Robot Chess của bạn đã được quản trị viên tạo thành công.</p>
+                            
+                            <div class='credentials'>
+                                <h3>Thông tin đăng nhập:</h3>
+                                <p><strong>Email:</strong> {toEmail}</p>
+                                <p><strong>Mật khẩu:</strong> {password}</p>
+                            </div>
+                            
+                            <div class='warning'>
+                                <p><strong>⚠️ Lưu ý bảo mật:</strong></p>
+                                <ul style='margin: 5px 0;'>
+                                    <li>Vui lòng đổi mật khẩu ngay sau khi đăng nhập lần đầu</li>
+                                    <li>Không chia sẻ thông tin đăng nhập với người khác</li>
+                                    <li>Sử dụng mật khẩu mạnh kết hợp chữ, số và ký tự đặc biệt</li>
+                                </ul>
+                            </div>
+                            
+                            <p style='text-align: center;'>
+                                <a href='{_frontendUrl}/login' class='button'>Đăng nhập ngay</a>
+                            </p>
+                            
+                            <h3>Bắt đầu với Robot Chess:</h3>
+                            <ul>
+                                <li>🎮 Chơi cờ vua với Robot AI thông minh</li>
+                                <li>📊 Theo dõi lịch sử ván đấu và thống kê</li>
+                                <li>🏆 Xem bảng xếp hạng ELO</li>
+                                <li>🧩 Luyện tập với các bài toán cờ</li>
+                            </ul>
+                            
+                            <p>Nếu bạn cần hỗ trợ, vui lòng liên hệ với quản trị viên.</p>
+                        </div>
+                        <div class='footer'>
+                            <p>© 2024 Robot Chess. All rights reserved.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            ";
+
+            return await SendEmailAsync(toEmail, subject, body);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error sending account created email to {toEmail}: {ex.Message}");
+            return false;
+        }
+    }
+
     private async Task<bool> SendEmailAsync(string toEmail, string subject, string body)
     {
         try

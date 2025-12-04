@@ -59,7 +59,33 @@ public class CreateUserDto
 }
 
 /// <summary>
-/// DTO for updating existing user
+/// DTO for admin creating new user account
+/// </summary>
+public class AdminCreateUserDto
+{
+    [Required(ErrorMessage = "Email is required")]
+    [EmailAddress(ErrorMessage = "Invalid email format")]
+    public string Email { get; set; } = null!;
+
+    [Required(ErrorMessage = "Username is required")]
+    [MinLength(3, ErrorMessage = "Username must be at least 3 characters")]
+    [MaxLength(50, ErrorMessage = "Username must not exceed 50 characters")]
+    public string Username { get; set; } = null!;
+
+    public string? FullName { get; set; }
+
+    public string? AvatarUrl { get; set; }
+
+    [Required(ErrorMessage = "Role is required")]
+    [RegularExpression("^(admin|player|viewer)$", ErrorMessage = "Role must be admin, player, or viewer")]
+    public string Role { get; set; } = "player";
+
+    [Phone(ErrorMessage = "Invalid phone number format")]
+    public string? PhoneNumber { get; set; }
+}
+
+/// <summary>
+/// DTO for updating user
 /// </summary>
 public class UpdateUserDto
 {

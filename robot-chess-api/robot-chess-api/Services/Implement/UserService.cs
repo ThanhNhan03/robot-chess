@@ -111,13 +111,143 @@ public class UserService : IUserService
         }
     }
 
+    public async Task<UserDto> AdminCreateUserAsync(AdminCreateUserDto dto)
+    {
+        // Validate email uniqueness in app_users
+        if (await _userRepository.EmailExistsAsync(dto.Email))
+        {
+            throw new InvalidOperationException($"Email '{dto.Email}' is already in use");
+        }
+
+        // Validate username uniqueness
+        if (await _userRepository.UsernameExistsAsync(dto.Username))
+        {
+            throw new InvalidOperationException($"Username '{dto.Username}' is already in use");
+        }
+
+        try
+        {
+            // Generate random password
+            var generatedPassword = GenerateRandomPassword();
+            
+            // Create user in Supabase Auth using Admin API
+            var authResponse = await CreateSupabaseAuthUserForAdminAsync(dto, generatedPassword);
+            
+            if (authResponse == null || string.IsNullOrEmpty(authResponse.Id))
+            {
+                throw new InvalidOperationException("Failed to create user in Supabase Auth");
+            }
+
+            // Create user in app_users table with the same ID from Supabase Auth
+            var user = new AppUser
+            {
+                Id = Guid.Parse(authResponse.Id),
+                Email = dto.Email,
+                Username = dto.Username,
+                FullName = dto.FullName,
+                AvatarUrl = dto.AvatarUrl,
+                Role = dto.Role,
+                PhoneNumber = dto.PhoneNumber,
+                IsActive = true,
+                EmailVerified = true, // Auto-verify for admin-created accounts
+                EmailVerificationToken = null,
+                EmailVerificationTokenExpiry = null
+            };
+
+            var createdUser = await _userRepository.CreateUserAsync(user);
+
+            // Send account credentials email
+            try
+            {
+                await _emailService.SendAccountCreatedEmailAsync(
+                    createdUser.Email,
+                    createdUser.Username,
+                    generatedPassword
+                );
+                _logger.LogInformation($"Account credentials email sent to: {createdUser.Email}");
+            }
+            catch (Exception emailEx)
+            {
+                _logger.LogError($"Failed to send credentials email to {createdUser.Email}: {emailEx.Message}");
+                // Continue anyway - user is created
+            }
+
+            return MapToDto(createdUser);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Error creating user: {ex.Message}", ex);
+        }
+    }
+
+    private string GenerateRandomPassword(int length = 12)
+    {
+        const string validChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*";
+        var random = new Random();
+        var password = new char[length];
+        
+        for (int i = 0; i < length; i++)
+        {
+            password[i] = validChars[random.Next(validChars.Length)];
+        }
+        
+        return new string(password);
+    }
+
+    private async Task<SupabaseAuthUserResponse?> CreateSupabaseAuthUserForAdminAsync(AdminCreateUserDto dto, string password)
+    {
+        try
+        {
+            var serviceRoleKey = _configuration["ServiceRoleKey"] 
+                ?? throw new InvalidOperationException("ServiceRoleKey not configured");
+            
+            var supabaseUrl = _configuration["Supabase:Url"] 
+                ?? throw new InvalidOperationException("Supabase:Url not configured");
+
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("apikey", serviceRoleKey);
+            httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {serviceRoleKey}");
+
+            var payload = new
+            {
+                email = dto.Email,
+                password = password,
+                email_confirm = true, // Auto-confirm email for admin-created users
+                user_metadata = new
+                {
+                    username = dto.Username,
+                    full_name = dto.FullName,
+                    role = dto.Role
+                }
+            };
+
+            var response = await httpClient.PostAsJsonAsync(
+                $"{supabaseUrl}/auth/v1/admin/users",
+                payload
+            );
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                throw new InvalidOperationException($"Supabase Auth error: {error}");
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<SupabaseAuthUserResponse>();
+            return result;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to create Supabase Auth user: {ex.Message}", ex);
+        }
+    }
+
     private async Task<SupabaseAuthUserResponse?> CreateSupabaseAuthUserAsync(CreateUserDto dto)
     {
         try
         {
             // Get Supabase service role key from configuration
-            var serviceRoleKey = _configuration["Supabase:ServiceRoleKey"] 
-                ?? throw new InvalidOperationException("Supabase:ServiceRoleKey not configured in appsettings.json");
+            var serviceRoleKey = _configuration["ServiceRoleKey"] 
+                ?? throw new InvalidOperationException("ServiceRoleKey not configured in appsettings.json");
             
             var supabaseUrl = _configuration["Supabase:Url"] 
                 ?? throw new InvalidOperationException("Supabase:Url not configured in appsettings.json");
