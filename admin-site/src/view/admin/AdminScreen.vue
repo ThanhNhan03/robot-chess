@@ -13,7 +13,7 @@
             </div>
           </div>
           <button class="btn-flat btn-danger" @click="handleLogout">
-            <span class="logout-icon">🚪</span>
+            <span class="material-icons logout-icon">logout</span>
             Logout
           </button>
           <div class="user-info">
@@ -40,63 +40,77 @@
             :class="['nav-item', { active: activeTab === 'overview' }]"
             @click="activeTab = 'overview'"
             >
-            <span class="nav-icon">📊</span>
+            <span class="material-icons nav-icon">dashboard</span>
             <span class="nav-label">Overview</span>
             </button>
           <button 
             :class="['nav-item', { active: activeTab === 'robot' }]"
             @click="activeTab = 'robot'"
           >
-            <span class="nav-icon">🤖</span>
+            <span class="material-icons nav-icon">smart_toy</span>
             <span class="nav-label">Robot Management</span>
           </button>
           <button 
             :class="['nav-item', { active: activeTab === 'ai' }]"
             @click="activeTab = 'ai'"
           >
-            <span class="nav-icon">🧠</span>
+            <span class="material-icons nav-icon">psychology</span>
             <span class="nav-label">AI Management</span>
           </button>
           <button 
             :class="['nav-item', { active: activeTab === 'user' }]"
             @click="activeTab = 'user'"
           >
-            <span class="nav-icon">👥</span>
+            <span class="material-icons nav-icon">people</span>
             <span class="nav-label">User Management</span>
           </button>
           <button 
             :class="['nav-item', { active: activeTab === 'points' }]"
             @click="activeTab = 'points'"
           >
-            <span class="nav-icon">💰</span>
+            <span class="material-icons nav-icon">monetization_on</span>
             <span class="nav-label">Point Packages</span>
+          </button>
+          <button 
+            :class="['nav-item', { active: activeTab === 'payments' }]"
+            @click="activeTab = 'payments'"
+          >
+            <span class="material-icons nav-icon">payment</span>
+            <span class="nav-label">Payment History</span>
+          </button>
+          <button 
+            :class="['nav-item', { active: activeTab === 'transactions' }]"
+            @click="activeTab = 'transactions'"
+          >
+            <span class="material-icons nav-icon">account_balance_wallet</span>
+            <span class="nav-label">Point Transactions</span>
           </button>
           <button 
             :class="['nav-item', { active: activeTab === 'faq' }]"
             @click="activeTab = 'faq'"
           >
-            <span class="nav-icon">❓</span>
+            <span class="material-icons nav-icon">help</span>
             <span class="nav-label">FAQ Management</span>
           </button>
           <button 
             :class="['nav-item', { active: activeTab === 'notification' }]"
             @click="activeTab = 'notification'"
           >
-            <span class="nav-icon">🔔</span>
+            <span class="material-icons nav-icon">notifications</span>
             <span class="nav-label">Notifications</span>
           </button>
           <button 
             :class="['nav-item', { active: activeTab === 'settings' }]"
             @click="activeTab = 'settings'"
           >
-            <span class="nav-icon">⚙️</span>
+            <span class="material-icons nav-icon">settings</span>
             <span class="nav-label">Settings</span>
           </button>
           <button 
             :class="['nav-item', { active: activeTab === 'logs' }]"
             @click="activeTab = 'logs'"
           >
-            <span class="nav-icon">📋</span>
+            <span class="material-icons nav-icon">description</span>
             <span class="nav-label">System Logs</span>
           </button>
         </nav>
@@ -118,6 +132,12 @@
         
         <!-- Point Package Management -->
         <PointPackageManagement v-if="activeTab === 'points'" />
+        
+        <!-- Payment History -->
+        <PaymentManagement v-if="activeTab === 'payments'" />
+        
+        <!-- Point Transactions -->
+        <PointManagement v-if="activeTab === 'transactions'" />
         
         <!-- FAQ Management -->
         <FAQManagement v-if="activeTab === 'faq'" />
@@ -152,11 +172,13 @@ import UserManagement from '../../components/admin/UserManagement.vue'
 import FAQManagement from '../../components/admin/FAQManagement.vue'
 import NotificationManagement from '../../components/admin/NotificationManagement.vue'
 import PointPackageManagement from '../../components/admin/PointPackageManagement.vue'
+import PaymentManagement from './PaymentManagement.vue'
+import PointManagement from './PointManagement.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
-const activeTab = ref<'overview' | 'robot' | 'ai' | 'user' | 'points' | 'faq' | 'notification' | 'settings' | 'logs'>('overview')
+const activeTab = ref<'overview' | 'robot' | 'ai' | 'user' | 'points' | 'payments' | 'transactions' | 'faq' | 'notification' | 'settings' | 'logs'>('overview')
 
 const userName = computed(() => {
   return authStore.user.value?.fullName || authStore.user.value?.username || 'Admin'

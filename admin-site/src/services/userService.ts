@@ -11,6 +11,7 @@ export interface User {
   isActive: boolean
   lastLoginAt?: string
   phoneNumber?: string
+  pointsBalance?: number
   createdAt?: string
 }
 
@@ -209,3 +210,8 @@ class UserService {
 }
 
 export const userService = new UserService()
+
+// Export convenience function
+export const getAllUsers = (includeInactive: boolean = false): Promise<User[]> => {
+  return userService.getAllUsers(includeInactive)
+}

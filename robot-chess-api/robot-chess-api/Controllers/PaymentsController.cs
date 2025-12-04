@@ -1,6 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using robot_chess_api.DTOs;
-using robot_chess_api.Helpers;
+using robot_chess_api.Models;
 using robot_chess_api.Services.Interface;
 using System.Security.Claims;
 
@@ -62,6 +63,49 @@ public class PaymentsController : ControllerBase
         {
             _logger.LogError(ex, $"Error checking payment status for {transactionId}");
             return NotFound(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get all payments (Admin only)
+    /// </summary>
+    [HttpGet("admin/all")]
+    [Authorize(Roles = "admin")]
+    public async Task<ActionResult<IEnumerable<PaymentHistory>>> GetAllPayments(
+        [FromQuery] DateTime? startDate = null,
+        [FromQuery] DateTime? endDate = null,
+        [FromQuery] string? status = null)
+    {
+        try
+        {
+            var payments = await _paymentService.GetAllPaymentsAsync(startDate, endDate, status);
+            return Ok(payments);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting all payments");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get payment statistics (Admin only)
+    /// </summary>
+    [HttpGet("admin/statistics")]
+    [Authorize(Roles = "admin")]
+    public async Task<ActionResult<PaymentStatisticsDto>> GetPaymentStatistics(
+        [FromQuery] DateTime? startDate = null,
+        [FromQuery] DateTime? endDate = null)
+    {
+        try
+        {
+            var statistics = await _paymentService.GetPaymentStatisticsAsync(startDate, endDate);
+            return Ok(statistics);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting payment statistics");
+            return BadRequest(new { error = ex.Message });
         }
     }
 
