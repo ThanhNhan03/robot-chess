@@ -16,4 +16,9 @@ public interface IEmailService
     /// Send welcome email to new user
     /// </summary>
     Task<bool> SendWelcomeEmailAsync(string toEmail, string username);
+    
+    /// <summary>
+    /// Send account credentials email when admin creates new user
+    /// </summary>
+    Task<bool> SendAccountCreatedEmailAsync(string toEmail, string username, string password);
 }

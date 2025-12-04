@@ -112,7 +112,6 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IFaqRepository, FaqRepository>();
 builder.Services.AddScoped<IGameRepository, GameRepository>();
 builder.Services.AddScoped<IGameMoveRepository, GameMoveRepository>();
-builder.Services.AddScoped<ITrainingPuzzleRepository, TrainingPuzzleRepository>();
 
 // Register Services
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -123,6 +122,8 @@ builder.Services.AddScoped<IFaqService, FaqService>();
 builder.Services.AddScoped<IGameService, GameService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ITrainingPuzzleService, TrainingPuzzleService>();
+builder.Services.AddScoped<IPointPackageService, PointPackageService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
 
 // Register HttpClient for communication with TCP Server
 builder.Services.AddHttpClient();

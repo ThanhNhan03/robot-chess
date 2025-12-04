@@ -65,4 +65,6 @@ public partial class AppUser
     public virtual ICollection<SavedState> SavedStates { get; set; } = new List<SavedState>();
     
     public virtual ICollection<RobotCommandHistory> RobotCommandHistories { get; set; } = new List<RobotCommandHistory>();
+    
+    public virtual ICollection<PointTransaction> PointTransactions { get; set; } = new List<PointTransaction>();
 }

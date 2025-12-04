@@ -5,7 +5,7 @@
         <Users :size="24" />
         User Management
       </h2>
-      <button class="btn-flat btn-primary" title="Add a new user to the system">
+      <button class="btn-flat btn-primary" @click="showCreateDialog = true" title="Add a new user to the system">
         <Plus :size="18" /> Add New User
       </button>
     </div>
@@ -218,12 +218,17 @@
     <div v-if="showCreateDialog || showEditDialog" class="modal-overlay" @click.self="closeDialogs">
       <div class="modal-dialog">
         <div class="modal-header">
-          <h3>{{ showEditDialog ? 'Edit User' : 'Create New User' }}</h3>
+          <h3>{{ showEditDialog ? 'Edit User' : 'Create New User Account' }}</h3>
           <button class="btn-close" @click="closeDialogs">
             <X :size="20" />
           </button>
         </div>
         <div class="modal-body">
+          <div v-if="showCreateDialog" class="info-message" style="margin-bottom: 20px; padding: 12px; background: #e3f2fd; border-left: 4px solid #2196F3; border-radius: 4px;">
+            <p style="margin: 0; font-size: 14px; color: #1976d2;">
+              <strong>ℹ️ Note:</strong> A random password will be generated and sent to the user's email address along with their login credentials.
+            </p>
+          </div>
           <form @submit.prevent="showEditDialog ? updateUserSubmit() : createUserSubmit()">
             <div class="form-group">
               <label>Email *</label>
@@ -232,10 +237,6 @@
             <div class="form-group">
               <label>Username *</label>
               <input v-model="userForm.username" type="text" class="input-flat" required />
-            </div>
-            <div class="form-group" v-if="!showEditDialog">
-              <label>Password *</label>
-              <input v-model="userForm.password" type="password" class="input-flat" required minlength="6" />
             </div>
             <div class="form-group">
               <label>Full Name</label>
@@ -438,19 +439,18 @@ const createUserSubmit = async () => {
   isSaving.value = true
   
   try {
-    const data: CreateUserRequest = {
+    const data: import('../../services/userService').AdminCreateUserRequest = {
       email: userForm.value.email,
       username: userForm.value.username,
-      password: userForm.value.password,
       fullName: userForm.value.fullName || undefined,
       phoneNumber: userForm.value.phoneNumber || undefined,
       role: userForm.value.role
     }
     
-    await userService.createUser(data)
+    await userService.adminCreateUser(data)
     await loadUsers()
     closeDialogs()
-    alert('User created successfully')
+    alert('User created successfully! Account credentials have been sent to their email.')
   } catch (err: any) {
     alert(`Failed to create user: ${err.message}`)
   } finally {

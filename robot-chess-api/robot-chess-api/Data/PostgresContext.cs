@@ -51,6 +51,11 @@ public partial class PostgresContext : DbContext
 
     public virtual DbSet<Faq> Faqs { get; set; }
 
+    // Point Package Management
+    public virtual DbSet<PointPackage> PointPackages { get; set; }
+
+    public virtual DbSet<PointTransaction> PointTransactions { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         // Connection string is configured in Program.cs from appsettings.json
@@ -334,12 +339,19 @@ public partial class PostgresContext : DbContext
                 .HasDefaultValueSql("'pending'::text")
                 .HasColumnName("status");
             entity.Property(e => e.TransactionId).HasColumnName("transaction_id");
+            entity.Property(e => e.OrderCode).HasColumnName("order_code");
             entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.PackageId).HasColumnName("package_id");
 
             entity.HasOne(d => d.User).WithMany(p => p.PaymentHistories)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("payment_history_user_id_fkey");
+
+            entity.HasOne(d => d.Package).WithMany(p => p.PaymentHistories)
+                .HasForeignKey(d => d.PackageId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("payment_history_package_id_fkey");
         });
 
         modelBuilder.Entity<Robot>(entity =>
@@ -791,6 +803,64 @@ public partial class PostgresContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("updated_at");
+        });
+
+        // Point Package Entity
+        modelBuilder.Entity<PointPackage>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("point_packages_pkey");
+
+            entity.ToTable("point_packages");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Name).HasColumnName("name");
+            entity.Property(e => e.Points).HasColumnName("points");
+            entity.Property(e => e.Price)
+                .HasColumnType("numeric(10,2)")
+                .HasColumnName("price");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("updated_at");
+        });
+
+        // Point Transaction Entity
+        modelBuilder.Entity<PointTransaction>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("point_transactions_pkey");
+
+            entity.ToTable("point_transactions");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Amount).HasColumnName("amount");
+            entity.Property(e => e.TransactionType).HasColumnName("transaction_type");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.RelatedPaymentId).HasColumnName("related_payment_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+
+            // Relationships
+            entity.HasOne(d => d.User).WithMany(p => p.PointTransactions)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("point_transactions_user_id_fkey");
+
+            entity.HasOne(d => d.RelatedPayment).WithMany(p => p.PointTransactions)
+                .HasForeignKey(d => d.RelatedPaymentId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("point_transactions_related_payment_id_fkey");
         });
 
         modelBuilder.HasSequence<int>("seq_schema_version", "graphql").IsCyclic();

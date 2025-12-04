@@ -24,6 +24,15 @@ export interface CreateUserRequest {
   phoneNumber?: string
 }
 
+export interface AdminCreateUserRequest {
+  email: string
+  username: string
+  fullName?: string
+  avatarUrl?: string
+  role: string
+  phoneNumber?: string
+}
+
 export interface UpdateUserRequest {
   email?: string
   username?: string
@@ -91,6 +100,21 @@ class UserService {
 
   async createUser(userData: CreateUserRequest): Promise<User> {
     const response = await fetch(`${API_BASE_URL}/Users`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(userData)
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.message || 'Failed to create user')
+    }
+
+    return response.json()
+  }
+
+  async adminCreateUser(userData: AdminCreateUserRequest): Promise<User> {
+    const response = await fetch(`${API_BASE_URL}/Users/admin/create`, {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: JSON.stringify(userData)
