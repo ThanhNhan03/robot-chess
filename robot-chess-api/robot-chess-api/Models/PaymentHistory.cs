@@ -17,5 +17,12 @@ public partial class PaymentHistory
 
     public DateTime? CreatedAt { get; set; }
 
+    public int? PackageId { get; set; }
+
+    // Navigation properties
     public virtual AppUser? User { get; set; }
+    
+    public virtual PointPackage? Package { get; set; }
+    
+    public virtual ICollection<PointTransaction> PointTransactions { get; set; } = new List<PointTransaction>();
 }
