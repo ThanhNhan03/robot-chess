@@ -106,6 +106,17 @@ public class UpdateUserStatusDto
 }
 
 /// <summary>
+/// DTO for user statistics
+/// </summary>
+public class UserStatsDto
+{
+    public int TotalUsers { get; set; }
+    public int ActiveUsers { get; set; }
+    public int AdminUsers { get; set; }
+    public int NewUsersThisWeek { get; set; }
+}
+
+/// <summary>
 /// DTO for player statistics and Elo rating
 /// </summary>
 public class PlayerStatsDto

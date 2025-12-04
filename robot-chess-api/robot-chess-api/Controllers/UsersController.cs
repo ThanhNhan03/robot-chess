@@ -214,4 +214,22 @@ public class UsersController : ControllerBase
             return StatusCode(500, "Internal server error");
         }
     }
+
+    /// <summary>
+    /// Get user statistics (total users, active users, admins, new this week)
+    /// </summary>
+    [HttpGet("stats")]
+    public async Task<ActionResult<UserStatsDto>> GetUserStats()
+    {
+        try
+        {
+            var stats = await _userService.GetUserStatsAsync();
+            return Ok(stats);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting user statistics");
+            return StatusCode(500, "Internal server error");
+        }
+    }
 }

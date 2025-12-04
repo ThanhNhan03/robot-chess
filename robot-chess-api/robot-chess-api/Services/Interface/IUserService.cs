@@ -12,4 +12,5 @@ public interface IUserService
     Task<bool> UpdateUserStatusAsync(Guid id, bool isActive);
     Task<List<UserDto>> GetUsersByRoleAsync(string role);
     Task<UserActivityDto?> GetUserActivityAsync(Guid id);
+    Task<UserStatsDto> GetUserStatsAsync();
 }
