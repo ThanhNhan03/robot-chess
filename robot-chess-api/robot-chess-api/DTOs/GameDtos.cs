@@ -55,6 +55,7 @@ namespace robot_chess_api.DTOs
         public string Status { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
         public string? FenStart { get; set; }
+        public Guid? PuzzleId { get; set; } // ID of the puzzle if training_puzzle mode
     }
 
     // Request to resume a game

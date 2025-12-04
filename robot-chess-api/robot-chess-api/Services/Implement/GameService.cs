@@ -11,6 +11,7 @@ namespace robot_chess_api.Services.Implement
         private readonly IGameRepository _gameRepository;
         private readonly IGameMoveRepository _gameMoveRepository;
         private readonly IUserRepository _userRepository;
+        private readonly ITrainingPuzzleRepository _puzzleRepository;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<GameService> _logger;
         private readonly string _tcpServerUrl = "http://localhost:5000";
@@ -19,12 +20,14 @@ namespace robot_chess_api.Services.Implement
             IGameRepository gameRepository,
             IGameMoveRepository gameMoveRepository,
             IUserRepository userRepository,
+            ITrainingPuzzleRepository puzzleRepository,
             IHttpClientFactory httpClientFactory,
             ILogger<GameService> logger)
         {
             _gameRepository = gameRepository;
             _gameMoveRepository = gameMoveRepository;
             _userRepository = userRepository;
+            _puzzleRepository = puzzleRepository;
             _httpClientFactory = httpClientFactory;
             _logger = logger;
         }
@@ -51,10 +54,40 @@ namespace robot_chess_api.Services.Implement
                 throw new ArgumentException($"Game type '{request.GameTypeCode}' not found");
             }
 
-            // Validate puzzle if training_puzzle
-            if (request.GameTypeCode == "training_puzzle" && !request.PuzzleId.HasValue)
+            string fenStart = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"; // Default FEN
+            Guid? puzzleId = request.PuzzleId;
+
+            // Handle training_puzzle mode
+            if (request.GameTypeCode == "training_puzzle")
             {
-                throw new ArgumentException("Puzzle ID is required for training puzzle mode");
+                TrainingPuzzle? puzzle = null;
+
+                // If PuzzleId is provided, use that specific puzzle
+                if (request.PuzzleId.HasValue)
+                {
+                    puzzle = await _puzzleRepository.GetByIdAsync(request.PuzzleId.Value);
+                    if (puzzle == null)
+                    {
+                        throw new ArgumentException($"Puzzle with ID {request.PuzzleId.Value} not found");
+                    }
+                }
+                else
+                {
+                    // Otherwise, get a random puzzle based on difficulty
+                    var puzzles = await _puzzleRepository.GetByDifficultyAsync(request.Difficulty);
+                    var puzzleList = puzzles.ToList();
+                    
+                    if (puzzleList.Count == 0)
+                    {
+                        throw new ArgumentException($"No puzzles found for difficulty '{request.Difficulty}'");
+                    }
+
+                    var random = new Random();
+                    puzzle = puzzleList[random.Next(puzzleList.Count)];
+                }
+
+                fenStart = puzzle.FenStr;
+                puzzleId = puzzle.Id;
             }
 
             // Create new game record
@@ -63,7 +96,7 @@ namespace robot_chess_api.Services.Implement
                 Id = Guid.NewGuid(),
                 PlayerId = playerId,
                 GameTypeId = gameType.Id,
-                PuzzleId = request.PuzzleId,
+                PuzzleId = puzzleId,
                 Difficulty = request.Difficulty,
                 Status = "waiting",
                 FenStart = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -89,7 +122,8 @@ namespace robot_chess_api.Services.Implement
                         status = "start",
                         difficulty = request.Difficulty,
                         game_type = request.GameTypeCode,
-                        puzzle_id = request.PuzzleId?.ToString()
+                        puzzle_id = puzzleId?.ToString(),
+                        fen_start = fenStart
                     }
                 };
 
@@ -122,7 +156,8 @@ namespace robot_chess_api.Services.Implement
                 Difficulty = request.Difficulty,
                 Status = game.Status ?? "waiting",
                 Message = "Game started successfully",
-                FenStart = game.FenStart
+                FenStart = game.FenStart,
+                PuzzleId = puzzleId
             };
         }
 
