@@ -16,6 +16,17 @@
             <span class="logout-icon">🚪</span>
             Logout
           </button>
+          <div class="user-info">
+            <span class="user-avatar">{{ userInitial }}</span>
+            <div class="user-details">
+              <span class="user-name">{{ userName }}</span>
+              <span class="user-role">Administrator</span>
+            </div>
+          </div>
+          <button class="btn-flat btn-danger" @click="handleLogout">
+            <span class="logout-icon">🚪</span>
+            Logout
+          </button>
         </div>
       </div>
     </header>
@@ -52,6 +63,13 @@
           >
             <span class="nav-icon">👥</span>
             <span class="nav-label">User Management</span>
+          </button>
+          <button 
+            :class="['nav-item', { active: activeTab === 'points' }]"
+            @click="activeTab = 'points'"
+          >
+            <span class="nav-icon">💰</span>
+            <span class="nav-label">Point Packages</span>
           </button>
           <button 
             :class="['nav-item', { active: activeTab === 'faq' }]"
@@ -98,6 +116,9 @@
         <!-- User Management -->
         <UserManagement v-if="activeTab === 'user'" />
         
+        <!-- Point Package Management -->
+        <PointPackageManagement v-if="activeTab === 'points'" />
+        
         <!-- FAQ Management -->
         <FAQManagement v-if="activeTab === 'faq'" />
         
@@ -130,11 +151,12 @@ import AIManagement from '../../components/admin/AIManagement.vue'
 import UserManagement from '../../components/admin/UserManagement.vue'
 import FAQManagement from '../../components/admin/FAQManagement.vue'
 import NotificationManagement from '../../components/admin/NotificationManagement.vue'
+import PointPackageManagement from '../../components/admin/PointPackageManagement.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
-const activeTab = ref<'overview' | 'robot' | 'ai' | 'user' | 'faq' | 'notification' | 'settings' | 'logs'>('overview')
+const activeTab = ref<'overview' | 'robot' | 'ai' | 'user' | 'points' | 'faq' | 'notification' | 'settings' | 'logs'>('overview')
 
 const userName = computed(() => {
   return authStore.user.value?.fullName || authStore.user.value?.username || 'Admin'

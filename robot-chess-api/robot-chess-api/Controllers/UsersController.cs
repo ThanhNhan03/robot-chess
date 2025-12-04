@@ -88,6 +88,34 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
+    /// Admin creates new user account and sends credentials via email
+    /// </summary>
+    [HttpPost("admin/create")]
+    public async Task<ActionResult<UserDto>> AdminCreateUser([FromBody] AdminCreateUserDto dto)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var user = await _userService.AdminCreateUserAsync(dto);
+            return CreatedAtAction(nameof(GetUserById), new { id = user.Id }, user);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Validation error creating user");
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating user");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
     /// Update user
     /// </summary>
     [HttpPut("{id}")]

@@ -51,6 +51,11 @@ public partial class PostgresContext : DbContext
 
     public virtual DbSet<Faq> Faqs { get; set; }
 
+    // Point Package Management
+    public virtual DbSet<PointPackage> PointPackages { get; set; }
+
+    public virtual DbSet<PointTransaction> PointTransactions { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         // Connection string is configured in Program.cs from appsettings.json
@@ -146,6 +151,48 @@ public partial class PostgresContext : DbContext
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("last_login_at");
             entity.Property(e => e.PhoneNumber).HasColumnName("phone_number");
+            
+            // Points System
+            entity.Property(e => e.PointsBalance)
+                .HasDefaultValue(0)
+                .HasColumnName("points_balance");
+            
+            // Elo Rating System
+            entity.Property(e => e.EloRating)
+                .HasDefaultValue(1200)
+                .HasColumnName("elo_rating");
+            entity.Property(e => e.PeakElo)
+                .HasDefaultValue(1200)
+                .HasColumnName("peak_elo");
+            entity.Property(e => e.TotalGamesPlayed)
+                .HasDefaultValue(0)
+                .HasColumnName("total_games_played");
+            entity.Property(e => e.Wins)
+                .HasDefaultValue(0)
+                .HasColumnName("wins");
+            entity.Property(e => e.Losses)
+                .HasDefaultValue(0)
+                .HasColumnName("losses");
+            entity.Property(e => e.Draws)
+                .HasDefaultValue(0)
+                .HasColumnName("draws");
+            
+            // Email Verification
+            entity.Property(e => e.EmailVerified)
+                .HasDefaultValue(false)
+                .HasColumnName("email_verified");
+            entity.Property(e => e.EmailVerificationToken)
+                .HasColumnName("email_verification_token");
+            entity.Property(e => e.EmailVerificationTokenExpiry)
+                .HasColumnType("timestamp with time zone")
+                .HasColumnName("email_verification_token_expiry");
+            
+            // Password Reset
+            entity.Property(e => e.PasswordResetToken)
+                .HasColumnName("password_reset_token");
+            entity.Property(e => e.PasswordResetTokenExpiry)
+                .HasColumnType("timestamp with time zone")
+                .HasColumnName("password_reset_token_expiry");
         });
 
         modelBuilder.Entity<Feedback>(entity =>
@@ -203,6 +250,11 @@ public partial class PostgresContext : DbContext
             entity.Property(e => e.Difficulty)
                 .HasDefaultValueSql("'medium'::text")
                 .HasColumnName("difficulty");
+            
+            // Elo Rating tracking
+            entity.Property(e => e.PlayerRatingBefore).HasColumnName("player_rating_before");
+            entity.Property(e => e.PlayerRatingAfter).HasColumnName("player_rating_after");
+            entity.Property(e => e.RatingChange).HasColumnName("rating_change");
 
             entity.HasOne(d => d.GameType).WithMany(p => p.Games)
                 .HasForeignKey(d => d.GameTypeId)
@@ -287,12 +339,19 @@ public partial class PostgresContext : DbContext
                 .HasDefaultValueSql("'pending'::text")
                 .HasColumnName("status");
             entity.Property(e => e.TransactionId).HasColumnName("transaction_id");
+            entity.Property(e => e.OrderCode).HasColumnName("order_code");
             entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.PackageId).HasColumnName("package_id");
 
             entity.HasOne(d => d.User).WithMany(p => p.PaymentHistories)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("payment_history_user_id_fkey");
+
+            entity.HasOne(d => d.Package).WithMany(p => p.PaymentHistories)
+                .HasForeignKey(d => d.PackageId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("payment_history_package_id_fkey");
         });
 
         modelBuilder.Entity<Robot>(entity =>
@@ -436,6 +495,11 @@ public partial class PostgresContext : DbContext
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("id");
+            entity.Property(e => e.Name)
+                .HasDefaultValueSql("'Puzzle'::text")
+                .HasColumnName("name");
+            entity.Property(e => e.Description)
+                .HasColumnName("description");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone")
@@ -739,6 +803,64 @@ public partial class PostgresContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("updated_at");
+        });
+
+        // Point Package Entity
+        modelBuilder.Entity<PointPackage>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("point_packages_pkey");
+
+            entity.ToTable("point_packages");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Name).HasColumnName("name");
+            entity.Property(e => e.Points).HasColumnName("points");
+            entity.Property(e => e.Price)
+                .HasColumnType("numeric(10,2)")
+                .HasColumnName("price");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("updated_at");
+        });
+
+        // Point Transaction Entity
+        modelBuilder.Entity<PointTransaction>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("point_transactions_pkey");
+
+            entity.ToTable("point_transactions");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Amount).HasColumnName("amount");
+            entity.Property(e => e.TransactionType).HasColumnName("transaction_type");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.RelatedPaymentId).HasColumnName("related_payment_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
+
+            // Relationships
+            entity.HasOne(d => d.User).WithMany(p => p.PointTransactions)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("point_transactions_user_id_fkey");
+
+            entity.HasOne(d => d.RelatedPayment).WithMany(p => p.PointTransactions)
+                .HasForeignKey(d => d.RelatedPaymentId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("point_transactions_related_payment_id_fkey");
         });
 
         modelBuilder.HasSequence<int>("seq_schema_version", "graphql").IsCyclic();

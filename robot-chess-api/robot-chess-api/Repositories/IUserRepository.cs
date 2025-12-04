@@ -16,4 +16,7 @@ public interface IUserRepository
     Task<bool> UsernameExistsAsync(string username, Guid? excludeUserId = null);
     Task<List<AppUser>> GetUsersByRoleAsync(string role);
     Task UpdateLastLoginAsync(Guid userId);
+    Task<AppUser?> GetUserByVerificationTokenAsync(string token);
+    Task UpdateEmailVerificationAsync(Guid userId, bool verified);
+    Task<AppUser?> GetUserByPasswordResetTokenAsync(string token);
 }

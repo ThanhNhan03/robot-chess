@@ -7,11 +7,13 @@ public class AuthService : IAuthService
 {
     private readonly Supabase.Client _supabaseClient;
     private readonly ILogger<AuthService> _logger;
+    private readonly IConfiguration _configuration;
 
-    public AuthService(Supabase.Client supabaseClient, ILogger<AuthService> logger)
+    public AuthService(Supabase.Client supabaseClient, ILogger<AuthService> logger, IConfiguration configuration)
     {
         _supabaseClient = supabaseClient;
         _logger = logger;
+        _configuration = configuration;
     }
 
     public async Task<(bool Success, string? Token, Guid? UserId, string? Error)> SignUpAsync(string email, string password)
@@ -82,6 +84,49 @@ public class AuthService : IAuthService
         catch (Exception ex)
         {
             _logger.LogError($"Logout error: {ex.Message}");
+            return (false, ex.Message);
+        }
+    }
+
+    public async Task<(bool Success, string? Error)> UpdatePasswordAsync(Guid userId, string newPassword)
+    {
+        try
+        {
+            _logger.LogInformation($"Updating password for user: {userId}");
+
+            // Get service role key from configuration
+            var supabaseUrl = _configuration["Supabase:Url"] 
+                ?? throw new InvalidOperationException("Supabase:Url not configured");
+            var serviceRoleKey = _configuration["ServiceRoleKey"] 
+                ?? throw new InvalidOperationException("ServiceRoleKey not configured");
+
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("apikey", serviceRoleKey);
+            httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {serviceRoleKey}");
+
+            var updateData = new
+            {
+                password = newPassword
+            };
+
+            var response = await httpClient.PutAsJsonAsync(
+                $"{supabaseUrl}/auth/v1/admin/users/{userId}",
+                updateData
+            );
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogError($"Password update failed: {error}");
+                return (false, "Failed to update password");
+            }
+
+            _logger.LogInformation($"Password updated successfully for user: {userId}");
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"UpdatePassword error: {ex.Message}");
             return (false, ex.Message);
         }
     }

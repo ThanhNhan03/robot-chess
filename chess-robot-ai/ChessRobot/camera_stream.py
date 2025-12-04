@@ -104,44 +104,8 @@ class StreamingHandler(BaseHTTPRequestHandler):
     
     def do_GET(self):
         """Handle GET requests"""
-        if self.path == '/':
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self._set_cors_headers()
-            self.end_headers()
-            self.wfile.write(b"""
-                <html>
-                <head>
-                    <title>Chess Robot Camera Stream</title>
-                    <style>
-                        body {
-                            margin: 0;
-                            padding: 20px;
-                            background: #000;
-                            display: flex;
-                            flex-direction: column;
-                            align-items: center;
-                            font-family: Arial, sans-serif;
-                        }
-                        h1 {
-                            color: #fff;
-                            margin-bottom: 20px;
-                        }
-                        img {
-                            max-width: 100%;
-                            border: 2px solid #333;
-                            border-radius: 8px;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <h1>Chess Robot - Camera Stream</h1>
-                    <img src="/stream" />
-                </body>
-                </html>
-            """)
-            
-        elif self.path == '/stream':
+        if self.path == '/' or self.path == '/stream':
+            # Both / and /stream return MJPEG stream directly
             self.send_response(200)
             self.send_header('Content-type', 'multipart/x-mixed-replace; boundary=--jpgboundary')
             self._set_cors_headers()

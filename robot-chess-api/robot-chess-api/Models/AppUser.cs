@@ -24,9 +24,36 @@ public partial class AppUser
 
     public string? PhoneNumber { get; set; }
 
+    public int PointsBalance { get; set; } = 0;
+
+    // Elo Rating System
+    public int EloRating { get; set; } = 0;
+
+    public int? PeakElo { get; set; } = 0;
+
+    public int TotalGamesPlayed { get; set; } = 0;
+
+    public int Wins { get; set; } = 0;
+
+    public int Losses { get; set; } = 0;
+
+    public int Draws { get; set; } = 0;
+
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
+
+    // Email verification properties
+    public bool EmailVerified { get; set; } = false;
+
+    public string? EmailVerificationToken { get; set; }
+
+    public DateTime? EmailVerificationTokenExpiry { get; set; }
+
+    // Password reset properties
+    public string? PasswordResetToken { get; set; }
+
+    public DateTime? PasswordResetTokenExpiry { get; set; }
 
     // Navigation properties
     public virtual ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
@@ -38,4 +65,6 @@ public partial class AppUser
     public virtual ICollection<SavedState> SavedStates { get; set; } = new List<SavedState>();
     
     public virtual ICollection<RobotCommandHistory> RobotCommandHistories { get; set; } = new List<RobotCommandHistory>();
+    
+    public virtual ICollection<PointTransaction> PointTransactions { get; set; } = new List<PointTransaction>();
 }

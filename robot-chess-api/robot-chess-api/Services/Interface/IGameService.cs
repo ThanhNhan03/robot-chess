@@ -16,5 +16,14 @@ namespace robot_chess_api.Services.Interface
         Task<IEnumerable<GameMoveDto>> SaveMovesAsync(SaveMovesRequestDto request);
         Task<IEnumerable<GameMoveDto>> GetGameMovesAsync(Guid gameId);
         Task<IEnumerable<GameMoveDto>> GetGameMovesRangeAsync(GetMovesRequestDto request);
+        
+        // Update game result
+        Task<UpdateGameResultResponseDto> UpdateGameResultAsync(UpdateGameResultRequestDto request);
+        
+        // End game and notify AI
+        Task<EndGameResponseDto> EndGameAsync(Guid gameId, string reason);
+        
+        // Game replay
+        Task<GameReplayDto?> GetGameReplayAsync(Guid gameId);
     }
 }

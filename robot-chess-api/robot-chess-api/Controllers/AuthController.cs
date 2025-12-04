@@ -3,6 +3,7 @@ using robot_chess_api.DTOs;
 using robot_chess_api.Services.Interface;
 using robot_chess_api.Repositories;
 using robot_chess_api.Models;
+using System.Security.Cryptography;
 
 namespace robot_chess_api.Controllers;
 
@@ -12,15 +13,18 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
     private readonly IUserRepository _userRepository;
+    private readonly IEmailService _emailService;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
         IAuthService authService,
         IUserRepository userRepository,
+        IEmailService emailService,
         ILogger<AuthController> logger)
     {
         _authService = authService;
         _userRepository = userRepository;
+        _emailService = emailService;
         _logger = logger;
     }
 
@@ -90,10 +94,29 @@ public class AuthController : ControllerBase
                 FullName = request.FullName,
                 PhoneNumber = request.PhoneNumber,
                 Role = "player", // Default role
-                IsActive = true
+                IsActive = true,
+                EmailVerified = false,
+                EmailVerificationToken = GenerateVerificationToken(),
+                EmailVerificationTokenExpiry = DateTime.UtcNow.AddHours(24)
             };
 
             var createdUser = await _userRepository.CreateUserAsync(appUser);
+
+            // 3. Send verification email
+            try
+            {
+                await _emailService.SendVerificationEmailAsync(
+                    createdUser.Email,
+                    createdUser.Username,
+                    createdUser.EmailVerificationToken!
+                );
+                _logger.LogInformation($"Verification email sent to: {request.Email}");
+            }
+            catch (Exception emailEx)
+            {
+                _logger.LogError($"Failed to send verification email: {emailEx.Message}");
+                // Continue anyway - user is created
+            }
 
             _logger.LogInformation($"Sign up successful for: {request.Email}");
 
@@ -301,6 +324,229 @@ public class AuthController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Xác thực email với token
+    /// </summary>
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
+    {
+        try
+        {
+            _logger.LogInformation($"Email verification request with token");
+
+            if (string.IsNullOrEmpty(request.Token))
+            {
+                return BadRequest(new { success = false, error = "Verification token is required" });
+            }
+
+            // Find user by verification token
+            var user = await _userRepository.GetUserByVerificationTokenAsync(request.Token);
+
+            if (user == null)
+            {
+                return BadRequest(new { success = false, error = "Invalid verification token" });
+            }
+
+            // Check if token has expired
+            if (user.EmailVerificationTokenExpiry == null || 
+                user.EmailVerificationTokenExpiry < DateTime.UtcNow)
+            {
+                return BadRequest(new { success = false, error = "Verification token has expired" });
+            }
+
+            // Check if already verified
+            if (user.EmailVerified)
+            {
+                return Ok(new { success = true, message = "Email already verified" });
+            }
+
+            // Update user verification status
+            await _userRepository.UpdateEmailVerificationAsync(user.Id, true);
+
+            _logger.LogInformation($"Email verified successfully for user: {user.Email}");
+
+            return Ok(new 
+            { 
+                success = true, 
+                message = "Email verified successfully. You can now login." 
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"VerifyEmail exception: {ex.Message}");
+            return StatusCode(500, new { success = false, error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Gửi lại email xác thực
+    /// </summary>
+    [HttpPost("resend-verification")]
+    public async Task<IActionResult> ResendVerificationEmail([FromBody] ResendVerificationRequest request)
+    {
+        try
+        {
+            _logger.LogInformation($"Resend verification email request for: {request.Email}");
+
+            var user = await _userRepository.GetUserByEmailAsync(request.Email);
+
+            if (user == null)
+            {
+                // Don't reveal if email exists or not
+                return Ok(new { success = true, message = "If the email exists, a verification email has been sent" });
+            }
+
+            if (user.EmailVerified)
+            {
+                return BadRequest(new { success = false, error = "Email already verified" });
+            }
+
+            // Generate new verification token
+            user.EmailVerificationToken = GenerateVerificationToken();
+            user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddHours(24);
+            await _userRepository.UpdateUserAsync(user);
+
+            // Send verification email
+            await _emailService.SendVerificationEmailAsync(
+                user.Email,
+                user.Username,
+                user.EmailVerificationToken
+            );
+
+            _logger.LogInformation($"Verification email resent to: {request.Email}");
+
+            return Ok(new 
+            { 
+                success = true, 
+                message = "Verification email sent. Please check your inbox." 
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"ResendVerificationEmail exception: {ex.Message}");
+            return StatusCode(500, new { success = false, error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Yêu cầu đặt lại mật khẩu
+    /// </summary>
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        try
+        {
+            _logger.LogInformation($"Forgot password request for: {request.Email}");
+
+            var user = await _userRepository.GetUserByEmailAsync(request.Email);
+
+            if (user == null)
+            {
+                // Don't reveal if email exists or not
+                return Ok(new { success = true, message = "If the email exists, a password reset link has been sent" });
+            }
+
+            // Generate password reset token
+            user.PasswordResetToken = GenerateVerificationToken();
+            user.PasswordResetTokenExpiry = DateTime.UtcNow.AddHours(1); // 1 hour expiry
+            await _userRepository.UpdateUserAsync(user);
+
+            // Send password reset email
+            await _emailService.SendPasswordResetEmailAsync(
+                user.Email,
+                user.Username,
+                user.PasswordResetToken
+            );
+
+            _logger.LogInformation($"Password reset email sent to: {request.Email}");
+
+            return Ok(new 
+            { 
+                success = true, 
+                message = "Password reset email sent. Please check your inbox." 
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"ForgotPassword exception: {ex.Message}");
+            return StatusCode(500, new { success = false, error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Đặt lại mật khẩu với token
+    /// </summary>
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        try
+        {
+            _logger.LogInformation($"Reset password request with token");
+
+            if (string.IsNullOrWhiteSpace(request.Token))
+            {
+                return BadRequest(new { success = false, error = "Token is required" });
+            }
+
+            if (string.IsNullOrWhiteSpace(request.NewPassword))
+            {
+                return BadRequest(new { success = false, error = "New password is required" });
+            }
+
+            // Find user by reset token
+            var user = await _userRepository.GetUserByPasswordResetTokenAsync(request.Token);
+
+            if (user == null)
+            {
+                return BadRequest(new { success = false, error = "Invalid or expired reset token" });
+            }
+
+            // Check if token is expired
+            if (user.PasswordResetTokenExpiry == null || user.PasswordResetTokenExpiry < DateTime.UtcNow)
+            {
+                return BadRequest(new { success = false, error = "Reset token has expired" });
+            }
+
+            // Update password in Supabase Auth
+            var (success, error) = await _authService.UpdatePasswordAsync(user.Id, request.NewPassword);
+
+            if (!success)
+            {
+                return BadRequest(new { success = false, error = error ?? "Failed to update password" });
+            }
+
+            // Clear reset token
+            user.PasswordResetToken = null;
+            user.PasswordResetTokenExpiry = null;
+            await _userRepository.UpdateUserAsync(user);
+
+            _logger.LogInformation($"Password reset successful for user: {user.Email}");
+
+            return Ok(new 
+            { 
+                success = true, 
+                message = "Password has been reset successfully" 
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"ResetPassword exception: {ex.Message}");
+            return StatusCode(500, new { success = false, error = "Internal server error" });
+        }
+    }
+
+    // Helper method to generate verification token
+    private static string GenerateVerificationToken()
+    {
+        var randomBytes = new byte[32];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomBytes);
+        return Convert.ToBase64String(randomBytes)
+            .Replace("+", "-")
+            .Replace("/", "_")
+            .Replace("=", "");
+    }
+
     // Helper method to map AppUser to UserResponse
     private static UserResponse MapToUserResponse(AppUser user)
     {
@@ -317,3 +563,4 @@ public class AuthController : ControllerBase
         };
     }
 }
+
