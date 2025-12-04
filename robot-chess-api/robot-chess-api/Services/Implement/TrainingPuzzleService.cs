@@ -66,6 +66,8 @@ namespace robot_chess_api.Services.Implement
                 new TrainingPuzzle
                 {
                     Id = Guid.NewGuid(),
+                    Name = "Scholar's Mate Pattern",
+                    Description = "Classic checkmate in 4 moves. The queen and bishop coordinate to deliver mate on f7.",
                     FenStr = "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 0 1",
                     SolutionMove = "Qxf7#",
                     Difficulty = "easy",
@@ -74,6 +76,8 @@ namespace robot_chess_api.Services.Implement
                 new TrainingPuzzle
                 {
                     Id = Guid.NewGuid(),
+                    Name = "Fried Liver Attack",
+                    Description = "A devastating bishop sacrifice on f7. This classic Italian Game tactic wins material.",
                     FenStr = "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 1",
                     SolutionMove = "Bxf7+",
                     Difficulty = "easy",
@@ -82,6 +86,8 @@ namespace robot_chess_api.Services.Implement
                 new TrainingPuzzle
                 {
                     Id = Guid.NewGuid(),
+                    Name = "King in the Center",
+                    Description = "Punish the uncastled king! The queen delivers a swift checkmate on f7.",
                     FenStr = "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5Q2/PPPP1PPP/RNB1K1NR w KQkq - 0 1",
                     SolutionMove = "Qxf7#",
                     Difficulty = "easy",
@@ -92,6 +98,8 @@ namespace robot_chess_api.Services.Implement
                 new TrainingPuzzle
                 {
                     Id = Guid.NewGuid(),
+                    Name = "Back Rank Weakness",
+                    Description = "Exploit the exposed king on the back rank. Find the forcing queen move that leads to mate.",
                     FenStr = "5r1k/1b2Nppp/8/2R5/4Q3/8/5PPP/6K1 w - - 0 1",
                     SolutionMove = "Qh4",
                     Difficulty = "medium",
@@ -100,6 +108,8 @@ namespace robot_chess_api.Services.Implement
                 new TrainingPuzzle
                 {
                     Id = Guid.NewGuid(),
+                    Name = "Italian Opening Trap",
+                    Description = "A classic bishop sacrifice in the Italian Game. White sacrifices to expose the king.",
                     FenStr = "r1bq1rk1/ppp2ppp/2np1n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 w - - 0 1",
                     SolutionMove = "Bxf7+",
                     Difficulty = "medium",
@@ -108,6 +118,8 @@ namespace robot_chess_api.Services.Implement
                 new TrainingPuzzle
                 {
                     Id = Guid.NewGuid(),
+                    Name = "Knight Fork Opportunity",
+                    Description = "A powerful knight check leads to winning material. Look for the discovered attack pattern.",
                     FenStr = "r2qkb1r/pp2nppp/3p4/2pNN1B1/2BnP3/3P4/PPP2PPP/R2bK2R w KQkq - 0 1",
                     SolutionMove = "Nf6+",
                     Difficulty = "medium",
@@ -118,6 +130,8 @@ namespace robot_chess_api.Services.Implement
                 new TrainingPuzzle
                 {
                     Id = Guid.NewGuid(),
+                    Name = "Complex Tactical Shot",
+                    Description = "A difficult position requiring precise calculation. Find the winning queen move.",
                     FenStr = "r1b2rk1/ppp2ppp/8/4N3/1b1pn3/8/PPP2PPP/RNBQR1K1 w - - 0 1",
                     SolutionMove = "Qxd4",
                     Difficulty = "hard",
@@ -126,6 +140,8 @@ namespace robot_chess_api.Services.Implement
                 new TrainingPuzzle
                 {
                     Id = Guid.NewGuid(),
+                    Name = "Advanced Positional Attack",
+                    Description = "A sophisticated knight maneuver that creates multiple threats. Study the weak squares.",
                     FenStr = "r4rk1/1b3ppp/pq1bpn2/1p6/3NP3/PBN2P2/1P1Q2PP/2R2RK1 w - - 0 1",
                     SolutionMove = "Nf5",
                     Difficulty = "hard",
@@ -134,6 +150,8 @@ namespace robot_chess_api.Services.Implement
                 new TrainingPuzzle
                 {
                     Id = Guid.NewGuid(),
+                    Name = "Devastating Knight Sacrifice",
+                    Description = "A brilliant knight sacrifice on f7 breaks through Black's defense. Calculate carefully!",
                     FenStr = "r2q1rk1/pb2bppp/1p2pn2/3pN3/3P4/P2B1N2/1P3PPP/R2QR1K1 w - - 0 1",
                     SolutionMove = "Nxf7",
                     Difficulty = "hard",
@@ -142,6 +160,8 @@ namespace robot_chess_api.Services.Implement
                 new TrainingPuzzle
                 {
                     Id = Guid.NewGuid(),
+                    Name = "Master Level Tactics",
+                    Description = "An advanced tactical puzzle requiring deep calculation. The bishop move sets up a deadly attack.",
                     FenStr = "r1b1r1k1/pp1n1pbp/1qp3p1/3p4/1P1P4/P1N1PN2/4BPPP/R2QR1K1 w - - 0 1",
                     SolutionMove = "Bh5",
                     Difficulty = "hard",
@@ -166,7 +186,9 @@ namespace robot_chess_api.Services.Implement
                 FenStr = puzzle.FenStr,
                 SolutionMove = puzzle.SolutionMove,
                 Difficulty = puzzle.Difficulty,
-                CreatedAt = puzzle.CreatedAt
+                CreatedAt = puzzle.CreatedAt,
+                Name = puzzle.Name,
+                Description = puzzle.Description
             };
         }
     }

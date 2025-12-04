@@ -15,5 +15,9 @@ public partial class TrainingPuzzle
 
     public DateTime? CreatedAt { get; set; }
 
+    public string Name { get; set; } = "Puzzle";
+
+    public string? Description { get; set; }
+
     public virtual ICollection<Game> Games { get; set; } = new List<Game>();
 }

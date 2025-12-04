@@ -483,6 +483,11 @@ public partial class PostgresContext : DbContext
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("id");
+            entity.Property(e => e.Name)
+                .HasDefaultValueSql("'Puzzle'::text")
+                .HasColumnName("name");
+            entity.Property(e => e.Description)
+                .HasColumnName("description");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone")

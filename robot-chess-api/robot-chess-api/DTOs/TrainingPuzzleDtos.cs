@@ -7,5 +7,7 @@ namespace robot_chess_api.DTOs
         public string SolutionMove { get; set; } = null!;
         public string? Difficulty { get; set; }
         public DateTime? CreatedAt { get; set; }
+        public string Name { get; set; } = "Puzzle";
+        public string? Description { get; set; }
     }
 }
