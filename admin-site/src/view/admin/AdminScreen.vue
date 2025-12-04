@@ -16,6 +16,17 @@
             <span class="logout-icon">🚪</span>
             Logout
           </button>
+          <div class="user-info">
+            <span class="user-avatar">{{ userInitial }}</span>
+            <div class="user-details">
+              <span class="user-name">{{ userName }}</span>
+              <span class="user-role">Administrator</span>
+            </div>
+          </div>
+          <button class="btn-flat btn-danger" @click="handleLogout">
+            <span class="logout-icon">🚪</span>
+            Logout
+          </button>
         </div>
       </div>
     </header>
