@@ -112,6 +112,8 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IFaqRepository, FaqRepository>();
 builder.Services.AddScoped<IGameRepository, GameRepository>();
 builder.Services.AddScoped<IGameMoveRepository, GameMoveRepository>();
+builder.Services.AddScoped<ITrainingPuzzleRepository, TrainingPuzzleRepository>();
+builder.Services.AddScoped<IPointPackageRepository, PointPackageRepository>();
 
 // Register Services
 builder.Services.AddScoped<IAuthService, AuthService>();

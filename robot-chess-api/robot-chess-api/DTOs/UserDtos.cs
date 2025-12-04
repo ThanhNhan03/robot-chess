@@ -190,14 +190,3 @@ public class LeaderboardEntryDto
     public int Draws { get; set; }
     public double WinRate { get; set; }
 }
-
-/// <summary>
-/// DTO for user statistics
-/// </summary>
-public class UserStatsDto
-{
-    public int TotalUsers { get; set; }
-    public int ActiveUsers { get; set; }
-    public int AdminUsers { get; set; }
-    public int NewUsersThisWeek { get; set; }
-}
