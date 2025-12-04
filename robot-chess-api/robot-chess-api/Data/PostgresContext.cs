@@ -339,6 +339,7 @@ public partial class PostgresContext : DbContext
                 .HasDefaultValueSql("'pending'::text")
                 .HasColumnName("status");
             entity.Property(e => e.TransactionId).HasColumnName("transaction_id");
+            entity.Property(e => e.OrderCode).HasColumnName("order_code");
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.PackageId).HasColumnName("package_id");
 

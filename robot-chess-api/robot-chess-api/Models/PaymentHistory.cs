@@ -10,6 +10,8 @@ public partial class PaymentHistory
     public Guid? UserId { get; set; }
 
     public string? TransactionId { get; set; }
+    
+    public string? OrderCode { get; set; }  // PayOS order code for lookup
 
     public decimal Amount { get; set; }
 
