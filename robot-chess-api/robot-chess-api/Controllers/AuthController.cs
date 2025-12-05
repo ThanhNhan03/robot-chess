@@ -625,6 +625,7 @@ public class AuthController : ControllerBase
             Email = user.Email,
             Username = user.Username,
             FullName = user.FullName,
+            PhoneNumber = user.PhoneNumber,
             AvatarUrl = user.AvatarUrl,
             Role = user.Role,
             IsActive = user.IsActive,
