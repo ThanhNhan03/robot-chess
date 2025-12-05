@@ -25,5 +25,10 @@ namespace robot_chess_api.Services.Interface
         
         // Game replay
         Task<GameReplayDto?> GetGameReplayAsync(Guid gameId);
+        
+        // Pause/Resume/Save state
+        Task<PauseGameResponseDto> PauseGameAsync(Guid gameId);
+        Task<ResumeGameResponseDto> ResumeGameByIdAsync(Guid gameId);
+        Task<SaveGameStateResponseDto> SaveGameStateAsync(SaveGameStateRequestDto request);
     }
 }

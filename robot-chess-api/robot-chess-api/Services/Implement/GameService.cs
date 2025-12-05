@@ -12,6 +12,7 @@ namespace robot_chess_api.Services.Implement
         private readonly IGameMoveRepository _gameMoveRepository;
         private readonly IUserRepository _userRepository;
         private readonly ITrainingPuzzleRepository _puzzleRepository;
+        private readonly ISavedStateRepository _savedStateRepository;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<GameService> _logger;
         private readonly string _tcpServerUrl = "http://localhost:5000";
@@ -21,6 +22,7 @@ namespace robot_chess_api.Services.Implement
             IGameMoveRepository gameMoveRepository,
             IUserRepository userRepository,
             ITrainingPuzzleRepository puzzleRepository,
+            ISavedStateRepository savedStateRepository,
             IHttpClientFactory httpClientFactory,
             ILogger<GameService> logger)
         {
@@ -28,6 +30,7 @@ namespace robot_chess_api.Services.Implement
             _gameMoveRepository = gameMoveRepository;
             _userRepository = userRepository;
             _puzzleRepository = puzzleRepository;
+            _savedStateRepository = savedStateRepository;
             _httpClientFactory = httpClientFactory;
             _logger = logger;
         }
@@ -793,6 +796,182 @@ namespace robot_chess_api.Services.Implement
                     CreatedAt = m.CreatedAt ?? DateTime.UtcNow
                 }).ToList(),
                 Statistics = null
+            };
+        }
+
+        public async Task<PauseGameResponseDto> PauseGameAsync(Guid gameId)
+        {
+            var game = await _gameRepository.GetByIdAsync(gameId);
+            if (game == null)
+            {
+                throw new ArgumentException("Game not found");
+            }
+
+            if (game.Status != "in_progress" && game.Status != "playing")
+            {
+                throw new InvalidOperationException($"Cannot pause game with status '{game.Status}'");
+            }
+
+            // Save current game state
+            var savedState = new SavedState
+            {
+                Id = Guid.NewGuid(),
+                GameId = gameId,
+                PlayerId = game.PlayerId,
+                FenStr = game.FenCurrent ?? game.FenStart ?? "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                LastMoveId = null, // Can be enhanced to track last move
+                SavedAt = DateTime.UtcNow
+            };
+
+            await _savedStateRepository.CreateAsync(savedState);
+
+            // Update game status to paused
+            game.Status = "paused";
+            await _gameRepository.UpdateAsync(game);
+
+            // Send end command to AI to stop current game
+            try
+            {
+                var aiMessage = new
+                {
+                    Type = "ai_request",
+                    Command = "start_game",
+                    Payload = new
+                    {
+                        status = "end",
+                        game_id = gameId.ToString()
+                    }
+                };
+
+                var httpClient = _httpClientFactory.CreateClient();
+                var response = await httpClient.PostAsJsonAsync($"{_tcpServerUrl}/internal/ai-command", aiMessage);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning($"Failed to send pause/end command to AI for game {gameId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error sending pause command to AI for game {gameId}");
+                // Don't throw - game is already paused in DB
+            }
+
+            return new PauseGameResponseDto
+            {
+                GameId = gameId,
+                Status = "paused",
+                Message = "Game paused successfully. Progress saved.",
+                SavedStateId = savedState.Id
+            };
+        }
+
+        public async Task<ResumeGameResponseDto> ResumeGameByIdAsync(Guid gameId)
+        {
+            var game = await _gameRepository.GetByIdAsync(gameId);
+            if (game == null)
+            {
+                throw new ArgumentException("Game not found");
+            }
+
+            if (game.Status != "paused")
+            {
+                throw new InvalidOperationException($"Cannot resume game with status '{game.Status}'. Game must be paused.");
+            }
+
+            // Get latest saved state
+            var savedState = await _savedStateRepository.GetLatestByGameIdAsync(gameId);
+            if (savedState == null)
+            {
+                throw new InvalidOperationException("No saved state found for this game");
+            }
+
+            // Update game status
+            game.Status = "in_progress";
+            await _gameRepository.UpdateAsync(game);
+
+            // Send resume command to AI with saved FEN
+            var requestId = Guid.NewGuid();
+            try
+            {
+                // Use navigation property instead of separate query
+                var gameTypeCode = game.GameType?.Code ?? "normal_game";
+                
+                var aiMessage = new
+                {
+                    Type = "ai_request",
+                    Command = "start_game",
+                    Payload = new
+                    {
+                        status = "resume",
+                        game_id = gameId.ToString(),
+                        difficulty = game.Difficulty ?? "medium",
+                        game_type = gameTypeCode,
+                        puzzle_fen = savedState.FenStr // Resume from saved FEN
+                    }
+                };
+
+                var httpClient = _httpClientFactory.CreateClient();
+                var response = await httpClient.PostAsJsonAsync($"{_tcpServerUrl}/internal/ai-command", aiMessage);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning($"Failed to send resume command to AI for game {gameId}");
+                    throw new Exception("Failed to communicate with game server");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error sending resume command to AI for game {gameId}");
+                // Revert status
+                game.Status = "paused";
+                await _gameRepository.UpdateAsync(game);
+                throw;
+            }
+
+            return new ResumeGameResponseDto
+            {
+                GameId = gameId,
+                RequestId = requestId,
+                Status = "resumed",
+                FenStr = savedState.FenStr,
+                LastMoveId = savedState.LastMoveId,
+                Message = "Game resumed successfully. Set up your board to continue.",
+                SavedAt = savedState.SavedAt
+            };
+        }
+
+        public async Task<SaveGameStateResponseDto> SaveGameStateAsync(SaveGameStateRequestDto request)
+        {
+            var game = await _gameRepository.GetByIdAsync(request.GameId);
+            if (game == null)
+            {
+                throw new ArgumentException("Game not found");
+            }
+
+            var savedState = new SavedState
+            {
+                Id = Guid.NewGuid(),
+                GameId = request.GameId,
+                PlayerId = game.PlayerId,
+                FenStr = request.FenStr,
+                LastMoveId = request.LastMoveId,
+                SavedAt = DateTime.UtcNow
+            };
+
+            await _savedStateRepository.CreateAsync(savedState);
+
+            // Update game's current FEN
+            game.FenCurrent = request.FenStr;
+            await _gameRepository.UpdateAsync(game);
+
+            return new SaveGameStateResponseDto
+            {
+                SavedStateId = savedState.Id,
+                GameId = request.GameId,
+                FenStr = request.FenStr,
+                SavedAt = savedState.SavedAt ?? DateTime.UtcNow,
+                Message = "Game state saved successfully"
             };
         }
     }
