@@ -190,3 +190,22 @@ public class LeaderboardEntryDto
     public int Draws { get; set; }
     public double WinRate { get; set; }
 }
+
+/// <summary>
+/// DTO for ranking/leaderboard
+/// </summary>
+public class RankingDto
+{
+    public int Rank { get; set; }
+    public Guid UserId { get; set; }
+    public string Username { get; set; } = null!;
+    public string? FullName { get; set; }
+    public string? AvatarUrl { get; set; }
+    public int EloRating { get; set; }
+    public int Wins { get; set; }
+    public int Losses { get; set; }
+    public int Draws { get; set; }
+    public int TotalGames { get; set; }
+    public double WinRate { get; set; }
+}
+

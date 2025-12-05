@@ -52,6 +52,7 @@ public class UserResponse
 
 public class UpdateProfileRequest
 {
+    public string? Username { get; set; }
     public string? FullName { get; set; }
     public string? AvatarUrl { get; set; }
     [Phone(ErrorMessage = "Invalid phone number format")]
@@ -82,6 +83,16 @@ public class ResetPasswordRequest
 {
     [Required(ErrorMessage = "Token is required")]
     public string Token { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "New password is required")]
+    [MinLength(6, ErrorMessage = "Password must be at least 6 characters")]
+    public string NewPassword { get; set; } = string.Empty;
+}
+
+public class ChangePasswordRequest
+{
+    [Required(ErrorMessage = "Current password is required")]
+    public string CurrentPassword { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "New password is required")]
     [MinLength(6, ErrorMessage = "Password must be at least 6 characters")]

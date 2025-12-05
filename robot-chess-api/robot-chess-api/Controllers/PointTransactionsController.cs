@@ -175,7 +175,7 @@ public class PointTransactionsController : ControllerBase
     /// </summary>
     [HttpGet("my-transactions")]
     [Authorize]
-    public async Task<ActionResult<IEnumerable<PointTransaction>>> GetMyTransactions()
+    public async Task<ActionResult<IEnumerable<PointTransactionDto>>> GetMyTransactions()
     {
         try
         {
@@ -186,7 +186,20 @@ public class PointTransactionsController : ControllerBase
             }
 
             var transactions = await _transactionRepository.GetByUserIdAsync(userId);
-            return Ok(transactions);
+            
+            // Map to DTO to avoid circular reference
+            var transactionDtos = transactions.Select(t => new PointTransactionDto
+            {
+                Id = t.Id,
+                UserId = t.UserId,
+                Amount = t.Amount,
+                TransactionType = t.TransactionType,
+                Description = t.Description,
+                RelatedPaymentId = t.RelatedPaymentId,
+                CreatedAt = t.CreatedAt
+            }).ToList();
+            
+            return Ok(transactionDtos);
         }
         catch (Exception ex)
         {

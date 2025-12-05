@@ -42,3 +42,16 @@ public class PaymentWebhookData
     public string Reference { get; set; } = null!;
     public string TransactionDateTime { get; set; } = null!;
 }
+
+public class PaymentHistoryDto
+{
+    public Guid Id { get; set; }
+    public Guid? UserId { get; set; }
+    public string? TransactionId { get; set; }
+    public string? OrderCode { get; set; }
+    public decimal Amount { get; set; }
+    public string? Status { get; set; }
+    public DateTime? CreatedAt { get; set; }
+    public int? PackageId { get; set; }
+    public PointPackageDto? Package { get; set; }
+}
