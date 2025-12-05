@@ -8,7 +8,7 @@ namespace robot_chess_api.Services.Interface
         Task<StartGameResponseDto> StartGameAsync(StartGameRequestDto request, Guid? playerId);
         Task<StartGameResponseDto> ResumeGameAsync(ResumeGameRequestDto request);
         Task<GameDto?> GetGameByIdAsync(Guid id);
-        Task<IEnumerable<GameDto>> GetPlayerGamesAsync(Guid playerId);
+        Task<IEnumerable<GameDto>> GetPlayerGamesAsync(Guid playerId, string? status = null, string? result = null, DateTime? fromDate = null, DateTime? toDate = null);
         Task<BoardSetupStatusDto> VerifyBoardSetupAsync(Guid gameId);
         
         // Game move methods

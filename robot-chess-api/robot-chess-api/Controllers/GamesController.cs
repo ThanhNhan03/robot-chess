@@ -159,15 +159,25 @@ namespace robot_chess_api.Controllers
         }
 
         /// <summary>
-        /// Get all games for a player
+        /// Get all games for a player with optional filters
         /// </summary>
+        /// <param name="playerId">Player ID</param>
+        /// <param name="status">Filter by game status (finished, paused, in_progress, etc.)</param>
+        /// <param name="result">Filter by game result (win, lose, draw)</param>
+        /// <param name="fromDate">Filter games started from this date</param>
+        /// <param name="toDate">Filter games started until this date</param>
         [HttpGet("player/{playerId}")]
         [Authorize]
-        public async Task<ActionResult<IEnumerable<GameDto>>> GetPlayerGames(Guid playerId)
+        public async Task<ActionResult<IEnumerable<GameDto>>> GetPlayerGames(
+            Guid playerId,
+            [FromQuery] string? status = null,
+            [FromQuery] string? result = null,
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null)
         {
             try
             {
-                var games = await _gameService.GetPlayerGamesAsync(playerId);
+                var games = await _gameService.GetPlayerGamesAsync(playerId, status, result, fromDate, toDate);
                 return Ok(games);
             }
             catch (Exception ex)

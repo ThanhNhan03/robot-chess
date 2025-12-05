@@ -262,9 +262,31 @@ namespace robot_chess_api.Services.Implement
             };
         }
 
-        public async Task<IEnumerable<GameDto>> GetPlayerGamesAsync(Guid playerId)
+        public async Task<IEnumerable<GameDto>> GetPlayerGamesAsync(Guid playerId, string? status = null, string? result = null, DateTime? fromDate = null, DateTime? toDate = null)
         {
             var games = await _gameRepository.GetByPlayerIdAsync(playerId);
+            
+            // Apply filters
+            if (!string.IsNullOrEmpty(status))
+            {
+                games = games.Where(g => g.Status?.Equals(status, StringComparison.OrdinalIgnoreCase) == true);
+            }
+            
+            if (!string.IsNullOrEmpty(result))
+            {
+                games = games.Where(g => g.Result?.Equals(result, StringComparison.OrdinalIgnoreCase) == true);
+            }
+            
+            if (fromDate.HasValue)
+            {
+                games = games.Where(g => g.StartedAt >= fromDate.Value);
+            }
+            
+            if (toDate.HasValue)
+            {
+                games = games.Where(g => g.StartedAt <= toDate.Value);
+            }
+            
             return games.Select(game => new GameDto
             {
                 Id = game.Id,
