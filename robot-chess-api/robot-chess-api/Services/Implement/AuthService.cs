@@ -70,6 +70,12 @@ public class AuthService : IAuthService
         }
     }
 
+    // Alias for LoginAsync to support both naming conventions
+    public async Task<(bool Success, string? Token, Guid? UserId, string? Error)> SignInAsync(string email, string password)
+    {
+        return await LoginAsync(email, password);
+    }
+
     public async Task<(bool Success, string? Error)> LogoutAsync(string token)
     {
         try
