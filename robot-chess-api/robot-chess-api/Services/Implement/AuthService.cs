@@ -26,8 +26,8 @@ public class AuthService : IAuthService
 
             if (session?.User == null)
             {
-                _logger.LogWarning($"Sign up failed for: {email}");
-                return (false, null, null, "Sign up failed");
+                _logger.LogWarning($"Sign up failed for: {email} - No user returned");
+                return (false, null, null, "Đăng ký thất bại");
             }
 
             var token = session.AccessToken;
@@ -36,9 +36,26 @@ public class AuthService : IAuthService
             _logger.LogInformation($"User signed up successfully: {email} (ID: {userId})");
             return (true, token, userId, null);
         }
+        catch (Supabase.Gotrue.Exceptions.GotrueException ex)
+        {
+            _logger.LogError($"Supabase Auth error during signup for {email}: {ex.Message}");
+            
+            if (ex.Message.Contains("User already registered"))
+            {
+                return (false, null, null, "Email đã được đăng ký");
+            }
+            
+            return (false, null, null, "Lỗi đăng ký: " + ex.Message);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError($"Network error during signup for {email}: {ex.Message}");
+            return (false, null, null, "Lỗi kết nối đến server xác thực. Vui lòng thử lại sau.");
+        }
         catch (Exception ex)
         {
             _logger.LogError($"Sign up error for {email}: {ex.Message}");
+            _logger.LogError($"Stack trace: {ex.StackTrace}");
             return (false, null, null, ex.Message);
         }
     }
@@ -53,7 +70,7 @@ public class AuthService : IAuthService
 
             if (session?.User == null)
             {
-                _logger.LogWarning($"Login failed for: {email}");
+                _logger.LogWarning($"Login failed for: {email} - No user returned");
                 return (false, null, null, "Invalid email or password");
             }
 
@@ -63,9 +80,31 @@ public class AuthService : IAuthService
             _logger.LogInformation($"User logged in successfully: {email} (ID: {userId})");
             return (true, token, userId, null);
         }
+        catch (Supabase.Gotrue.Exceptions.GotrueException ex)
+        {
+            _logger.LogError($"Supabase Auth error for {email}: {ex.Message}");
+            
+            // Check for specific errors
+            if (ex.Message.Contains("Email not confirmed"))
+            {
+                return (false, null, null, "Email chưa được xác thực. Vui lòng kiểm tra email của bạn.");
+            }
+            if (ex.Message.Contains("Invalid login credentials"))
+            {
+                return (false, null, null, "Email hoặc mật khẩu không đúng");
+            }
+            
+            return (false, null, null, "Lỗi xác thực: " + ex.Message);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError($"Network error during login for {email}: {ex.Message}");
+            return (false, null, null, "Lỗi kết nối đến server xác thực. Vui lòng thử lại sau.");
+        }
         catch (Exception ex)
         {
             _logger.LogError($"Login error for {email}: {ex.Message}");
+            _logger.LogError($"Stack trace: {ex.StackTrace}");
             return (false, null, null, ex.Message);
         }
     }
