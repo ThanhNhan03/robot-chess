@@ -48,6 +48,17 @@ public class UserResponse
     public string Role { get; set; } = "player";
     public bool IsActive { get; set; }
     public DateTime? LastLoginAt { get; set; }
+    
+    // Points Balance
+    public int PointsBalance { get; set; }
+    
+    // Elo Rating information
+    public int EloRating { get; set; }
+    public int? PeakElo { get; set; }
+    public int TotalGamesPlayed { get; set; }
+    public int Wins { get; set; }
+    public int Losses { get; set; }
+    public int Draws { get; set; }
 }
 
 public class UpdateProfileRequest

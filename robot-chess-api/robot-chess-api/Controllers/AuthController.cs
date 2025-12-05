@@ -628,7 +628,14 @@ public class AuthController : ControllerBase
             AvatarUrl = user.AvatarUrl,
             Role = user.Role,
             IsActive = user.IsActive,
-            LastLoginAt = user.LastLoginAt
+            LastLoginAt = user.LastLoginAt,
+            PointsBalance = user.PointsBalance,
+            EloRating = user.EloRating,
+            PeakElo = user.PeakElo,
+            TotalGamesPlayed = user.TotalGamesPlayed,
+            Wins = user.Wins,
+            Losses = user.Losses,
+            Draws = user.Draws
         };
     }
 }

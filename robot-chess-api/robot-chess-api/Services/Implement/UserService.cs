@@ -421,7 +421,14 @@ public class UserService : IUserService
             IsActive = user.IsActive,
             LastLoginAt = user.LastLoginAt,
             PhoneNumber = user.PhoneNumber,
-            CreatedAt = user.CreatedAt
+            CreatedAt = user.CreatedAt,
+            PointsBalance = user.PointsBalance,
+            EloRating = user.EloRating,
+            PeakElo = user.PeakElo,
+            TotalGamesPlayed = user.TotalGamesPlayed,
+            Wins = user.Wins,
+            Losses = user.Losses,
+            Draws = user.Draws
         };
     }
 

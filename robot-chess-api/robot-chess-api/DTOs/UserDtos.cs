@@ -18,7 +18,8 @@ public class UserDto
     public DateTime? LastLoginAt { get; set; }
     public string? PhoneNumber { get; set; }
     public DateTime? CreatedAt { get; set; }
-    
+    // Points Balance
+    public int PointsBalance { get; set; }
     // Elo Rating information
     public int EloRating { get; set; }
     public int? PeakElo { get; set; }
