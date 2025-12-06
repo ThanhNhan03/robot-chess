@@ -77,14 +77,17 @@ namespace robot_chess_api.Services.Implement
                     throw new Exception($"Không đủ điểm. Cần {SUGGESTION_COST} điểm, số dư hiện tại: {user.PointsBalance}");
                 }
 
-                // 4. Get chess analysis from engine (only backend can call this)
+                // 4. Get chess analysis from Chess API (only backend can call this)
                 _logger.LogInformation($"Getting chess suggestion for user {userId}, game {request.GameId}");
-                var analysis = await _chessEngineHelper.GetBestMoveAsync(request.FenPosition, request.Depth);
+                var depth = request.Depth > 0 ? request.Depth : 15;
+                var analysis = await _chessEngineHelper.GetBestMoveAsync(request.FenPosition, depth);
 
                 if (string.IsNullOrEmpty(analysis.BestMove))
                 {
                     throw new Exception("Không tìm thấy nước đi hợp lệ");
                 }
+                
+                _logger.LogInformation($"Chess API returned move: {analysis.BestMove}, depth: {analysis.Depth}, eval: {analysis.Evaluation}");
 
                 // 5. Deduct points from user
                 user.PointsBalance -= SUGGESTION_COST;
@@ -114,7 +117,7 @@ namespace robot_chess_api.Services.Implement
                 {
                     SuggestionId = Guid.NewGuid(), // Temporary ID for frontend reference
                     SuggestedMove = analysis.BestMove,
-                    SuggestedMoveSan = _chessEngineHelper.UciToSan(analysis.BestMove, request.FenPosition),
+                    SuggestedMoveSan = analysis.San, // Use San directly from Chess API response
                     Evaluation = analysis.Evaluation,
                     Confidence = analysis.Confidence,
                     BestLine = analysis.BestLine,

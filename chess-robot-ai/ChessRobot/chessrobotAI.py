@@ -157,12 +157,15 @@ async def receiveStatus(tcp_client, status):
     return
 
 async def playChess(cam, cornersH, hand, piece, fen, stockfish, tcp_client, game_id=None, difficulty="medium", game_type="normal_game", puzzle_fen=None, status=None):
-    # Reset FEN to initial position for new game
-    if game_type == "training_puzzle" and puzzle_fen:
+    # Load FEN from saved state (resume) or puzzle, otherwise use initial position
+    if puzzle_fen:
         fen.FEN_last = puzzle_fen
-        print(f"[PUZZLE MODE] Starting with FEN: {puzzle_fen}")
+        if game_type == "training_puzzle":
+            print(f"[PUZZLE MODE] Starting with FEN: {puzzle_fen}")
+        else:
+            print(f"[RESUME] Loading saved FEN: {puzzle_fen}")
     else:
-        # Reset to standard starting position for normal game
+        # Reset to standard starting position for new game
         fen.FEN_last = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
         print("[NEW GAME] Reset FEN to initial position")
     
@@ -346,17 +349,20 @@ async def main():
             await asyncio.sleep(0.5)
             continue
 
-        if current == "start":
-            ##### Get Corners
-            cornersH = await getCorners(cam, corner, status=status, timeout=30)
-            
-            # Check if corner detection was cancelled or timed out
-            if cornersH is None:
-                print("[INFO] Corner detection failed or cancelled - returning to waiting state")
-                cv2.destroyAllWindows()
-                status["state"] = "waiting"
-                status["game_id"] = None
-                continue
+        if current in ("start", "resume"):
+            ##### Get Corners (reuse existing corners for resume if available)
+            if current == "resume" and 'cornersH' in locals() and cornersH is not None:
+                print("[INFO] Reusing existing corners for resume")
+            else:
+                cornersH = await getCorners(cam, corner, status=status, timeout=30)
+                
+                # Check if corner detection was cancelled or timed out
+                if cornersH is None:
+                    print("[INFO] Corner detection failed or cancelled - returning to waiting state")
+                    cv2.destroyAllWindows()
+                    status["state"] = "waiting"
+                    status["game_id"] = None
+                    continue
 
             ##### Play Chess
             game_id = status.get("game_id")
