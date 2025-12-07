@@ -770,36 +770,6 @@ def handle_robot_command(payload):
     else:
         print(f"Unknown command type: {command_type}")
 
-async def reset_board_async(moves, goal_id=None):
-    """
-    Execute sequence of moves to reset board to initial position
-    moves: list of move dicts with {type, from, to, piece, from_piece, to_piece}
-    """
-    print(f"[RESET_BOARD] Starting reset with {len(moves)} moves")
-    
-    for idx, move_data in enumerate(moves):
-        move_type = move_data.get("type")
-        from_square = move_data.get("from")
-        to_square = move_data.get("to")
-        from_piece = move_data.get("from_piece")
-        to_piece = move_data.get("to_piece")
-        
-        progress = (idx + 1) / len(moves)
-        print(f"[RESET_BOARD] Move {idx+1}/{len(moves)}: {move_type} {from_piece} from {from_square} to {to_square}")
-        
-        if move_type == "remove":
-            # Move piece to graveyard (use move_async)
-            await move_async(from_piece, from_square, from_piece, to_square, goal_id)
-        elif move_type == "move":
-            # Move piece to target position
-            await move_async(from_piece, from_square, from_piece, to_square, goal_id)
-        
-        # Small delay between moves
-        await asyncio.sleep(0.5)
-    
-    print(f"[RESET_BOARD] Completed all {len(moves)} moves")
-    return True
-
 async def tcp_client():
     reader, writer = await asyncio.open_connection(tcp_ip, 8080)
     # reader, writer = await asyncio.open_connection(tcp_ip, 3000)
@@ -830,27 +800,8 @@ async def tcp_client():
         try:
             payload = json.loads(data)
 
-            # Handle reset_board command
-            if payload.get('type') == 'reset_board':
-                game_id = payload.get('game_id')
-                moves = payload.get('moves', [])
-                print(f"[RESET_BOARD] Received command for game {game_id} with {len(moves)} moves")
-                
-                # Execute reset sequence
-                await reset_board_async(moves, goal_id=game_id)
-                
-                # Send completion notification
-                response = {
-                    "type": "robot_response",
-                    "game_id": game_id,
-                    "status": "reset_complete",
-                    "message": f"Board reset completed with {len(moves)} moves"
-                }
-                writer.write(json.dumps(response).encode('utf-8') + b'\n')
-                await writer.drain()
-
             # Handle chess move commands
-            elif payload.get('move'):
+            if payload.get('move'):
                 from_piece = payload.get('move').get('from_piece')
                 _from = payload.get('move').get('from')
                 to_piece = payload.get('move').get('to_piece')
