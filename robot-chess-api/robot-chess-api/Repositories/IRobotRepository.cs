@@ -23,11 +23,6 @@ public interface IRobotRepository
     Task<RobotConfig?> GetConfigAsync(Guid robotId);
     Task<RobotConfig> CreateOrUpdateConfigAsync(RobotConfig config);
 
-    // Monitoring operations
-    Task<RobotMonitoring> AddMonitoringAsync(RobotMonitoring monitoring);
-    Task<IEnumerable<RobotMonitoring>> GetMonitoringHistoryAsync(Guid robotId, int limit = 100);
-    Task<RobotMonitoring?> GetLatestMonitoringAsync(Guid robotId);
-
     // Command history operations
     Task<RobotCommandHistory> AddCommandHistoryAsync(RobotCommandHistory command);
     Task<RobotCommandHistory> UpdateCommandHistoryAsync(RobotCommandHistory command);
