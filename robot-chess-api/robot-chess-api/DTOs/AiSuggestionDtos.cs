@@ -94,4 +94,25 @@ namespace robot_chess_api.DTOs
         public int TotalCount { get; set; }
         public int TotalPointsSpent { get; set; }
     }
+
+    /// <summary>
+    /// Response DTO for getting AI suggestion cost
+    /// </summary>
+    public class SuggestionCostDto
+    {
+        /// <summary>
+        /// Cost in points for one AI suggestion
+        /// </summary>
+        public int Cost { get; set; }
+
+        /// <summary>
+        /// User's current points balance
+        /// </summary>
+        public int CurrentBalance { get; set; }
+
+        /// <summary>
+        /// Can user afford this suggestion?
+        /// </summary>
+        public bool CanAfford { get; set; }
+    }
 }

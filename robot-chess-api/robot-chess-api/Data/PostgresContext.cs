@@ -16,8 +16,6 @@ public partial class PostgresContext : DbContext
     {
     }
 
-    public virtual DbSet<AiSuggestion> AiSuggestions { get; set; }
-
     public virtual DbSet<AppUser> AppUsers { get; set; }
 
     public virtual DbSet<Feedback> Feedbacks { get; set; }
@@ -87,32 +85,6 @@ public partial class PostgresContext : DbContext
             .HasPostgresExtension("extensions", "uuid-ossp")
             .HasPostgresExtension("graphql", "pg_graphql")
             .HasPostgresExtension("vault", "supabase_vault");
-
-        modelBuilder.Entity<AiSuggestion>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("ai_suggestions_pkey");
-
-            entity.ToTable("ai_suggestions");
-
-            entity.Property(e => e.Id)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("id");
-            entity.Property(e => e.Confidence)
-                .HasPrecision(5, 2)
-                .HasColumnName("confidence");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnType("timestamp without time zone")
-                .HasColumnName("created_at");
-            entity.Property(e => e.GameId).HasColumnName("game_id");
-            entity.Property(e => e.MoveId).HasColumnName("move_id");
-            entity.Property(e => e.SuggestedMove).HasColumnName("suggested_move");
-
-            entity.HasOne(d => d.Move).WithMany(p => p.AiSuggestions)
-                .HasForeignKey(d => d.MoveId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("ai_suggestions_move_id_fkey");
-        });
 
         modelBuilder.Entity<AppUser>(entity =>
         {

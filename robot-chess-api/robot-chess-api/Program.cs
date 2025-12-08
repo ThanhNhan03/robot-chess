@@ -117,7 +117,6 @@ builder.Services.AddScoped<ISavedStateRepository, SavedStateRepository>();
 builder.Services.AddScoped<IPointPackageRepository, PointPackageRepository>();
 builder.Services.AddScoped<IPaymentHistoryRepository, PaymentHistoryRepository>();
 builder.Services.AddScoped<IPointTransactionRepository, PointTransactionRepository>();
-builder.Services.AddScoped<IAiSuggestionRepository, AiSuggestionRepository>();
 
 // Register Services
 builder.Services.AddScoped<IAuthService, AuthService>();
