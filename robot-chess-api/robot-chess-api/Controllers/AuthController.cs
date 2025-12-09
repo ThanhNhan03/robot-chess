@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using robot_chess_api.DTOs;
 using robot_chess_api.Services.Interface;
 using robot_chess_api.Repositories;
 using robot_chess_api.Models;
+using robot_chess_api.Hubs;
 using System.Security.Cryptography;
 
 namespace robot_chess_api.Controllers;
@@ -15,17 +17,20 @@ public class AuthController : ControllerBase
     private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
     private readonly ILogger<AuthController> _logger;
+    private readonly IHubContext<AuthHub> _hubContext;
 
     public AuthController(
         IAuthService authService,
         IUserRepository userRepository,
         IEmailService emailService,
-        ILogger<AuthController> logger)
+        ILogger<AuthController> logger,
+        IHubContext<AuthHub> hubContext)
     {
         _authService = authService;
         _userRepository = userRepository;
         _emailService = emailService;
         _logger = logger;
+        _hubContext = hubContext;
     }
 
     /// <summary>
@@ -638,6 +643,220 @@ public class AuthController : ControllerBase
             Losses = user.Losses,
             Draws = user.Draws
         };
+    }
+
+    /// <summary>
+    /// Generate QR code session for login
+    /// </summary>
+    [HttpPost("qr-session")]
+    public IActionResult GenerateQRSession()
+    {
+        try
+        {
+            var sessionId = Guid.NewGuid().ToString();
+            var expiryTime = DateTime.UtcNow.AddMinutes(5);
+
+            _logger.LogInformation($"QR session generated: {sessionId}");
+
+            // Use web URL instead of deeplink - can be scanned by any device
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            var qrUrl = $"{baseUrl}/auth/qr-callback?session={sessionId}";
+
+            return Ok(new
+            {
+                sessionId,
+                expiryTime,
+                qrData = qrUrl
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"QR session generation error: {ex.Message}");
+            return StatusCode(500, new { error = "Failed to generate QR session" });
+        }
+    }
+
+    /// <summary>
+    /// QR callback page calls this endpoint after OAuth success to complete QR login
+    /// </summary>
+    [HttpPost("qr-login")]
+    public async Task<IActionResult> QRLogin([FromBody] QRLoginRequest request)
+    {
+        try
+        {
+            _logger.LogInformation($"QR login request for session: {request.SessionId}");
+
+            // Validate model
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new AuthResponse
+                {
+                    Success = false,
+                    Error = string.Join(", ", ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage))
+                });
+            }
+
+            // Verify Google token with Supabase
+            var (success, userId, email, authError) = await _authService.VerifyGoogleTokenAsync(request.AccessToken);
+
+            if (!success || userId == null)
+            {
+                return BadRequest(new AuthResponse
+                {
+                    Success = false,
+                    Error = authError ?? "Google authentication failed"
+                });
+            }
+
+            // Get or create user
+            var user = await _userRepository.GetUserByIdAsync(userId.Value);
+
+            if (user == null)
+            {
+                // Create new user profile
+                user = new AppUser
+                {
+                    Id = userId.Value,
+                    Email = email!,
+                    Username = request.Username ?? email!.Split('@')[0],
+                    FullName = request.FullName,
+                    AvatarUrl = request.AvatarUrl,
+                    Role = "player",
+                    IsActive = true,
+                    EmailVerified = true, // Google accounts are pre-verified
+                    CreatedAt = DateTime.UtcNow,
+                    EloRating = 1200,
+                    PointsBalance = 0
+                };
+
+                user = await _userRepository.CreateUserAsync(user);
+                _logger.LogInformation($"New Google user created via QR: {email}");
+            }
+            else
+            {
+                // Update last login
+                user.LastLoginAt = DateTime.UtcNow;
+                await _userRepository.UpdateUserAsync(user);
+                _logger.LogInformation($"Existing user logged in via QR: {email}");
+            }
+
+            // Generate JWT token
+            var token = await _authService.GenerateJwtTokenAsync(user);
+
+            // Notify web client via SignalR
+            await _hubContext.Clients.All.SendAsync(
+                "NotifyLoginSuccess",
+                request.SessionId,
+                token,
+                MapToUserResponse(user)
+            );
+
+            _logger.LogInformation($"Login success notification sent for session: {request.SessionId}");
+
+            return Ok(new AuthResponse
+            {
+                Success = true,
+                Token = token,
+                User = MapToUserResponse(user)
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"QR login exception: {ex.Message}");
+            return StatusCode(500, new AuthResponse
+            {
+                Success = false,
+                Error = "Internal server error during QR login"
+            });
+        }
+    }
+
+    /// <summary>
+    /// Direct Google sign-in (not QR-based, for mobile/web direct OAuth)
+    /// </summary>
+    [HttpPost("google-signin")]
+    public async Task<IActionResult> GoogleSignIn([FromBody] GoogleSignInRequest request)
+    {
+        try
+        {
+            _logger.LogInformation("Google sign-in request received");
+
+            // Validate model
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new AuthResponse
+                {
+                    Success = false,
+                    Error = string.Join(", ", ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage))
+                });
+            }
+
+            // Verify token with Supabase
+            var (success, userId, email, authError) = await _authService.VerifyGoogleTokenAsync(request.AccessToken);
+
+            if (!success || userId == null)
+            {
+                return BadRequest(new AuthResponse
+                {
+                    Success = false,
+                    Error = authError ?? "Google authentication failed"
+                });
+            }
+
+            // Check if user exists
+            var existingUser = await _userRepository.GetUserByIdAsync(userId.Value);
+
+            if (existingUser == null)
+            {
+                // Create new user profile
+                var newUser = new AppUser
+                {
+                    Id = userId.Value,
+                    Email = email!,
+                    Username = request.Username ?? email!.Split('@')[0],
+                    FullName = request.FullName,
+                    AvatarUrl = request.AvatarUrl,
+                    Role = "player",
+                    IsActive = true,
+                    EmailVerified = true,
+                    CreatedAt = DateTime.UtcNow,
+                    EloRating = 1200,
+                    PointsBalance = 0
+                };
+
+                existingUser = await _userRepository.CreateUserAsync(newUser);
+                _logger.LogInformation($"New Google user created: {email}");
+            }
+            else
+            {
+                // Update last login
+                existingUser.LastLoginAt = DateTime.UtcNow;
+                await _userRepository.UpdateUserAsync(existingUser);
+            }
+
+            // Generate JWT token
+            var token = await _authService.GenerateJwtTokenAsync(existingUser);
+
+            return Ok(new AuthResponse
+            {
+                Success = true,
+                Token = token,
+                User = MapToUserResponse(existingUser)
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Google sign-in exception: {ex.Message}");
+            return StatusCode(500, new AuthResponse
+            {
+                Success = false,
+                Error = "Internal server error"
+            });
+        }
     }
 }
 

@@ -110,3 +110,26 @@ public class ChangePasswordRequest
     [MinLength(6, ErrorMessage = "Password must be at least 6 characters")]
     public string NewPassword { get; set; } = string.Empty;
 }
+
+public class QRLoginRequest
+{
+    [Required(ErrorMessage = "Session ID is required")]
+    public string SessionId { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Access token is required")]
+    public string AccessToken { get; set; } = string.Empty;
+
+    public string? Username { get; set; }
+    public string? FullName { get; set; }
+    public string? AvatarUrl { get; set; }
+}
+
+public class GoogleSignInRequest
+{
+    [Required(ErrorMessage = "Access token is required")]
+    public string AccessToken { get; set; } = string.Empty;
+
+    public string? Username { get; set; }
+    public string? FullName { get; set; }
+    public string? AvatarUrl { get; set; }
+}

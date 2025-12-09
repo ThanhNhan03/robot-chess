@@ -45,11 +45,22 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins(
+                "http://localhost:5173", 
+                "https://localhost:5173",
+                "http://192.168.1.85:5173",
+                "https://192.168.1.85:5173",
+                "http://192.168.1.85:7096",
+                "https://192.168.1.85:7096"
+              )
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .AllowCredentials(); // Required for SignalR
     });
 });
+
+// Add SignalR
+builder.Services.AddSignalR();
 
 // Configure Authentication (for [Authorize] attribute support)
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -167,6 +178,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Map SignalR Hub
+app.MapHub<robot_chess_api.Hubs.AuthHub>("/authHub");
 
 Console.WriteLine("Robot Chess API is running...");
 Console.WriteLine($"Swagger UI: {(app.Environment.IsDevelopment() ? "https://localhost:7096/swagger" : "Available")}");

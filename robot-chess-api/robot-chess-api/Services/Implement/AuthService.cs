@@ -1,5 +1,10 @@
 using robot_chess_api.Services.Interface;
+using robot_chess_api.Models;
 using Supabase.Gotrue;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using Microsoft.IdentityModel.Tokens;
 
 namespace robot_chess_api.Services.Implement;
 
@@ -175,4 +180,95 @@ public class AuthService : IAuthService
             return (false, ex.Message);
         }
     }
+
+    public async Task<(bool Success, Guid? UserId, string? Email, string? Error)> VerifyGoogleTokenAsync(string accessToken)
+    {
+        try
+        {
+            _logger.LogInformation("Verifying Google access token");
+
+            var supabaseUrl = _configuration["Supabase:Url"];
+            var anonKey = _configuration["Supabase:AnonKey"];
+
+            if (string.IsNullOrEmpty(supabaseUrl) || string.IsNullOrEmpty(anonKey))
+            {
+                return (false, null, null, "Supabase configuration missing");
+            }
+
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("apikey", anonKey);
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
+
+            var response = await client.GetAsync($"{supabaseUrl}/auth/v1/user");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning($"Token verification failed: {errorContent}");
+                return (false, null, null, "Invalid access token");
+            }
+
+            var userData = await response.Content.ReadFromJsonAsync<SupabaseUserResponse>();
+
+            if (userData?.Id == null)
+            {
+                return (false, null, null, "User data not found");
+            }
+
+            _logger.LogInformation($"Token verified successfully for user: {userData.Email}");
+            return (true, Guid.Parse(userData.Id), userData.Email, null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Google token verification failed: {ex.Message}");
+            return (false, null, null, ex.Message);
+        }
+    }
+
+    public async Task<string> GenerateJwtTokenAsync(robot_chess_api.Models.AppUser user)
+    {
+        try
+        {
+            // For now, we'll use the Supabase token
+            // In a production scenario, you might want to generate your own JWT
+            _logger.LogInformation($"Generating JWT token for user: {user.Email}");
+
+            // Create a session with Supabase to get a token
+            // Since the user is already authenticated via Google, we can use their ID
+            var jwtSecret = _configuration["Jwt:Secret"] ?? "your-secret-key-change-this-in-production";
+            var jwtIssuer = _configuration["Jwt:Issuer"] ?? "robot-chess-api";
+            
+            var tokenHandler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+            var key = System.Text.Encoding.ASCII.GetBytes(jwtSecret);
+            var tokenDescriptor = new Microsoft.IdentityModel.Tokens.SecurityTokenDescriptor
+            {
+                Subject = new System.Security.Claims.ClaimsIdentity(new[]
+                {
+                    new System.Security.Claims.Claim("userId", user.Id.ToString()),
+                    new System.Security.Claims.Claim("email", user.Email),
+                    new System.Security.Claims.Claim("role", user.Role)
+                }),
+                Expires = DateTime.UtcNow.AddDays(7),
+                Issuer = jwtIssuer,
+                SigningCredentials = new Microsoft.IdentityModel.Tokens.SigningCredentials(
+                    new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(key),
+                    Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256Signature)
+            };
+
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            return tokenHandler.WriteToken(token);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"JWT generation error: {ex.Message}");
+            throw;
+        }
+    }
+}
+
+// Helper class for deserializing Supabase user response
+public class SupabaseUserResponse
+{
+    public string? Id { get; set; }
+    public string? Email { get; set; }
 }
