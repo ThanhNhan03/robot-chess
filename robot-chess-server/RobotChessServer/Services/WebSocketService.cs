@@ -54,6 +54,8 @@ namespace RobotChessServer.Services
                 _wsListener.Start();
                 LoggerHelper.LogInfo($"WebSocket server running on {ip}:{port}");
 
+                using var registration = cancellationToken.Register(() => _wsListener.Stop());
+
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     try
@@ -69,10 +71,15 @@ namespace RobotChessServer.Services
                             context.Response.Close();
                         }
                     }
+                    catch (HttpListenerException ex) when (ex.ErrorCode == 995 || ex.ErrorCode == 500) // 995 is aborted, often happens on Stop()
+                    {
+                         if (cancellationToken.IsCancellationRequested) break;
+                         LoggerHelper.LogError($"WebSocket listener error: {ex.Message}");
+                    }
                     catch (Exception ex)
                     {
-                        if (!cancellationToken.IsCancellationRequested)
-                            LoggerHelper.LogError($"WebSocket accept error: {ex.Message}");
+                        if (cancellationToken.IsCancellationRequested) break;
+                        LoggerHelper.LogError($"WebSocket accept error: {ex.Message}");
                     }
                 }
             }

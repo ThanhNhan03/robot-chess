@@ -50,6 +50,8 @@ namespace RobotChessServer.Services
                 _tcpListener.Start();
                 LoggerHelper.LogInfo($"TCP server running on {ip}:{port}");
 
+                using var registration = cancellationToken.Register(() => _tcpListener.Stop());
+
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     try
@@ -59,8 +61,10 @@ namespace RobotChessServer.Services
                     }
                     catch (Exception ex)
                     {
-                        if (!cancellationToken.IsCancellationRequested)
-                            LoggerHelper.LogError($"TCP accept error: {ex.Message}");
+                        if (cancellationToken.IsCancellationRequested)
+                            break;
+
+                        LoggerHelper.LogError($"TCP accept error: {ex.Message}");
                     }
                 }
             }

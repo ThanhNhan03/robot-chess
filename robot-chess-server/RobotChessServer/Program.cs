@@ -26,6 +26,9 @@ namespace RobotChessServer
         {
             try
             {
+                // Load .env file
+                DotNetEnv.Env.Load();
+
                 // Load configuration - use fully qualified name to avoid ambiguity
                 _config = RobotChessServer.Configuration.ConfigurationManager.LoadConfiguration();
                 _config.PrintConfiguration();

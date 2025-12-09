@@ -15,14 +15,7 @@ namespace RobotChessServer.Configuration
                 WebSocketPort = int.Parse(Environment.GetEnvironmentVariable("WS_PORT") ?? "8081"),
                 ConnectionTimeout = int.Parse(Environment.GetEnvironmentVariable("CONNECTION_TIMEOUT") ?? "3000"),
                 AlternativeTcpPorts = ParsePorts(Environment.GetEnvironmentVariable("ALT_TCP_PORTS"), new[] { 8083, 8084 }),
-                AlternativeWebSocketPorts = ParsePorts(Environment.GetEnvironmentVariable("ALT_WS_PORTS"), new[] { 8085, 8086, 8087 }),
-                
-                // Ngrok configuration
-                UseNgrok = bool.Parse(Environment.GetEnvironmentVariable("USE_NGROK") ?? "false"),
-                NgrokTcpHost = Environment.GetEnvironmentVariable("NGROK_TCP_HOST") ?? "",
-                NgrokTcpPort = int.Parse(Environment.GetEnvironmentVariable("NGROK_TCP_PORT") ?? "0"),
-                NgrokWsHost = Environment.GetEnvironmentVariable("NGROK_WS_HOST") ?? "",
-                NgrokWsPort = int.Parse(Environment.GetEnvironmentVariable("NGROK_WS_PORT") ?? "0")
+                AlternativeWebSocketPorts = ParsePorts(Environment.GetEnvironmentVariable("ALT_WS_PORTS"), new[] { 8085, 8086, 8087 })
             };
 
             return config;
