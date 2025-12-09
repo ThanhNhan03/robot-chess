@@ -22,9 +22,6 @@ public class RobotDto
 
     // Config info
     public RobotConfigDto? Config { get; set; }
-
-    // Latest monitoring info
-    public RobotMonitoringDto? LatestMonitoring { get; set; }
 }
 
 /// <summary>

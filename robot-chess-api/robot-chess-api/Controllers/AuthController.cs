@@ -304,6 +304,16 @@ public class AuthController : ControllerBase
                 return NotFound(new { success = false, error = "User not found" });
             }
 
+            // Check if username is being changed and if it already exists
+            if (request.Username != null && request.Username != appUser.Username)
+            {
+                if (await _userRepository.UsernameExistsAsync(request.Username))
+                {
+                    return BadRequest(new { success = false, error = "Username already exists" });
+                }
+                appUser.Username = request.Username;
+            }
+
             // Update fields
             if (request.FullName != null) appUser.FullName = request.FullName;
             if (request.AvatarUrl != null) appUser.AvatarUrl = request.AvatarUrl;
@@ -320,6 +330,65 @@ public class AuthController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError($"UpdateProfile exception: {ex.Message}");
+            return StatusCode(500, new { success = false, error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Đổi mật khẩu
+    /// </summary>
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        try
+        {
+            // Extract user ID from JWT token
+            var userIdClaim = User.FindFirst("sub")?.Value;
+            
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { success = false, error = "Invalid or missing token" });
+            }
+
+            var appUser = await _userRepository.GetUserByIdAsync(userId);
+            if (appUser == null)
+            {
+                return NotFound(new { success = false, error = "User not found" });
+            }
+
+            // Verify current password with Supabase
+            var (loginSuccess, _, _, loginError) = await _authService.SignInAsync(
+                appUser.Email, 
+                request.CurrentPassword
+            );
+
+            if (!loginSuccess)
+            {
+                return BadRequest(new { success = false, error = "Current password is incorrect" });
+            }
+
+            // Update password in Supabase
+            var (updateSuccess, updateError) = await _authService.UpdatePasswordAsync(
+                userId,
+                request.NewPassword
+            );
+
+            if (!updateSuccess)
+            {
+                return BadRequest(new { success = false, error = updateError ?? "Failed to update password" });
+            }
+
+            _logger.LogInformation($"Password changed successfully for user: {appUser.Email}");
+
+            return Ok(new
+            {
+                success = true,
+                message = "Password changed successfully"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"ChangePassword exception: {ex.Message}");
             return StatusCode(500, new { success = false, error = "Internal server error" });
         }
     }
@@ -556,10 +625,18 @@ public class AuthController : ControllerBase
             Email = user.Email,
             Username = user.Username,
             FullName = user.FullName,
+            PhoneNumber = user.PhoneNumber,
             AvatarUrl = user.AvatarUrl,
             Role = user.Role,
             IsActive = user.IsActive,
-            LastLoginAt = user.LastLoginAt
+            LastLoginAt = user.LastLoginAt,
+            PointsBalance = user.PointsBalance,
+            EloRating = user.EloRating,
+            PeakElo = user.PeakElo,
+            TotalGamesPlayed = user.TotalGamesPlayed,
+            Wins = user.Wins,
+            Losses = user.Losses,
+            Draws = user.Draws
         };
     }
 }

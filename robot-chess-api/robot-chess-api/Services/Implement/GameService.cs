@@ -12,6 +12,7 @@ namespace robot_chess_api.Services.Implement
         private readonly IGameMoveRepository _gameMoveRepository;
         private readonly IUserRepository _userRepository;
         private readonly ITrainingPuzzleRepository _puzzleRepository;
+        private readonly ISavedStateRepository _savedStateRepository;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<GameService> _logger;
         private readonly string _tcpServerUrl = "http://localhost:5000";
@@ -21,6 +22,7 @@ namespace robot_chess_api.Services.Implement
             IGameMoveRepository gameMoveRepository,
             IUserRepository userRepository,
             ITrainingPuzzleRepository puzzleRepository,
+            ISavedStateRepository savedStateRepository,
             IHttpClientFactory httpClientFactory,
             ILogger<GameService> logger)
         {
@@ -28,6 +30,7 @@ namespace robot_chess_api.Services.Implement
             _gameMoveRepository = gameMoveRepository;
             _userRepository = userRepository;
             _puzzleRepository = puzzleRepository;
+            _savedStateRepository = savedStateRepository;
             _httpClientFactory = httpClientFactory;
             _logger = logger;
         }
@@ -90,6 +93,18 @@ namespace robot_chess_api.Services.Implement
                 puzzleId = puzzle.Id;
             }
 
+            // Get player's current rating before game starts
+            int? playerRatingBefore = null;
+            if (playerId.HasValue)
+            {
+                var player = await _userRepository.GetUserByIdAsync(playerId.Value);
+                if (player != null)
+                {
+                    playerRatingBefore = player.EloRating;
+                    _logger.LogInformation($"[StartGame] Player {player.Username} starting rating: {playerRatingBefore}");
+                }
+            }
+
             // Create new game record
             var game = new Game
             {
@@ -102,7 +117,8 @@ namespace robot_chess_api.Services.Implement
                 FenStart = fenStart,
                 TotalMoves = 0,
                 CreatedAt = DateTime.UtcNow,
-                StartedAt = DateTime.UtcNow
+                StartedAt = DateTime.UtcNow,
+                PlayerRatingBefore = playerRatingBefore // Save rating BEFORE game starts
             };
 
             await _gameRepository.CreateAsync(game);
@@ -259,9 +275,31 @@ namespace robot_chess_api.Services.Implement
             };
         }
 
-        public async Task<IEnumerable<GameDto>> GetPlayerGamesAsync(Guid playerId)
+        public async Task<IEnumerable<GameDto>> GetPlayerGamesAsync(Guid playerId, string? status = null, string? result = null, DateTime? fromDate = null, DateTime? toDate = null)
         {
             var games = await _gameRepository.GetByPlayerIdAsync(playerId);
+            
+            // Apply filters
+            if (!string.IsNullOrEmpty(status))
+            {
+                games = games.Where(g => g.Status?.Equals(status, StringComparison.OrdinalIgnoreCase) == true);
+            }
+            
+            if (!string.IsNullOrEmpty(result))
+            {
+                games = games.Where(g => g.Result?.Equals(result, StringComparison.OrdinalIgnoreCase) == true);
+            }
+            
+            if (fromDate.HasValue)
+            {
+                games = games.Where(g => g.StartedAt >= fromDate.Value);
+            }
+            
+            if (toDate.HasValue)
+            {
+                games = games.Where(g => g.StartedAt <= toDate.Value);
+            }
+            
             return games.Select(game => new GameDto
             {
                 Id = game.Id,
@@ -526,13 +564,27 @@ namespace robot_chess_api.Services.Implement
             }
 
             // Calculate and update Elo rating if player exists
+            _logger.LogInformation($"[UpdateGameResult] Checking PlayerId for game {request.GameId}: {game.PlayerId}");
+            
             if (game.PlayerId.HasValue)
             {
+                _logger.LogInformation($"[UpdateGameResult] PlayerId exists: {game.PlayerId.Value}, fetching player...");
                 var player = await _userRepository.GetUserByIdAsync(game.PlayerId.Value);
+                
                 if (player != null)
                 {
-                    // Save rating before game
-                    game.PlayerRatingBefore = player.EloRating;
+                    _logger.LogInformation($"[UpdateGameResult] Player found: {player.Username} (ID: {player.Id}), Current Elo: {player.EloRating}");
+                    
+                    // Save rating before game ONLY if not already set (fallback for old games)
+                    if (!game.PlayerRatingBefore.HasValue)
+                    {
+                        game.PlayerRatingBefore = player.EloRating;
+                        _logger.LogWarning($"[UpdateGameResult] ⚠ PlayerRatingBefore was not set at game start, using current rating as fallback: {player.EloRating}");
+                    }
+                    else
+                    {
+                        _logger.LogInformation($"[UpdateGameResult] ✓ PlayerRatingBefore already set: {game.PlayerRatingBefore}");
+                    }
 
                     // Determine AI opponent rating based on difficulty
                     int aiRating = game.Difficulty?.ToLower() switch
@@ -543,6 +595,8 @@ namespace robot_chess_api.Services.Implement
                         _ => 2000
                     };
 
+                    _logger.LogInformation($"[UpdateGameResult] AI Rating: {aiRating} (Difficulty: {game.Difficulty})");
+
                     // Convert result to GameResult enum
                     GameResult gameResult = request.Result.ToLower() switch
                     {
@@ -552,9 +606,22 @@ namespace robot_chess_api.Services.Implement
                         _ => GameResult.Draw
                     };
 
-                    // Calculate new rating
-                    int newRating = EloRatingHelper.UpdateRating(player.EloRating, aiRating, gameResult);
-                    int ratingChange = newRating - player.EloRating;
+                    _logger.LogInformation($"[UpdateGameResult] Game Result: {gameResult}");
+
+                    // IMPORTANT: Use PlayerRatingBefore (rating at game start) for calculation
+                    int ratingAtGameStart = game.PlayerRatingBefore ?? player.EloRating;
+                    
+                    // Calculate expected score for debugging
+                    double expectedScore = EloRatingHelper.CalculateExpectedScore(ratingAtGameStart, aiRating);
+                    int kFactor = EloRatingHelper.GetKFactor(ratingAtGameStart);
+                    
+                    _logger.LogInformation($"[UpdateGameResult] Rating at game start: {ratingAtGameStart}, Expected Score: {expectedScore:F4}, K-Factor: {kFactor}");
+
+                    // Calculate new rating based on rating at game start
+                    int newRating = EloRatingHelper.UpdateRating(ratingAtGameStart, aiRating, gameResult);
+                    int ratingChange = newRating - ratingAtGameStart;
+
+                    _logger.LogInformation($"[UpdateGameResult] Elo Calculation: {ratingAtGameStart} -> {newRating} (Change: {ratingChange:+#;-#;0})");
 
                     // Update game rating info
                     game.PlayerRatingAfter = newRating;
@@ -592,6 +659,14 @@ namespace robot_chess_api.Services.Implement
                         $"{(ratingChange >= 0 ? "+" : "")}{ratingChange}) | Result: {request.Result} vs AI ({aiRating})"
                     );
                 }
+                else
+                {
+                    _logger.LogWarning($"[UpdateGameResult] ⚠ Player with ID {game.PlayerId.Value} NOT FOUND in database!");
+                }
+            }
+            else
+            {
+                _logger.LogWarning($"[UpdateGameResult] ⚠ Game {request.GameId} has NO PlayerId - Elo rating will NOT be updated!");
             }
 
             // Update game properties
@@ -793,6 +868,182 @@ namespace robot_chess_api.Services.Implement
                     CreatedAt = m.CreatedAt ?? DateTime.UtcNow
                 }).ToList(),
                 Statistics = null
+            };
+        }
+
+        public async Task<PauseGameResponseDto> PauseGameAsync(Guid gameId)
+        {
+            var game = await _gameRepository.GetByIdAsync(gameId);
+            if (game == null)
+            {
+                throw new ArgumentException("Game not found");
+            }
+
+            if (game.Status != "in_progress" && game.Status != "playing")
+            {
+                throw new InvalidOperationException($"Cannot pause game with status '{game.Status}'");
+            }
+
+            // Save current game state
+            var savedState = new SavedState
+            {
+                Id = Guid.NewGuid(),
+                GameId = gameId,
+                PlayerId = game.PlayerId,
+                FenStr = game.FenCurrent ?? game.FenStart ?? "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                LastMoveId = null, // Can be enhanced to track last move
+                SavedAt = DateTime.UtcNow
+            };
+
+            await _savedStateRepository.CreateAsync(savedState);
+
+            // Update game status to paused
+            game.Status = "paused";
+            await _gameRepository.UpdateAsync(game);
+
+            // Send end command to AI to stop current game
+            try
+            {
+                var aiMessage = new
+                {
+                    Type = "ai_request",
+                    Command = "start_game",
+                    Payload = new
+                    {
+                        status = "end",
+                        game_id = gameId.ToString()
+                    }
+                };
+
+                var httpClient = _httpClientFactory.CreateClient();
+                var response = await httpClient.PostAsJsonAsync($"{_tcpServerUrl}/internal/ai-command", aiMessage);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning($"Failed to send pause/end command to AI for game {gameId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error sending pause command to AI for game {gameId}");
+                // Don't throw - game is already paused in DB
+            }
+
+            return new PauseGameResponseDto
+            {
+                GameId = gameId,
+                Status = "paused",
+                Message = "Game paused successfully. Progress saved.",
+                SavedStateId = savedState.Id
+            };
+        }
+
+        public async Task<ResumeGameResponseDto> ResumeGameByIdAsync(Guid gameId)
+        {
+            var game = await _gameRepository.GetByIdAsync(gameId);
+            if (game == null)
+            {
+                throw new ArgumentException("Game not found");
+            }
+
+            if (game.Status != "paused")
+            {
+                throw new InvalidOperationException($"Cannot resume game with status '{game.Status}'. Game must be paused.");
+            }
+
+            // Get latest saved state
+            var savedState = await _savedStateRepository.GetLatestByGameIdAsync(gameId);
+            if (savedState == null)
+            {
+                throw new InvalidOperationException("No saved state found for this game");
+            }
+
+            // Update game status
+            game.Status = "in_progress";
+            await _gameRepository.UpdateAsync(game);
+
+            // Send resume command to AI with saved FEN
+            var requestId = Guid.NewGuid();
+            try
+            {
+                // Use navigation property instead of separate query
+                var gameTypeCode = game.GameType?.Code ?? "normal_game";
+                
+                var aiMessage = new
+                {
+                    Type = "ai_request",
+                    Command = "start_game",
+                    Payload = new
+                    {
+                        status = "resume",
+                        game_id = gameId.ToString(),
+                        difficulty = game.Difficulty ?? "medium",
+                        game_type = gameTypeCode,
+                        puzzle_fen = savedState.FenStr // Resume from saved FEN
+                    }
+                };
+
+                var httpClient = _httpClientFactory.CreateClient();
+                var response = await httpClient.PostAsJsonAsync($"{_tcpServerUrl}/internal/ai-command", aiMessage);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning($"Failed to send resume command to AI for game {gameId}");
+                    throw new Exception("Failed to communicate with game server");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error sending resume command to AI for game {gameId}");
+                // Revert status
+                game.Status = "paused";
+                await _gameRepository.UpdateAsync(game);
+                throw;
+            }
+
+            return new ResumeGameResponseDto
+            {
+                GameId = gameId,
+                RequestId = requestId,
+                Status = "resumed",
+                FenStr = savedState.FenStr,
+                LastMoveId = savedState.LastMoveId,
+                Message = "Game resumed successfully. Set up your board to continue.",
+                SavedAt = savedState.SavedAt
+            };
+        }
+
+        public async Task<SaveGameStateResponseDto> SaveGameStateAsync(SaveGameStateRequestDto request)
+        {
+            var game = await _gameRepository.GetByIdAsync(request.GameId);
+            if (game == null)
+            {
+                throw new ArgumentException("Game not found");
+            }
+
+            var savedState = new SavedState
+            {
+                Id = Guid.NewGuid(),
+                GameId = request.GameId,
+                PlayerId = game.PlayerId,
+                FenStr = request.FenStr,
+                LastMoveId = request.LastMoveId,
+                SavedAt = DateTime.UtcNow
+            };
+
+            await _savedStateRepository.CreateAsync(savedState);
+
+            // Update game's current FEN
+            game.FenCurrent = request.FenStr;
+            await _gameRepository.UpdateAsync(game);
+
+            return new SaveGameStateResponseDto
+            {
+                SavedStateId = savedState.Id,
+                GameId = request.GameId,
+                FenStr = request.FenStr,
+                SavedAt = savedState.SavedAt ?? DateTime.UtcNow,
+                Message = "Game state saved successfully"
             };
         }
     }

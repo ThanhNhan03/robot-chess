@@ -110,6 +110,55 @@ public class PaymentsController : ControllerBase
     }
 
     /// <summary>
+    /// Get current user's payment history
+    /// </summary>
+    [HttpGet("my-history")]
+    [Authorize]
+    public async Task<ActionResult<IEnumerable<PaymentHistoryDto>>> GetMyPaymentHistory()
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { error = "User not authenticated" });
+            }
+
+            var payments = await _paymentService.GetUserPaymentHistoryAsync(userId);
+            
+            // Map to DTO to avoid circular reference
+            var paymentDtos = payments.Select(p => new PaymentHistoryDto
+            {
+                Id = p.Id,
+                UserId = p.UserId,
+                TransactionId = p.TransactionId,
+                OrderCode = p.OrderCode,
+                Amount = p.Amount,
+                Status = p.Status,
+                CreatedAt = p.CreatedAt,
+                PackageId = p.PackageId,
+                Package = p.Package != null ? new PointPackageDto
+                {
+                    Id = p.Package.Id,
+                    Name = p.Package.Name,
+                    Points = p.Package.Points,
+                    Price = p.Package.Price,
+                    Description = p.Package.Description,
+                    IsActive = p.Package.IsActive,
+                    CreatedAt = p.Package.CreatedAt
+                } : null
+            }).ToList();
+            
+            return Ok(paymentDtos);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting user payment history");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// PayOS webhook endpoint
     /// </summary>
     [HttpPost("webhook")]

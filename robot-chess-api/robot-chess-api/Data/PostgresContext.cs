@@ -16,8 +16,6 @@ public partial class PostgresContext : DbContext
     {
     }
 
-    public virtual DbSet<AiSuggestion> AiSuggestions { get; set; }
-
     public virtual DbSet<AppUser> AppUsers { get; set; }
 
     public virtual DbSet<Feedback> Feedbacks { get; set; }
@@ -44,8 +42,6 @@ public partial class PostgresContext : DbContext
 
     // Robot Management Models
     public virtual DbSet<RobotConfig> RobotConfigs { get; set; }
-
-    public virtual DbSet<RobotMonitoring> RobotMonitorings { get; set; }
 
     public virtual DbSet<RobotCommandHistory> RobotCommandHistories { get; set; }
 
@@ -87,32 +83,6 @@ public partial class PostgresContext : DbContext
             .HasPostgresExtension("extensions", "uuid-ossp")
             .HasPostgresExtension("graphql", "pg_graphql")
             .HasPostgresExtension("vault", "supabase_vault");
-
-        modelBuilder.Entity<AiSuggestion>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("ai_suggestions_pkey");
-
-            entity.ToTable("ai_suggestions");
-
-            entity.Property(e => e.Id)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("id");
-            entity.Property(e => e.Confidence)
-                .HasPrecision(5, 2)
-                .HasColumnName("confidence");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnType("timestamp without time zone")
-                .HasColumnName("created_at");
-            entity.Property(e => e.GameId).HasColumnName("game_id");
-            entity.Property(e => e.MoveId).HasColumnName("move_id");
-            entity.Property(e => e.SuggestedMove).HasColumnName("suggested_move");
-
-            entity.HasOne(d => d.Move).WithMany(p => p.AiSuggestions)
-                .HasForeignKey(d => d.MoveId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("ai_suggestions_move_id_fkey");
-        });
 
         modelBuilder.Entity<AppUser>(entity =>
         {
@@ -675,60 +645,6 @@ public partial class PostgresContext : DbContext
                 .HasForeignKey(d => d.UpdatedBy)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("robot_configs_updated_by_fkey");
-        });
-
-        // Robot Monitoring Entity
-        modelBuilder.Entity<RobotMonitoring>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("robot_monitoring_pkey");
-
-            entity.ToTable("robot_monitoring");
-
-            entity.Property(e => e.Id)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("id");
-            entity.Property(e => e.RobotId).HasColumnName("robot_id");
-            entity.Property(e => e.CurrentPositionX)
-                .HasPrecision(10, 2)
-                .HasColumnName("current_position_x");
-            entity.Property(e => e.CurrentPositionY)
-                .HasPrecision(10, 2)
-                .HasColumnName("current_position_y");
-            entity.Property(e => e.CurrentPositionZ)
-                .HasPrecision(10, 2)
-                .HasColumnName("current_position_z");
-            entity.Property(e => e.CurrentRotationRx)
-                .HasPrecision(10, 3)
-                .HasColumnName("current_rotation_rx");
-            entity.Property(e => e.CurrentRotationRy)
-                .HasPrecision(10, 3)
-                .HasColumnName("current_rotation_ry");
-            entity.Property(e => e.CurrentRotationRz)
-                .HasPrecision(10, 3)
-                .HasColumnName("current_rotation_rz");
-            entity.Property(e => e.GripperState).HasColumnName("gripper_state");
-            entity.Property(e => e.GripperPosition).HasColumnName("gripper_position");
-            entity.Property(e => e.IsMoving).HasColumnName("is_moving");
-            entity.Property(e => e.CurrentSpeed).HasColumnName("current_speed");
-            entity.Property(e => e.CurrentCommandId).HasColumnName("current_command_id");
-            entity.Property(e => e.HasError)
-                .HasDefaultValue(false)
-                .HasColumnName("has_error");
-            entity.Property(e => e.ErrorMessage).HasColumnName("error_message");
-            entity.Property(e => e.RecordedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnType("timestamp without time zone")
-                .HasColumnName("recorded_at");
-
-            entity.HasOne(d => d.Robot).WithMany(p => p.RobotMonitorings)
-                .HasForeignKey(d => d.RobotId)
-                .OnDelete(DeleteBehavior.Cascade)
-                .HasConstraintName("robot_monitoring_robot_id_fkey");
-
-            entity.HasOne(d => d.CurrentCommand).WithMany()
-                .HasForeignKey(d => d.CurrentCommandId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("robot_monitoring_command_id_fkey");
         });
 
         // Robot Command History Entity

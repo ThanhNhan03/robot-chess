@@ -118,35 +118,6 @@ public class RobotRepository : IRobotRepository
         return config;
     }
 
-    // Monitoring operations
-    public async Task<RobotMonitoring> AddMonitoringAsync(RobotMonitoring monitoring)
-    {
-        monitoring.Id = Guid.NewGuid();
-        monitoring.RecordedAt = DateTime.UtcNow;
-        
-        _context.Set<RobotMonitoring>().Add(monitoring);
-        await _context.SaveChangesAsync();
-        
-        return monitoring;
-    }
-
-    public async Task<IEnumerable<RobotMonitoring>> GetMonitoringHistoryAsync(Guid robotId, int limit = 100)
-    {
-        return await _context.Set<RobotMonitoring>()
-            .Where(m => m.RobotId == robotId)
-            .OrderByDescending(m => m.RecordedAt)
-            .Take(limit)
-            .ToListAsync();
-    }
-
-    public async Task<RobotMonitoring?> GetLatestMonitoringAsync(Guid robotId)
-    {
-        return await _context.Set<RobotMonitoring>()
-            .Where(m => m.RobotId == robotId)
-            .OrderByDescending(m => m.RecordedAt)
-            .FirstOrDefaultAsync();
-    }
-
     // Command history operations
     public async Task<RobotCommandHistory> AddCommandHistoryAsync(RobotCommandHistory command)
     {

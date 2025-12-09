@@ -159,15 +159,25 @@ namespace robot_chess_api.Controllers
         }
 
         /// <summary>
-        /// Get all games for a player
+        /// Get all games for a player with optional filters
         /// </summary>
+        /// <param name="playerId">Player ID</param>
+        /// <param name="status">Filter by game status (finished, paused, in_progress, etc.)</param>
+        /// <param name="result">Filter by game result (win, lose, draw)</param>
+        /// <param name="fromDate">Filter games started from this date</param>
+        /// <param name="toDate">Filter games started until this date</param>
         [HttpGet("player/{playerId}")]
         [Authorize]
-        public async Task<ActionResult<IEnumerable<GameDto>>> GetPlayerGames(Guid playerId)
+        public async Task<ActionResult<IEnumerable<GameDto>>> GetPlayerGames(
+            Guid playerId,
+            [FromQuery] string? status = null,
+            [FromQuery] string? result = null,
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null)
         {
             try
             {
-                var games = await _gameService.GetPlayerGamesAsync(playerId);
+                var games = await _gameService.GetPlayerGamesAsync(playerId, status, result, fromDate, toDate);
                 return Ok(games);
             }
             catch (Exception ex)
@@ -509,6 +519,88 @@ namespace robot_chess_api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error sending end game command");
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Pause a game and save current state
+        /// </summary>
+        [HttpPost("{gameId}/pause")]
+        [Authorize]
+        public async Task<ActionResult<PauseGameResponseDto>> PauseGame(Guid gameId)
+        {
+            try
+            {
+                var response = await _gameService.PauseGameAsync(gameId);
+                return Ok(response);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, $"Invalid game ID: {gameId}");
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, $"Cannot pause game {gameId}");
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error pausing game {gameId}");
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Resume a paused game from saved state
+        /// </summary>
+        [HttpPost("{gameId}/resume")]
+        [Authorize]
+        public async Task<ActionResult<ResumeGameResponseDto>> ResumeGameById(Guid gameId)
+        {
+            try
+            {
+                var response = await _gameService.ResumeGameByIdAsync(gameId);
+                return Ok(response);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, $"Invalid game ID: {gameId}");
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, $"Cannot resume game {gameId}");
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error resuming game {gameId}");
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Save current game state manually
+        /// </summary>
+        [HttpPost("save-state")]
+        [Authorize]
+        public async Task<ActionResult<SaveGameStateResponseDto>> SaveGameState([FromBody] SaveGameStateRequestDto request)
+        {
+            try
+            {
+                var response = await _gameService.SaveGameStateAsync(request);
+                return Ok(response);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Invalid save state request");
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving game state");
                 return StatusCode(500, new { message = "Internal server error", error = ex.Message });
             }
         }

@@ -10,4 +10,5 @@ public interface IPaymentService
     Task<bool> ProcessWebhookAsync(PaymentWebhookDto webhookData);
     Task<IEnumerable<PaymentHistory>> GetAllPaymentsAsync(DateTime? startDate = null, DateTime? endDate = null, string? status = null);
     Task<PaymentStatisticsDto> GetPaymentStatisticsAsync(DateTime? startDate = null, DateTime? endDate = null);
+    Task<IEnumerable<PaymentHistory>> GetUserPaymentHistoryAsync(Guid userId);
 }

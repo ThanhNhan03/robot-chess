@@ -27,10 +27,6 @@ public interface IRobotService
     Task<RobotStatusDto?> GetRobotStatusAsync(Guid robotId);
     Task<IEnumerable<RobotStatusDto>> GetAllRobotsStatusAsync();
 
-    // Monitoring operations
-    Task<IEnumerable<RobotMonitoringDto>> GetMonitoringHistoryAsync(Guid robotId, int limit = 100);
-    Task<RobotMonitoringDto?> GetLatestMonitoringAsync(Guid robotId);
-
     // Command operations
     Task<Guid> SendHomeCommandAsync(Guid robotId, Guid? executedBy = null);
     Task<Guid> SendCalibrateCommandAsync(Guid robotId, string? calibrationType = null, Guid? executedBy = null);

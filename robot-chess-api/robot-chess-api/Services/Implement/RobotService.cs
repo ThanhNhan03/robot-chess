@@ -31,14 +31,6 @@ public class RobotService : IRobotService
         foreach (var robot in robots)
         {
             var dto = MapToDto(robot);
-            
-            // Get latest monitoring
-            var monitoring = await _robotRepository.GetLatestMonitoringAsync(robot.Id);
-            if (monitoring != null)
-            {
-                dto.LatestMonitoring = MapMonitoringToDto(monitoring);
-            }
-
             robotDtos.Add(dto);
         }
 
@@ -57,13 +49,6 @@ public class RobotService : IRobotService
         if (config != null)
         {
             dto.Config = MapConfigToDto(config);
-        }
-
-        // Get latest monitoring
-        var monitoring = await _robotRepository.GetLatestMonitoringAsync(id);
-        if (monitoring != null)
-        {
-            dto.LatestMonitoring = MapMonitoringToDto(monitoring);
         }
 
         return dto;
@@ -168,8 +153,6 @@ public class RobotService : IRobotService
         var robot = await _robotRepository.GetByIdAsync(robotId);
         if (robot == null) return null;
 
-        var monitoring = await _robotRepository.GetLatestMonitoringAsync(robotId);
-
         return new RobotStatusDto
         {
             Id = robot.Id,
@@ -177,12 +160,7 @@ public class RobotService : IRobotService
             Name = robot.Name,
             IsOnline = robot.IsOnline,
             LastOnlineAt = robot.LastOnlineAt,
-            Status = robot.Status,
-            IsMoving = monitoring?.IsMoving,
-            GripperState = monitoring?.GripperState,
-            HasError = monitoring?.HasError,
-            ErrorMessage = monitoring?.ErrorMessage,
-            LastMonitoringAt = monitoring?.RecordedAt
+            Status = robot.Status
         };
     }
 
@@ -201,19 +179,6 @@ public class RobotService : IRobotService
         }
 
         return statusList;
-    }
-
-    // Monitoring operations
-    public async Task<IEnumerable<RobotMonitoringDto>> GetMonitoringHistoryAsync(Guid robotId, int limit = 100)
-    {
-        var history = await _robotRepository.GetMonitoringHistoryAsync(robotId, limit);
-        return history.Select(MapMonitoringToDto);
-    }
-
-    public async Task<RobotMonitoringDto?> GetLatestMonitoringAsync(Guid robotId)
-    {
-        var monitoring = await _robotRepository.GetLatestMonitoringAsync(robotId);
-        return monitoring != null ? MapMonitoringToDto(monitoring) : null;
     }
 
     // Command operations
@@ -313,12 +278,14 @@ public class RobotService : IRobotService
             Id = h.Id,
             RobotId = h.RobotId,
             CommandType = h.CommandType,
-            Status = h.Status,
+            Payload = h.CommandPayload,
+            Status = h.Status ?? "",
             ErrorMessage = h.ErrorMessage,
-            SentAt = h.SentAt,
+            SentAt = h.SentAt ?? DateTime.UtcNow,
             StartedAt = h.StartedAt,
             CompletedAt = h.CompletedAt,
-            ExecutionTimeMs = h.ExecutionTimeMs
+            ExecutionTimeMs = h.ExecutionTimeMs,
+            ExecutedBy = h.ExecutedBy
         });
     }
 
@@ -389,28 +356,6 @@ public class RobotService : IRobotService
             MaxSpeed = config.MaxSpeed,
             EmergencyStop = config.EmergencyStop,
             UpdatedAt = config.UpdatedAt
-        };
-    }
-
-    private RobotMonitoringDto MapMonitoringToDto(RobotMonitoring monitoring)
-    {
-        return new RobotMonitoringDto
-        {
-            Id = monitoring.Id,
-            RobotId = monitoring.RobotId,
-            CurrentPositionX = monitoring.CurrentPositionX,
-            CurrentPositionY = monitoring.CurrentPositionY,
-            CurrentPositionZ = monitoring.CurrentPositionZ,
-            CurrentRotationRx = monitoring.CurrentRotationRx,
-            CurrentRotationRy = monitoring.CurrentRotationRy,
-            CurrentRotationRz = monitoring.CurrentRotationRz,
-            GripperState = monitoring.GripperState,
-            GripperPosition = monitoring.GripperPosition,
-            IsMoving = monitoring.IsMoving,
-            CurrentSpeed = monitoring.CurrentSpeed,
-            HasError = monitoring.HasError,
-            ErrorMessage = monitoring.ErrorMessage,
-            RecordedAt = monitoring.RecordedAt
         };
     }
 }

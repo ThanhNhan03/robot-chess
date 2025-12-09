@@ -29,7 +29,5 @@ public partial class GameMove
 
     public DateTime? CreatedAt { get; set; }
 
-    public virtual ICollection<AiSuggestion> AiSuggestions { get; set; } = new List<AiSuggestion>();
-
     public virtual ICollection<SavedState> SavedStates { get; set; } = new List<SavedState>();
 }

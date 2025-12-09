@@ -113,6 +113,7 @@ builder.Services.AddScoped<IFaqRepository, FaqRepository>();
 builder.Services.AddScoped<IGameRepository, GameRepository>();
 builder.Services.AddScoped<IGameMoveRepository, GameMoveRepository>();
 builder.Services.AddScoped<ITrainingPuzzleRepository, TrainingPuzzleRepository>();
+builder.Services.AddScoped<ISavedStateRepository, SavedStateRepository>();
 builder.Services.AddScoped<IPointPackageRepository, PointPackageRepository>();
 builder.Services.AddScoped<IPaymentHistoryRepository, PaymentHistoryRepository>();
 builder.Services.AddScoped<IPointTransactionRepository, PointTransactionRepository>();
@@ -128,9 +129,16 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ITrainingPuzzleService, TrainingPuzzleService>();
 builder.Services.AddScoped<IPointPackageService, PointPackageService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IAiSuggestionService, AiSuggestionService>();
+
+// Register Helpers
+builder.Services.AddScoped<robot_chess_api.Helpers.ChessEngineHelper>();
 
 // Register HttpClient for communication with TCP Server
 builder.Services.AddHttpClient();
+
+// Register IMemoryCache for rate limiting (AI suggestions)
+builder.Services.AddMemoryCache();
 
 // Logging
 builder.Logging.ClearProviders();

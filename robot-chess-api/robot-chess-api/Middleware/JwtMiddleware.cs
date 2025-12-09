@@ -20,38 +20,44 @@ public class JwtMiddleware
     {
         var token = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
 
-        if (token != null)
+        if (!string.IsNullOrEmpty(token))
         {
             try
             {
-                await supabaseClient.Auth.SetSession(token, token);
-                var user = supabaseClient.Auth.CurrentUser;
+                // Decode JWT to get user ID without calling Supabase
+                var userId = ExtractUserIdFromToken(token);
                 
-                if (user != null)
+                if (userId != null)
                 {
                     var claims = new List<Claim>
                     {
-                        new Claim(ClaimTypes.NameIdentifier, user.Id),
-                        new Claim(ClaimTypes.Email, user.Email ?? "")
+                        new Claim("sub", userId), // Standard JWT claim for user ID
+                        new Claim(ClaimTypes.NameIdentifier, userId)
                     };
 
-                    // Get user from database to retrieve role
-                    if (Guid.TryParse(user.Id, out var userId))
+                    // Get user from database to retrieve role and email
+                    if (Guid.TryParse(userId, out var userGuid))
                     {
-                        var appUser = await userRepository.GetUserByIdAsync(userId);
-                        if (appUser != null && !string.IsNullOrEmpty(appUser.Role))
+                        var appUser = await userRepository.GetUserByIdAsync(userGuid);
+                        if (appUser != null)
                         {
-                            claims.Add(new Claim(ClaimTypes.Role, appUser.Role));
-                            _logger.LogInformation("JWT validated successfully for user: {UserId} with role: {Role}", user.Id, appUser.Role);
+                            claims.Add(new Claim(ClaimTypes.Email, appUser.Email ?? ""));
+                            
+                            if (!string.IsNullOrEmpty(appUser.Role))
+                            {
+                                claims.Add(new Claim(ClaimTypes.Role, appUser.Role));
+                            }
+                            
+                            _logger.LogInformation("JWT validated successfully for user: {UserId} with role: {Role}", userId, appUser.Role ?? "no role");
+                            
+                            var identity = new ClaimsIdentity(claims, "jwt");
+                            context.User = new ClaimsPrincipal(identity);
                         }
                         else
                         {
-                            _logger.LogInformation("JWT validated successfully for user: {UserId} (no role)", user.Id);
+                            _logger.LogWarning("User not found in database: {UserId}", userId);
                         }
                     }
-
-                    var identity = new ClaimsIdentity(claims, "jwt");
-                    context.User = new ClaimsPrincipal(identity);
                 }
             }
             catch (Exception ex)
@@ -61,5 +67,47 @@ public class JwtMiddleware
         }
 
         await _next(context);
+    }
+
+    private string? ExtractUserIdFromToken(string token)
+    {
+        try
+        {
+            // JWT is base64url encoded: header.payload.signature
+            var parts = token.Split('.');
+            if (parts.Length != 3)
+            {
+                return null;
+            }
+
+            // Decode payload (second part)
+            var payload = parts[1];
+            
+            // Add padding if needed
+            var padding = payload.Length % 4;
+            if (padding > 0)
+            {
+                payload += new string('=', 4 - padding);
+            }
+
+            // Base64Url decode
+            payload = payload.Replace('-', '+').Replace('_', '/');
+            var payloadBytes = Convert.FromBase64String(payload);
+            var payloadJson = System.Text.Encoding.UTF8.GetString(payloadBytes);
+
+            // Parse JSON to get 'sub' claim
+            var jsonDoc = JsonDocument.Parse(payloadJson);
+            if (jsonDoc.RootElement.TryGetProperty("sub", out var subElement))
+            {
+                return subElement.GetString();
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Failed to extract user ID from token: {Message}", ex.Message);
+            return null;
+        }
     }
 }

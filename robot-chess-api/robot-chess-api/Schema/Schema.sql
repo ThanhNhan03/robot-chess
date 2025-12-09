@@ -1,134 +1,254 @@
----- WARNING: This schema is for context only and is not meant to be run.
----- Table order and constraints may not be valid for execution.
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
 
---CREATE TABLE public.ai_suggestions (
---  id uuid NOT NULL DEFAULT gen_random_uuid(),
---  game_id uuid,
---  move_id uuid,
---  suggested_move text,
---  confidence numeric,
---  created_at timestamp without time zone DEFAULT now(),
---  CONSTRAINT ai_suggestions_pkey PRIMARY KEY (id),
---  CONSTRAINT ai_suggestions_move_id_fkey FOREIGN KEY (move_id) REFERENCES public.game_moves(id)
---);
---CREATE TABLE public.app_users (
---  id uuid NOT NULL DEFAULT gen_random_uuid(),
---  email text NOT NULL UNIQUE,
---  username text NOT NULL UNIQUE,
---  full_name text,
---  avatar_url text,
---  created_at timestamp without time zone DEFAULT now(),
---  updated_at timestamp without time zone DEFAULT now(),
---  CONSTRAINT app_users_pkey PRIMARY KEY (id)
---);
---CREATE TABLE public.feedbacks (
---  id uuid NOT NULL DEFAULT gen_random_uuid(),
---  user_id uuid,
---  message text,
---  created_at timestamp without time zone DEFAULT now(),
---  CONSTRAINT feedbacks_pkey PRIMARY KEY (id),
---  CONSTRAINT feedbacks_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id)
---);
---CREATE TABLE public.game_moves (
---  id uuid NOT NULL DEFAULT gen_random_uuid(),
---  game_id uuid,
---  move_number integer,
---  player_color text CHECK (player_color = ANY (ARRAY['white'::text, 'black'::text])),
---  from_square text,
---  to_square text,
---  from_piece text,
---  to_piece text,
---  notation text,
---  results_in_check boolean,
---  fen_str text,
---  created_at timestamp without time zone DEFAULT now(),
---  CONSTRAINT game_moves_pkey PRIMARY KEY (id)
---);
---CREATE TABLE public.game_types (
---  id uuid NOT NULL DEFAULT gen_random_uuid(),
---  code text NOT NULL UNIQUE,
---  name text NOT NULL,
---  description text,
---  created_at timestamp without time zone DEFAULT now(),
---  CONSTRAINT game_types_pkey PRIMARY KEY (id)
---);
---CREATE TABLE public.games (
---  id uuid NOT NULL DEFAULT gen_random_uuid(),
---  player_id uuid,
---  status text DEFAULT 'waiting'::text CHECK (status = ANY (ARRAY['waiting'::text, 'in_progress'::text, 'finished'::text])),
---  result text CHECK (result = ANY (ARRAY['win'::text, 'lose'::text, 'draw'::text])),
---  fen_start text DEFAULT 'startpos'::text,
---  fen_current text,
---  total_moves integer DEFAULT 0,
---  started_at timestamp with time zone DEFAULT now(),
---  ended_at timestamp with time zone,
---  created_at timestamp with time zone DEFAULT now(),
---  game_type_id uuid,
---  puzzle_id uuid,
---  CONSTRAINT games_pkey PRIMARY KEY (id),
---  CONSTRAINT games_player_id_fkey FOREIGN KEY (player_id) REFERENCES public.app_users(id),
---  CONSTRAINT games_game_type_id_fkey FOREIGN KEY (game_type_id) REFERENCES public.game_types(id),
---  CONSTRAINT games_puzzle_id_fkey FOREIGN KEY (puzzle_id) REFERENCES public.training_puzzles(id)
---);
---CREATE TABLE public.payment_history (
---  id uuid NOT NULL DEFAULT gen_random_uuid(),
---  user_id uuid,
---  transaction_id text UNIQUE,
---  amount numeric NOT NULL,
---  status text DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'success'::text, 'failed'::text])),
---  created_at timestamp without time zone DEFAULT now(),
---  CONSTRAINT payment_history_pkey PRIMARY KEY (id),
---  CONSTRAINT payment_history_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id)
---);
---CREATE TABLE public.robot_commands (
---  id uuid NOT NULL DEFAULT gen_random_uuid(),
---  game_id uuid,
---  command text NOT NULL,
---  status text DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'executing'::text, 'done'::text, 'error'::text])),
---  sent_at timestamp without time zone DEFAULT now(),
---  executed_at timestamp without time zone,
---  robot_id uuid,
---  CONSTRAINT robot_commands_pkey PRIMARY KEY (id),
---  CONSTRAINT robot_commands_robot_id_fkey FOREIGN KEY (robot_id) REFERENCES public.robots(id)
---);
---CREATE TABLE public.robot_logs (
---  id uuid NOT NULL DEFAULT gen_random_uuid(),
---  command_id uuid,
---  log_message text,
---  created_at timestamp without time zone DEFAULT now(),
---  robot_id uuid,
---  CONSTRAINT robot_logs_pkey PRIMARY KEY (id),
---  CONSTRAINT robot_logs_command_id_fkey FOREIGN KEY (command_id) REFERENCES public.robot_commands(id),
---  CONSTRAINT robot_logs_robot_id_fkey FOREIGN KEY (robot_id) REFERENCES public.robots(id)
---);
---CREATE TABLE public.robots (
---  id uuid NOT NULL DEFAULT gen_random_uuid(),
---  robot_code text NOT NULL UNIQUE,
---  name text,
---  location text,
---  is_online boolean DEFAULT false,
---  last_online_at timestamp without time zone,
---  move_speed_ms integer DEFAULT 1000,
---  created_at timestamp without time zone DEFAULT now(),
---  updated_at timestamp without time zone DEFAULT now(),
---  CONSTRAINT robots_pkey PRIMARY KEY (id)
---);
---CREATE TABLE public.saved_states (
---  id uuid NOT NULL DEFAULT gen_random_uuid(),
---  game_id uuid,
---  player_id uuid,
---  fen_str text NOT NULL,
---  last_move_id uuid,
---  saved_at timestamp without time zone DEFAULT now(),
---  CONSTRAINT saved_states_pkey PRIMARY KEY (id),
---  CONSTRAINT saved_states_player_id_fkey FOREIGN KEY (player_id) REFERENCES public.app_users(id),
---  CONSTRAINT saved_states_last_move_id_fkey FOREIGN KEY (last_move_id) REFERENCES public.game_moves(id)
---);
---CREATE TABLE public.training_puzzles (
---  id uuid NOT NULL DEFAULT gen_random_uuid(),
---  fen_str text NOT NULL,
---  solution_move text NOT NULL,
---  difficulty text DEFAULT 'medium'::text CHECK (difficulty = ANY (ARRAY['easy'::text, 'medium'::text, 'hard'::text])),
---  created_at timestamp without time zone DEFAULT now(),
---  CONSTRAINT training_puzzles_pkey PRIMARY KEY (id)
---);
+CREATE TABLE public.ai_suggestions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  game_id uuid,
+  move_id uuid,
+  suggested_move text,
+  confidence numeric,
+  created_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT ai_suggestions_pkey PRIMARY KEY (id),
+  CONSTRAINT ai_suggestions_move_id_fkey FOREIGN KEY (move_id) REFERENCES public.game_moves(id)
+);
+CREATE TABLE public.app_users (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  email text NOT NULL UNIQUE,
+  username text NOT NULL UNIQUE,
+  full_name text,
+  avatar_url text,
+  created_at timestamp without time zone DEFAULT now(),
+  updated_at timestamp without time zone DEFAULT now(),
+  role text DEFAULT 'player'::text CHECK (role = ANY (ARRAY['admin'::text, 'player'::text, 'viewer'::text])),
+  is_active boolean DEFAULT true,
+  last_login_at timestamp without time zone,
+  phone_number text,
+  points_balance integer NOT NULL DEFAULT 0,
+  elo_rating integer NOT NULL DEFAULT 0,
+  peak_elo integer DEFAULT 0,
+  total_games_played integer DEFAULT 0,
+  wins integer DEFAULT 0,
+  losses integer DEFAULT 0,
+  draws integer DEFAULT 0,
+  email_verified boolean NOT NULL DEFAULT false,
+  email_verification_token text,
+  email_verification_token_expiry timestamp with time zone,
+  password_reset_token text,
+  password_reset_token_expiry timestamp with time zone,
+  require_password_change boolean DEFAULT false,
+  created_by_admin_id uuid,
+  CONSTRAINT app_users_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.faqs (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  question text NOT NULL,
+  answer text NOT NULL,
+  category text,
+  is_published boolean DEFAULT false,
+  display_order integer DEFAULT 0,
+  created_at timestamp without time zone DEFAULT now(),
+  updated_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT faqs_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.feedbacks (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  message text,
+  created_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT feedbacks_pkey PRIMARY KEY (id),
+  CONSTRAINT feedbacks_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id)
+);
+CREATE TABLE public.game_moves (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  game_id uuid,
+  move_number integer,
+  player_color text CHECK (player_color = ANY (ARRAY['white'::text, 'black'::text])),
+  from_square text,
+  to_square text,
+  from_piece text,
+  to_piece text,
+  notation text,
+  results_in_check boolean,
+  fen_str text,
+  created_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT game_moves_pkey PRIMARY KEY (id),
+  CONSTRAINT game_moves_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id)
+);
+CREATE TABLE public.game_types (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  code text NOT NULL UNIQUE,
+  name text NOT NULL,
+  description text,
+  created_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT game_types_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.games (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  player_id uuid,
+  status text DEFAULT 'waiting'::text CHECK (status = ANY (ARRAY['waiting'::text, 'verifying_board'::text, 'in_progress'::text, 'finished'::text, 'paused'::text, 'aborted'::text])),
+  result text CHECK (result = ANY (ARRAY['win'::text, 'lose'::text, 'draw'::text])),
+  fen_start text DEFAULT 'startpos'::text,
+  fen_current text,
+  total_moves integer DEFAULT 0,
+  started_at timestamp with time zone DEFAULT now(),
+  ended_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  game_type_id uuid,
+  puzzle_id uuid,
+  difficulty text DEFAULT 'medium'::text CHECK (difficulty = ANY (ARRAY['easy'::text, 'medium'::text, 'hard'::text])),
+  player_rating_before integer,
+  player_rating_after integer,
+  rating_change integer,
+  CONSTRAINT games_pkey PRIMARY KEY (id),
+  CONSTRAINT games_player_id_fkey FOREIGN KEY (player_id) REFERENCES public.app_users(id),
+  CONSTRAINT games_game_type_id_fkey FOREIGN KEY (game_type_id) REFERENCES public.game_types(id),
+  CONSTRAINT games_puzzle_id_fkey FOREIGN KEY (puzzle_id) REFERENCES public.training_puzzles(id)
+);
+CREATE TABLE public.payment_history (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  transaction_id text UNIQUE,
+  amount numeric NOT NULL,
+  status text DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'success'::text, 'failed'::text])),
+  created_at timestamp without time zone DEFAULT now(),
+  package_id integer,
+  CONSTRAINT payment_history_pkey PRIMARY KEY (id),
+  CONSTRAINT payment_history_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id),
+  CONSTRAINT payment_history_package_id_fkey FOREIGN KEY (package_id) REFERENCES public.point_packages(id)
+);
+CREATE TABLE public.point_packages (
+  id integer NOT NULL DEFAULT nextval('point_packages_id_seq'::regclass),
+  name text NOT NULL,
+  points integer NOT NULL,
+  price numeric NOT NULL,
+  description text,
+  is_active boolean DEFAULT true,
+  created_at timestamp without time zone DEFAULT now(),
+  updated_at timestamp without time zone,
+  CONSTRAINT point_packages_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.point_transactions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  amount integer NOT NULL,
+  transaction_type text CHECK (transaction_type = ANY (ARRAY['deposit'::text, 'service_usage'::text, 'adjustment'::text])),
+  description text,
+  related_payment_id uuid,
+  created_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT point_transactions_pkey PRIMARY KEY (id),
+  CONSTRAINT point_transactions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id),
+  CONSTRAINT point_transactions_related_payment_id_fkey FOREIGN KEY (related_payment_id) REFERENCES public.payment_history(id)
+);
+CREATE TABLE public.robot_command_history (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  robot_id uuid NOT NULL,
+  command_type text NOT NULL CHECK (command_type = ANY (ARRAY['move_piece'::text, 'home'::text, 'calibrate'::text, 'test_gripper'::text, 'emergency_stop'::text, 'set_speed'::text])),
+  command_payload jsonb,
+  status text DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'executing'::text, 'completed'::text, 'failed'::text, 'cancelled'::text])),
+  result_payload jsonb,
+  error_message text,
+  sent_at timestamp without time zone DEFAULT now(),
+  started_at timestamp without time zone,
+  completed_at timestamp without time zone,
+  execution_time_ms integer,
+  executed_by uuid,
+  CONSTRAINT robot_command_history_pkey PRIMARY KEY (id),
+  CONSTRAINT robot_command_history_robot_id_fkey FOREIGN KEY (robot_id) REFERENCES public.robots(id),
+  CONSTRAINT robot_command_history_executed_by_fkey FOREIGN KEY (executed_by) REFERENCES public.app_users(id)
+);
+CREATE TABLE public.robot_commands (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  game_id uuid,
+  command text NOT NULL,
+  status text DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'executing'::text, 'done'::text, 'error'::text])),
+  sent_at timestamp without time zone DEFAULT now(),
+  executed_at timestamp without time zone,
+  robot_id uuid,
+  CONSTRAINT robot_commands_pkey PRIMARY KEY (id),
+  CONSTRAINT robot_commands_robot_id_fkey FOREIGN KEY (robot_id) REFERENCES public.robots(id)
+);
+CREATE TABLE public.robot_configs (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  robot_id uuid NOT NULL UNIQUE,
+  speed integer DEFAULT 50 CHECK (speed >= 10 AND speed <= 100),
+  gripper_force integer DEFAULT 50 CHECK (gripper_force >= 0 AND gripper_force <= 100),
+  gripper_speed integer DEFAULT 50 CHECK (gripper_speed >= 0 AND gripper_speed <= 100),
+  max_speed integer DEFAULT 100 CHECK (max_speed >= 10 AND max_speed <= 100),
+  emergency_stop boolean DEFAULT false,
+  updated_by uuid,
+  updated_at timestamp without time zone DEFAULT now(),
+  created_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT robot_configs_pkey PRIMARY KEY (id),
+  CONSTRAINT robot_configs_robot_id_fkey FOREIGN KEY (robot_id) REFERENCES public.robots(id),
+  CONSTRAINT robot_configs_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.app_users(id)
+);
+CREATE TABLE public.robot_logs (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  command_id uuid,
+  log_message text,
+  created_at timestamp without time zone DEFAULT now(),
+  robot_id uuid,
+  CONSTRAINT robot_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT robot_logs_command_id_fkey FOREIGN KEY (command_id) REFERENCES public.robot_commands(id),
+  CONSTRAINT robot_logs_robot_id_fkey FOREIGN KEY (robot_id) REFERENCES public.robots(id)
+);
+CREATE TABLE public.robot_monitoring (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  robot_id uuid NOT NULL,
+  current_position_x numeric,
+  current_position_y numeric,
+  current_position_z numeric,
+  current_rotation_rx numeric,
+  current_rotation_ry numeric,
+  current_rotation_rz numeric,
+  gripper_state text CHECK (gripper_state = ANY (ARRAY['open'::text, 'closed'::text, 'moving'::text])),
+  gripper_position integer CHECK (gripper_position >= 0 AND gripper_position <= 100),
+  is_moving boolean DEFAULT false,
+  current_speed integer,
+  current_command_id uuid,
+  has_error boolean DEFAULT false,
+  error_message text,
+  recorded_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT robot_monitoring_pkey PRIMARY KEY (id),
+  CONSTRAINT robot_monitoring_robot_id_fkey FOREIGN KEY (robot_id) REFERENCES public.robots(id),
+  CONSTRAINT robot_monitoring_command_id_fkey FOREIGN KEY (current_command_id) REFERENCES public.robot_commands(id)
+);
+CREATE TABLE public.robots (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  robot_code text NOT NULL UNIQUE,
+  name text,
+  location text,
+  is_online boolean DEFAULT false,
+  last_online_at timestamp without time zone,
+  move_speed_ms integer DEFAULT 1000,
+  created_at timestamp without time zone DEFAULT now(),
+  updated_at timestamp without time zone DEFAULT now(),
+  current_speed integer DEFAULT 50,
+  ip_address text,
+  tcp_connection_id text,
+  status text DEFAULT 'idle'::text CHECK (status = ANY (ARRAY['idle'::text, 'busy'::text, 'error'::text, 'maintenance'::text])),
+  current_game_id uuid,
+  CONSTRAINT robots_pkey PRIMARY KEY (id),
+  CONSTRAINT robots_current_game_id_fkey FOREIGN KEY (current_game_id) REFERENCES public.games(id)
+);
+CREATE TABLE public.saved_states (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  game_id uuid,
+  player_id uuid,
+  fen_str text NOT NULL,
+  last_move_id uuid,
+  saved_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT saved_states_pkey PRIMARY KEY (id),
+  CONSTRAINT saved_states_player_id_fkey FOREIGN KEY (player_id) REFERENCES public.app_users(id),
+  CONSTRAINT saved_states_last_move_id_fkey FOREIGN KEY (last_move_id) REFERENCES public.game_moves(id)
+);
+CREATE TABLE public.training_puzzles (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  fen_str text NOT NULL,
+  solution_move text NOT NULL,
+  difficulty text DEFAULT 'medium'::text CHECK (difficulty = ANY (ARRAY['easy'::text, 'medium'::text, 'hard'::text])),
+  created_at timestamp without time zone DEFAULT now(),
+  name text NOT NULL DEFAULT 'Puzzle'::text,
+  description text,
+  CONSTRAINT training_puzzles_pkey PRIMARY KEY (id)
+);

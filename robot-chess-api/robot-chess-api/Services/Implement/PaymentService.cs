@@ -387,6 +387,12 @@ public class PaymentService : IPaymentService
         var paymentRepo = new PaymentHistoryRepository(_context);
         return await paymentRepo.GetStatisticsAsync(startDate, endDate);
     }
+
+    public async Task<IEnumerable<PaymentHistory>> GetUserPaymentHistoryAsync(Guid userId)
+    {
+        var paymentRepo = new PaymentHistoryRepository(_context);
+        return await paymentRepo.GetByUserIdAsync(userId);
+    }
 }
 
 // PayOS Response Models

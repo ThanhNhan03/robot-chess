@@ -39,6 +39,7 @@ public class EloRatingHelper
     /// <summary>
     /// Calculate rating change for a game result
     /// Formula: Rating Change = K * (Actual Score - Expected Score)
+    /// Ensures minimum ±1 point for wins/losses to prevent rounding to 0
     /// </summary>
     public static int CalculateRatingChange(int playerRating, int opponentRating, GameResult result)
     {
@@ -54,7 +55,16 @@ public class EloRatingHelper
         };
 
         double ratingChange = kFactor * (actualScore - expectedScore);
-        return (int)Math.Round(ratingChange);
+        int roundedChange = (int)Math.Round(ratingChange);
+        
+        // Ensure minimum ±1 point for wins/losses (not draws)
+        // This prevents rating change from being 0 when rating difference is too large
+        if (roundedChange == 0 && result != GameResult.Draw)
+        {
+            roundedChange = result == GameResult.Win ? 1 : -1;
+        }
+        
+        return roundedChange;
     }
 
     /// <summary>

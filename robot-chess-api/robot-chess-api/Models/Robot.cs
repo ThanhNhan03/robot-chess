@@ -41,7 +41,5 @@ public partial class Robot
 
     public virtual RobotConfig? RobotConfig { get; set; }
 
-    public virtual ICollection<RobotMonitoring> RobotMonitorings { get; set; } = new List<RobotMonitoring>();
-
     public virtual ICollection<RobotCommandHistory> RobotCommandHistories { get; set; } = new List<RobotCommandHistory>();
 }
