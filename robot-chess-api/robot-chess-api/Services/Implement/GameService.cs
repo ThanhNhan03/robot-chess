@@ -93,6 +93,18 @@ namespace robot_chess_api.Services.Implement
                 puzzleId = puzzle.Id;
             }
 
+            // Get player's current rating before game starts
+            int? playerRatingBefore = null;
+            if (playerId.HasValue)
+            {
+                var player = await _userRepository.GetUserByIdAsync(playerId.Value);
+                if (player != null)
+                {
+                    playerRatingBefore = player.EloRating;
+                    _logger.LogInformation($"[StartGame] Player {player.Username} starting rating: {playerRatingBefore}");
+                }
+            }
+
             // Create new game record
             var game = new Game
             {
@@ -105,7 +117,8 @@ namespace robot_chess_api.Services.Implement
                 FenStart = fenStart,
                 TotalMoves = 0,
                 CreatedAt = DateTime.UtcNow,
-                StartedAt = DateTime.UtcNow
+                StartedAt = DateTime.UtcNow,
+                PlayerRatingBefore = playerRatingBefore // Save rating BEFORE game starts
             };
 
             await _gameRepository.CreateAsync(game);
@@ -551,13 +564,27 @@ namespace robot_chess_api.Services.Implement
             }
 
             // Calculate and update Elo rating if player exists
+            _logger.LogInformation($"[UpdateGameResult] Checking PlayerId for game {request.GameId}: {game.PlayerId}");
+            
             if (game.PlayerId.HasValue)
             {
+                _logger.LogInformation($"[UpdateGameResult] PlayerId exists: {game.PlayerId.Value}, fetching player...");
                 var player = await _userRepository.GetUserByIdAsync(game.PlayerId.Value);
+                
                 if (player != null)
                 {
-                    // Save rating before game
-                    game.PlayerRatingBefore = player.EloRating;
+                    _logger.LogInformation($"[UpdateGameResult] Player found: {player.Username} (ID: {player.Id}), Current Elo: {player.EloRating}");
+                    
+                    // Save rating before game ONLY if not already set (fallback for old games)
+                    if (!game.PlayerRatingBefore.HasValue)
+                    {
+                        game.PlayerRatingBefore = player.EloRating;
+                        _logger.LogWarning($"[UpdateGameResult] ⚠ PlayerRatingBefore was not set at game start, using current rating as fallback: {player.EloRating}");
+                    }
+                    else
+                    {
+                        _logger.LogInformation($"[UpdateGameResult] ✓ PlayerRatingBefore already set: {game.PlayerRatingBefore}");
+                    }
 
                     // Determine AI opponent rating based on difficulty
                     int aiRating = game.Difficulty?.ToLower() switch
@@ -568,6 +595,8 @@ namespace robot_chess_api.Services.Implement
                         _ => 2000
                     };
 
+                    _logger.LogInformation($"[UpdateGameResult] AI Rating: {aiRating} (Difficulty: {game.Difficulty})");
+
                     // Convert result to GameResult enum
                     GameResult gameResult = request.Result.ToLower() switch
                     {
@@ -577,9 +606,22 @@ namespace robot_chess_api.Services.Implement
                         _ => GameResult.Draw
                     };
 
-                    // Calculate new rating
-                    int newRating = EloRatingHelper.UpdateRating(player.EloRating, aiRating, gameResult);
-                    int ratingChange = newRating - player.EloRating;
+                    _logger.LogInformation($"[UpdateGameResult] Game Result: {gameResult}");
+
+                    // IMPORTANT: Use PlayerRatingBefore (rating at game start) for calculation
+                    int ratingAtGameStart = game.PlayerRatingBefore ?? player.EloRating;
+                    
+                    // Calculate expected score for debugging
+                    double expectedScore = EloRatingHelper.CalculateExpectedScore(ratingAtGameStart, aiRating);
+                    int kFactor = EloRatingHelper.GetKFactor(ratingAtGameStart);
+                    
+                    _logger.LogInformation($"[UpdateGameResult] Rating at game start: {ratingAtGameStart}, Expected Score: {expectedScore:F4}, K-Factor: {kFactor}");
+
+                    // Calculate new rating based on rating at game start
+                    int newRating = EloRatingHelper.UpdateRating(ratingAtGameStart, aiRating, gameResult);
+                    int ratingChange = newRating - ratingAtGameStart;
+
+                    _logger.LogInformation($"[UpdateGameResult] Elo Calculation: {ratingAtGameStart} -> {newRating} (Change: {ratingChange:+#;-#;0})");
 
                     // Update game rating info
                     game.PlayerRatingAfter = newRating;
@@ -617,6 +659,14 @@ namespace robot_chess_api.Services.Implement
                         $"{(ratingChange >= 0 ? "+" : "")}{ratingChange}) | Result: {request.Result} vs AI ({aiRating})"
                     );
                 }
+                else
+                {
+                    _logger.LogWarning($"[UpdateGameResult] ⚠ Player with ID {game.PlayerId.Value} NOT FOUND in database!");
+                }
+            }
+            else
+            {
+                _logger.LogWarning($"[UpdateGameResult] ⚠ Game {request.GameId} has NO PlayerId - Elo rating will NOT be updated!");
             }
 
             // Update game properties
