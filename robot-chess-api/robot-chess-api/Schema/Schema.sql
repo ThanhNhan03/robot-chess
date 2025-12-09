@@ -112,6 +112,7 @@ CREATE TABLE public.payment_history (
   status text DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'success'::text, 'failed'::text])),
   created_at timestamp without time zone DEFAULT now(),
   package_id integer,
+  order_code character varying,
   CONSTRAINT payment_history_pkey PRIMARY KEY (id),
   CONSTRAINT payment_history_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_users(id),
   CONSTRAINT payment_history_package_id_fkey FOREIGN KEY (package_id) REFERENCES public.point_packages(id)
