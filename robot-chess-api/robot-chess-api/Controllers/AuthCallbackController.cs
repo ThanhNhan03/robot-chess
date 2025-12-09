@@ -30,7 +30,7 @@ public class AuthCallbackController : ControllerBase
 
         var supabaseUrl = _configuration["Supabase:Url"];
         var supabaseAnonKey = _configuration["Supabase:AnonKey"];
-        var apiBaseUrl = _configuration["ApiBaseUrl"] ?? "http://192.168.1.85:7096";
+        var apiBaseUrl = _configuration["ApiBaseUrl"] ?? "http://100.73.130.46:7096";
 
         var html = $@"
 <!DOCTYPE html>
@@ -48,7 +48,7 @@ public class AuthCallbackController : ControllerBase
         }}
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1567b1 0%, #0d4a7a 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -57,37 +57,60 @@ public class AuthCallbackController : ControllerBase
         }}
         .container {{
             background: white;
-            border-radius: 20px;
+            border-radius: 24px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            padding: 40px;
-            max-width: 400px;
+            padding: 48px 40px;
+            max-width: 440px;
             width: 100%;
             text-align: center;
         }}
-        .logo {{
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .logo-container {{
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #f16f23 0%, #ff8c42 100%);
             border-radius: 50%;
-            margin: 0 auto 20px;
+            margin: 0 auto 24px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 40px;
+            font-size: 48px;
+            box-shadow: 0 8px 24px rgba(241, 111, 35, 0.3);
         }}
         h1 {{
             color: #1a202c;
-            font-size: 28px;
-            margin-bottom: 10px;
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 12px;
         }}
-        p {{
+        .subtitle {{
             color: #718096;
-            margin-bottom: 30px;
+            font-size: 16px;
+            margin-bottom: 36px;
             line-height: 1.6;
+        }}
+        .divider {{
+            display: flex;
+            align-items: center;
+            margin: 24px 0;
+            color: #a0aec0;
+            font-size: 14px;
+        }}
+        .divider::before,
+        .divider::after {{
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e2e8f0;
+        }}
+        .divider::before {{
+            margin-right: 12px;
+        }}
+        .divider::after {{
+            margin-left: 12px;
         }}
         .google-btn {{
             width: 100%;
-            padding: 16px;
+            padding: 16px 24px;
             background: white;
             border: 2px solid #e2e8f0;
             border-radius: 12px;
@@ -99,72 +122,109 @@ public class AuthCallbackController : ControllerBase
             align-items: center;
             justify-content: center;
             gap: 12px;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }}
         .google-btn:hover {{
             background: #f7fafc;
             border-color: #cbd5e0;
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.1);
         }}
         .google-btn:active {{
             transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }}
         .google-btn:disabled {{
             opacity: 0.6;
             cursor: not-allowed;
+            transform: none;
         }}
         .status {{
-            margin-top: 20px;
-            padding: 12px;
-            border-radius: 8px;
+            margin-top: 24px;
+            padding: 14px 18px;
+            border-radius: 12px;
             font-size: 14px;
+            font-weight: 500;
             display: none;
+            animation: slideIn 0.3s ease;
         }}
         .status.loading {{
-            background: #ebf8ff;
-            color: #2c5282;
-            display: block;
+            background: rgba(21, 103, 177, 0.1);
+            color: #1567b1;
+            border: 1px solid rgba(21, 103, 177, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }}
         .status.success {{
-            background: #c6f6d5;
-            color: #22543d;
+            background: rgba(35, 178, 73, 0.1);
+            color: #23b249;
+            border: 1px solid rgba(35, 178, 73, 0.2);
             display: block;
         }}
         .status.error {{
-            background: #fed7d7;
-            color: #742a2a;
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+            border: 1px solid rgba(239, 68, 68, 0.2);
             display: block;
         }}
         .spinner {{
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
+            width: 18px;
+            height: 18px;
+            border: 3px solid rgba(21, 103, 177, 0.2);
+            border-top: 3px solid #1567b1;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
+            animation: spin 0.8s linear infinite;
             display: inline-block;
         }}
         @keyframes spin {{
             0% {{ transform: rotate(0deg); }}
             100% {{ transform: rotate(360deg); }}
         }}
+        @keyframes slideIn {{
+            from {{
+                opacity: 0;
+                transform: translateY(-10px);
+            }}
+            to {{
+                opacity: 1;
+                transform: translateY(0);
+            }}
+        }}
+        .footer {{
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #e2e8f0;
+            color: #a0aec0;
+            font-size: 13px;
+        }}
     </style>
 </head>
 <body>
     <div class='container'>
-        <div class='logo'>♟️</div>
-        <h1>Welcome to Robot Chess</h1>
-        <p>Click the button below to sign in with your Google account</p>
+        <div class='logo-container'>🎮</div>
+        <h1>Welcome Back!</h1>
+        <p class='subtitle'>Sign in to continue your chess journey</p>
+        
+        <div class='divider'>Or continue with</div>
         
         <button id='googleBtn' class='google-btn'>
             <svg width='20' height='20' viewBox='0 0 24 24'>
-                <path fill='#DB4437' d='M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z'/>
+                <path fill='#4285F4' d='M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z'/>
+                <path fill='#34A853' d='M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z'/>
+                <path fill='#FBBC05' d='M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z'/>
+                <path fill='#EA4335' d='M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z'/>
             </svg>
             Continue with Google
         </button>
 
         <div id='status' class='status'></div>
+        
+        <div class='footer'>
+            Secure authentication powered by Google
+        </div>
     </div>
 
     <script>
@@ -180,7 +240,11 @@ public class AuthCallbackController : ControllerBase
         const statusDiv = document.getElementById('status');
 
         function showStatus(message, type) {{
-            statusDiv.textContent = message;
+            if (type === 'loading') {{
+                statusDiv.innerHTML = '<div class=""spinner""></div>' + message;
+            }} else {{
+                statusDiv.textContent = message;
+            }}
             statusDiv.className = 'status ' + type;
         }}
 

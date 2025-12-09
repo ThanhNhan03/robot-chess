@@ -244,7 +244,7 @@ public class AuthService : IAuthService
             {
                 Subject = new System.Security.Claims.ClaimsIdentity(new[]
                 {
-                    new System.Security.Claims.Claim("userId", user.Id.ToString()),
+                    new System.Security.Claims.Claim("sub", user.Id.ToString()),
                     new System.Security.Claims.Claim("email", user.Email),
                     new System.Security.Claims.Claim("role", user.Role)
                 }),

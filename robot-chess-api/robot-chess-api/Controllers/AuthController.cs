@@ -227,6 +227,49 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Làm mới token
+    /// </summary>
+    [HttpPost("refresh")]
+    public async Task<IActionResult> RefreshToken()
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst("sub")?.Value;
+                
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { success = false, error = "Invalid or missing token" });
+            }
+
+            var appUser = await _userRepository.GetUserByIdAsync(userId);
+            if (appUser == null)
+            {
+                return NotFound(new { success = false, error = "User not found" });
+            }
+
+            // Check if user is active
+            if (!appUser.IsActive)
+            {
+                return Unauthorized(new { success = false, error = "Account has been deactivated" });
+            }
+
+            var token = await _authService.GenerateJwtTokenAsync(appUser);
+
+            return Ok(new AuthResponse
+            {
+                Success = true,
+                Token = token,
+                User = MapToUserResponse(appUser)
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"RefreshToken exception: {ex.Message}");
+            return StatusCode(500, new { success = false, error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
     /// Đăng xuất
     /// </summary>
     [HttpPost("logout")]
