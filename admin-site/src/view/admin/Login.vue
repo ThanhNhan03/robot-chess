@@ -86,6 +86,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { API_BASE_URL } from '../../config'
 
 const router = useRouter()
 
@@ -141,7 +142,7 @@ const handleLogin = async () => {
   loginError.value = ''
 
   try {
-    const response = await fetch('https://localhost:7096/api/Auth/login', {
+    const response = await fetch(`${API_BASE_URL}/Auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

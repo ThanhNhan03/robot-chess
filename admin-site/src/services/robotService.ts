@@ -1,5 +1,5 @@
 // Robot API Service
-const API_BASE_URL = 'https://localhost:7096/api'
+import { API_BASE_URL } from '../config'
 
 export interface Robot {
   id: string
@@ -258,17 +258,17 @@ class RobotService {
   async getRobotStats(): Promise<RobotStats> {
     try {
       const robots = await this.getAllRobots()
-      
+
       const totalRobots = robots.length
       const onlineRobots = robots.filter(r => r.isOnline).length
       const offlineRobots = totalRobots - onlineRobots
       const busyRobots = robots.filter(r => r.status === 'busy').length
       const idleRobots = robots.filter(r => r.status === 'idle').length
-      
+
       // Calculate total moves and success rate from monitoring data
       let totalMoves = 0
       let successfulMoves = 0
-      
+
       robots.forEach(robot => {
         if (robot.latestMonitoring) {
           totalMoves += 1
@@ -277,7 +277,7 @@ class RobotService {
           }
         }
       })
-      
+
       const avgSuccessRate = totalMoves > 0 ? (successfulMoves / totalMoves) * 100 : 0
 
       return {

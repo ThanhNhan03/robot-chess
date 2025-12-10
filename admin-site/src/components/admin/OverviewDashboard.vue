@@ -256,11 +256,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { WS_ENDPOINT } from '../../config'
 
 // Connection Status
 const websocketStatus = ref({
   connected: true,
-  endpoint: 'ws://localhost:8080',
+  endpoint: WS_ENDPOINT,
   activeConnections: 5,
   uptime: '2h 34m',
   lastPing: '< 1s ago'

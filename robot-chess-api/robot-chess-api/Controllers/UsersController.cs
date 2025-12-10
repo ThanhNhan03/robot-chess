@@ -199,6 +199,50 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
+    /// Update initial Elo rating (only allowed if games played is 0)
+    /// </summary>
+    [HttpPost("initial-elo")]
+    public async Task<IActionResult> SetInitialElo([FromBody] UpdateInitialEloDto dto)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst("sub")?.Value;
+            
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { success = false, error = "Invalid or missing token" });
+            }
+
+            var user = await _userService.GetUserByIdAsync(userId);
+            if (user == null)
+            {
+                return NotFound(new { success = false, error = "User not found" });
+            }
+
+            if (user.TotalGamesPlayed > 0)
+            {
+                // Optionally allow if TotalGamesPlayed is small or allow anyway. 
+                // But generally "initial" implies start.
+                // The user request didn't specify strictness, so I'll be safer.
+                return BadRequest(new { success = false, error = "Cannot set initial Elo after playing games" });
+            }
+
+            var updatedUser = await _userService.UpdateUserEloAsync(userId, dto.EloRating);
+            return Ok(new 
+            { 
+                success = true, 
+                message = "Initial Elo rating set successfully",
+                user = updatedUser
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting initial Elo");
+            return StatusCode(500, new { success = false, error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
     /// Get users by role
     /// </summary>
     [HttpGet("role/{role}")]

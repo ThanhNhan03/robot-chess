@@ -271,12 +271,13 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { WS_ENDPOINT, TCP_ENDPOINT } from '../../config'
 
 // WebSocket connection
 const ws = ref<WebSocket | null>(null)
 const isConnected = ref(false)
-const wsEndpoint = ref('ws://localhost:8081')
-const tcpEndpoint = ref('localhost:8080')
+const wsEndpoint = ref(WS_ENDPOINT)
+const tcpEndpoint = ref(TCP_ENDPOINT)
 
 // AI clients tracking
 const aiClients = ref<any[]>([])

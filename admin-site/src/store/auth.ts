@@ -1,4 +1,5 @@
 import { reactive, computed } from 'vue'
+import { API_BASE_URL } from '../config'
 
 interface User {
   id: string
@@ -19,8 +20,8 @@ interface AuthState {
 
 const state = reactive<AuthState>({
   token: localStorage.getItem('authToken'),
-  user: localStorage.getItem('adminUser') 
-    ? JSON.parse(localStorage.getItem('adminUser')!) 
+  user: localStorage.getItem('adminUser')
+    ? JSON.parse(localStorage.getItem('adminUser')!)
     : null,
   isAuthenticated: !!localStorage.getItem('authToken')
 })
@@ -30,7 +31,7 @@ export const useAuthStore = () => {
     state.token = token
     state.user = user
     state.isAuthenticated = true
-    
+
     localStorage.setItem('authToken', token)
     localStorage.setItem('adminUser', JSON.stringify(user))
   }
@@ -41,7 +42,7 @@ export const useAuthStore = () => {
     // Call logout API
     if (token) {
       try {
-        await fetch('https://localhost:7096/api/Auth/logout', {
+        await fetch(`${API_BASE_URL}/Auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -57,7 +58,7 @@ export const useAuthStore = () => {
     state.token = null
     state.user = null
     state.isAuthenticated = false
-    
+
     localStorage.removeItem('authToken')
     localStorage.removeItem('adminUser')
   }
@@ -72,7 +73,7 @@ export const useAuthStore = () => {
     user: computed(() => state.user),
     isAuthenticated: computed(() => state.isAuthenticated),
     isAdmin,
-    
+
     // Actions
     login,
     logout

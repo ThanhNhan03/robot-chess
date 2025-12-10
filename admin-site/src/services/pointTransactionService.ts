@@ -1,5 +1,5 @@
 // Point Transaction API Service
-const API_BASE_URL = 'https://localhost:7096/api'
+import { API_BASE_URL } from '../config'
 
 export interface PointTransaction {
   id: string
@@ -31,42 +31,42 @@ export const pointTransactionService = {
   }): Promise<PointTransaction[]> {
     const token = localStorage.getItem('authToken')
     const queryParams = new URLSearchParams()
-    
+
     if (params?.startDate) queryParams.append('startDate', params.startDate)
     if (params?.endDate) queryParams.append('endDate', params.endDate)
     if (params?.transactionType) queryParams.append('transactionType', params.transactionType)
-    
+
     const url = `${API_BASE_URL}/PointTransactions/admin/all${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
-    
+
     const response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     })
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch transactions: ${response.statusText}`)
     }
-    
+
     return response.json()
   },
 
   // Get transactions by user ID (Admin only)
   async getTransactionsByUser(userId: string): Promise<PointTransaction[]> {
     const token = localStorage.getItem('authToken')
-    
+
     const response = await fetch(`${API_BASE_URL}/PointTransactions/admin/user/${userId}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     })
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch user transactions: ${response.statusText}`)
     }
-    
+
     return response.json()
   },
 
@@ -77,23 +77,23 @@ export const pointTransactionService = {
   }): Promise<Record<string, number>> {
     const token = localStorage.getItem('authToken')
     const queryParams = new URLSearchParams()
-    
+
     if (params?.startDate) queryParams.append('startDate', params.startDate)
     if (params?.endDate) queryParams.append('endDate', params.endDate)
-    
+
     const url = `${API_BASE_URL}/PointTransactions/admin/statistics${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
-    
+
     const response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     })
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch statistics: ${response.statusText}`)
     }
-    
+
     return response.json()
   },
 
@@ -103,7 +103,7 @@ export const pointTransactionService = {
     newBalance: number
   }> {
     const token = localStorage.getItem('authToken')
-    
+
     const response = await fetch(`${API_BASE_URL}/PointTransactions/admin/adjust`, {
       method: 'POST',
       headers: {
@@ -112,12 +112,12 @@ export const pointTransactionService = {
       },
       body: JSON.stringify(request)
     })
-    
+
     if (!response.ok) {
       const error = await response.json()
       throw new Error(error.error || 'Failed to adjust points')
     }
-    
+
     return response.json()
   }
 }

@@ -1,5 +1,5 @@
 // FAQ API Service
-const API_BASE_URL = 'https://localhost:7096/api'
+import { API_BASE_URL } from '../config'
 
 export interface Faq {
   id: string
@@ -45,10 +45,10 @@ class FaqService {
   }
 
   async getAllFaqs(includeUnpublished: boolean = true): Promise<Faq[]> {
-    const endpoint = includeUnpublished 
+    const endpoint = includeUnpublished
       ? `${API_BASE_URL}/Faqs/admin`
       : `${API_BASE_URL}/Faqs`
-    
+
     const response = await fetch(endpoint, {
       method: 'GET',
       headers: this.getAuthHeaders()

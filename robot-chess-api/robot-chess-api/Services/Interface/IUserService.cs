@@ -14,4 +14,5 @@ public interface IUserService
     Task<List<UserDto>> GetUsersByRoleAsync(string role);
     Task<UserActivityDto?> GetUserActivityAsync(Guid id);
     Task<UserStatsDto> GetUserStatsAsync();
+    Task<UserDto> UpdateUserEloAsync(Guid id, int elo);
 }

@@ -408,6 +408,26 @@ public class UserService : IUserService
         };
     }
 
+    public async Task<UserDto> UpdateUserEloAsync(Guid id, int elo)
+    {
+        var user = await _userRepository.GetUserByIdAsync(id);
+        if (user == null)
+        {
+            throw new KeyNotFoundException($"User with ID {id} not found");
+        }
+
+        user.EloRating = elo;
+        
+        // Update peak elo if this is a new high or initial set
+        if (!user.PeakElo.HasValue || elo > user.PeakElo.Value)
+        {
+            user.PeakElo = elo;
+        }
+
+        var updatedUser = await _userRepository.UpdateUserAsync(user);
+        return MapToDto(updatedUser);
+    }
+
     private static UserDto MapToDto(AppUser user)
     {
         return new UserDto

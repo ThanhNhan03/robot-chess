@@ -1,5 +1,5 @@
 // Payment API Service
-const API_BASE_URL = 'https://localhost:7096/api'
+import { API_BASE_URL } from '../config'
 
 export interface PaymentHistory {
   id: string
@@ -42,26 +42,26 @@ export const paymentService = {
   }): Promise<PaymentHistory[]> {
     const token = localStorage.getItem('authToken')
     const queryParams = new URLSearchParams()
-    
+
     if (params?.startDate) queryParams.append('startDate', params.startDate)
     if (params?.endDate) queryParams.append('endDate', params.endDate)
     if (params?.status) queryParams.append('status', params.status)
-    
+
     const url = `${API_BASE_URL}/Payments/admin/all${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
-    
+
     const response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     })
-    
+
     if (!response.ok) {
       const errorText = await response.text()
       console.error('Payment API error:', response.status, errorText)
       throw new Error(`Failed to fetch payments: ${response.statusText}`)
     }
-    
+
     return response.json()
   },
 
@@ -72,25 +72,25 @@ export const paymentService = {
   }): Promise<PaymentStatistics> {
     const token = localStorage.getItem('authToken')
     const queryParams = new URLSearchParams()
-    
+
     if (params?.startDate) queryParams.append('startDate', params.startDate)
     if (params?.endDate) queryParams.append('endDate', params.endDate)
-    
+
     const url = `${API_BASE_URL}/Payments/admin/statistics${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
-    
+
     const response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     })
-    
+
     if (!response.ok) {
       const errorText = await response.text()
       console.error('Statistics API error:', response.status, errorText)
       throw new Error(`Failed to fetch statistics: ${response.statusText}`)
     }
-    
+
     return response.json()
   }
 }

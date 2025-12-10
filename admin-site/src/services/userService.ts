@@ -1,5 +1,5 @@
 // User API Service
-const API_BASE_URL = 'https://localhost:7096/api'
+import { API_BASE_URL } from '../config'
 
 export interface User {
   id: string
