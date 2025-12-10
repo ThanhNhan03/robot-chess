@@ -1,7 +1,7 @@
 <template>
   <div class="payment-management">
     <div class="header">
-      <h1>Quản Lý Thanh Toán</h1>
+      <h1>Payment Management</h1>
     </div>
 
     <!-- Statistics Cards -->
@@ -9,7 +9,7 @@
       <div class="stat-card">
         <div class="stat-icon"><span class="material-icons">payments</span></div>
         <div class="stat-content">
-          <div class="stat-label">Tổng Thu Nhập</div>
+          <div class="stat-label">Total Revenue</div>
           <div class="stat-value">{{ formatCurrency(statistics.totalRevenue) }}</div>
         </div>
       </div>
@@ -17,7 +17,7 @@
       <div class="stat-card">
         <div class="stat-icon"><span class="material-icons">trending_up</span></div>
         <div class="stat-content">
-          <div class="stat-label">Thu Nhập Hôm Nay</div>
+          <div class="stat-label">Today's Revenue</div>
           <div class="stat-value">{{ formatCurrency(statistics.todayRevenue) }}</div>
         </div>
       </div>
@@ -25,7 +25,7 @@
       <div class="stat-card">
         <div class="stat-icon"><span class="material-icons">calendar_today</span></div>
         <div class="stat-content">
-          <div class="stat-label">Thu Nhập Tháng Này</div>
+          <div class="stat-label">This Month's Revenue</div>
           <div class="stat-value">{{ formatCurrency(statistics.thisMonthRevenue) }}</div>
         </div>
       </div>
@@ -33,7 +33,7 @@
       <div class="stat-card">
         <div class="stat-icon"><span class="material-icons">check_circle</span></div>
         <div class="stat-content">
-          <div class="stat-label">Giao Dịch Thành Công</div>
+          <div class="stat-label">Successful Transactions</div>
           <div class="stat-value">{{ statistics.successfulPayments }}/{{ statistics.totalPayments }}</div>
         </div>
       </div>
@@ -42,29 +42,29 @@
     <!-- Filters -->
     <div class="filters">
       <div class="filter-group">
-        <label>Từ ngày:</label>
+        <label>From Date:</label>
         <input type="date" v-model="filters.startDate" @change="loadPayments" />
       </div>
       <div class="filter-group">
-        <label>Đến ngày:</label>
+        <label>To Date:</label>
         <input type="date" v-model="filters.endDate" @change="loadPayments" />
       </div>
       <div class="filter-group">
-        <label>Trạng thái:</label>
+        <label>Status:</label>
         <select v-model="filters.status" @change="loadPayments">
-          <option value="">Tất cả</option>
-          <option value="success">Thành công</option>
-          <option value="pending">Đang xử lý</option>
-          <option value="failed">Thất bại</option>
+          <option value="">All</option>
+          <option value="success">Success</option>
+          <option value="pending">Pending</option>
+          <option value="failed">Failed</option>
         </select>
       </div>
-      <button class="btn-reset" @click="resetFilters">Đặt lại</button>
+      <button class="btn-reset" @click="resetFilters">Reset</button>
     </div>
 
     <!-- Loading State -->
     <div v-if="loading" class="loading">
       <div class="spinner"></div>
-      <p>Đang tải dữ liệu...</p>
+      <p>Loading data...</p>
     </div>
 
     <!-- Error State -->
@@ -77,12 +77,12 @@
       <table class="payments-table">
         <thead>
           <tr>
-            <th>Mã GD</th>
-            <th>Người dùng</th>
-            <th>Gói điểm</th>
-            <th>Số tiền</th>
-            <th>Trạng thái</th>
-            <th>Thời gian</th>
+            <th>Transaction ID</th>
+            <th>User</th>
+            <th>Points Package</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Time</th>
           </tr>
         </thead>
         <tbody>
@@ -99,7 +99,7 @@
             <td>
               <div v-if="payment.package" class="package-info">
                 <div class="package-name">{{ payment.package.name }}</div>
-                <div class="package-points">{{ payment.package.points }} điểm</div>
+                <div class="package-points">{{ payment.package.points }} points</div>
               </div>
               <span v-else>-</span>
             </td>
@@ -112,7 +112,7 @@
             <td class="datetime">{{ formatDateTime(payment.createdAt) }}</td>
           </tr>
           <tr v-if="payments.length === 0">
-            <td colspan="6" class="no-data">Không có dữ liệu</td>
+            <td colspan="6" class="no-data">No data available</td>
           </tr>
         </tbody>
       </table>
@@ -157,7 +157,7 @@ const loadPayments = async () => {
     
     payments.value = await paymentService.getAllPayments(params)
   } catch (err: any) {
-    error.value = err.message || 'Không thể tải dữ liệu thanh toán'
+    error.value = err.message || 'Unable to load payment data'
     console.error('Error loading payments:', err)
   } finally {
     loading.value = false
@@ -207,9 +207,9 @@ const formatDateTime = (dateString?: string): string => {
 
 const getStatusText = (status?: string): string => {
   const statusMap: Record<string, string> = {
-    'success': 'Thành công',
-    'pending': 'Đang xử lý',
-    'failed': 'Thất bại'
+    'success': 'Success',
+    'pending': 'Pending',
+    'failed': 'Failed'
   }
   return statusMap[status || ''] || status || '-'
 }

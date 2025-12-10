@@ -1,7 +1,7 @@
 <template>
   <div class="point-management">
     <div class="header">
-      <h1>Quản Lý Điểm</h1>
+      <h1>Points Management</h1>
     </div>
 
     <!-- Statistics -->
@@ -17,15 +17,15 @@
 
     <!-- Manual Adjustment Form -->
     <div class="adjustment-section">
-      <h2>Điều Chỉnh Điểm Thủ Công</h2>
+      <h2>Manual Points Adjustment</h2>
       <form @submit.prevent="handleAdjustPoints" class="adjustment-form">
         <div class="form-group">
-          <label>Tìm User *</label>
+          <label>Search User *</label>
           <input 
             type="text" 
             v-model="userSearch" 
             @input="searchUsers"
-            placeholder="Tìm theo email hoặc username..."
+            placeholder="Search by email or username..."
             autocomplete="off"
           />
           <div v-if="searchResults && searchResults.length > 0" class="search-results">
@@ -39,31 +39,31 @@
                 <strong>{{ user.username }}</strong>
                 <span class="email">{{ user.email }}</span>
               </div>
-              <span class="points-badge">{{ user.pointsBalance || 0 }} điểm</span>
+              <span class="points-badge">{{ user.pointsBalance || 0 }} points</span>
             </div>
           </div>
           <div v-if="selectedUser" class="selected-user">
-            ✓ Đã chọn: <strong>{{ selectedUser.username }}</strong> ({{ selectedUser.email }})
+            ✓ Selected: <strong>{{ selectedUser.username }}</strong> ({{ selectedUser.email }})
             <button type="button" @click="clearSelectedUser" class="btn-clear">×</button>
           </div>
         </div>
         
         <div class="form-group">
-          <label>Số điểm *</label>
+          <label>Points Amount *</label>
           <input 
             type="number" 
             v-model.number="adjustForm.amount" 
-            placeholder="Số dương = cộng, số âm = trừ"
+            placeholder="Positive = add, negative = subtract"
             required
           />
-          <small>Nhập số dương để cộng điểm, số âm để trừ điểm</small>
+          <small>Enter a positive number to add points, negative to subtract</small>
         </div>
         
         <div class="form-group">
-          <label>Lý do *</label>
+          <label>Reason *</label>
           <textarea 
             v-model="adjustForm.reason" 
-            placeholder="Nhập lý do điều chỉnh..."
+            placeholder="Enter adjustment reason..."
             rows="3"
             required
           ></textarea>
@@ -71,8 +71,8 @@
         
         <div class="form-actions">
           <button type="submit" class="btn-submit" :disabled="adjusting">
-            <span v-if="adjusting">Đang xử lý...</span>
-            <span v-else>Điều chỉnh điểm</span>
+            <span v-if="adjusting">Processing...</span>
+            <span v-else>Adjust Points</span>
           </button>
         </div>
       </form>
@@ -85,29 +85,29 @@
     <!-- Filters -->
     <div class="filters">
       <div class="filter-group">
-        <label>Từ ngày:</label>
+        <label>From Date:</label>
         <input type="date" v-model="filters.startDate" @change="loadTransactions" />
       </div>
       <div class="filter-group">
-        <label>Đến ngày:</label>
+        <label>To Date:</label>
         <input type="date" v-model="filters.endDate" @change="loadTransactions" />
       </div>
       <div class="filter-group">
-        <label>Loại giao dịch:</label>
+        <label>Transaction Type:</label>
         <select v-model="filters.transactionType" @change="loadTransactions">
-          <option value="">Tất cả</option>
-          <option value="deposit">Nạp điểm</option>
-          <option value="service_usage">Sử dụng dịch vụ</option>
-          <option value="adjustment">Điều chỉnh</option>
+          <option value="">All</option>
+          <option value="deposit">Deposit</option>
+          <option value="service_usage">Service Usage</option>
+          <option value="adjustment">Adjustment</option>
         </select>
       </div>
-      <button class="btn-reset" @click="resetFilters">Đặt lại</button>
+      <button class="btn-reset" @click="resetFilters">Reset</button>
     </div>
 
     <!-- Loading/Error States -->
     <div v-if="loading" class="loading">
       <div class="spinner"></div>
-      <p>Đang tải dữ liệu...</p>
+      <p>Loading data...</p>
     </div>
 
     <div v-else-if="error" class="error-message">
@@ -119,11 +119,11 @@
       <table class="transactions-table">
         <thead>
           <tr>
-            <th>Thời gian</th>
-            <th>Người dùng</th>
-            <th>Loại GD</th>
-            <th>Số điểm</th>
-            <th>Mô tả</th>
+            <th>Time</th>
+            <th>User</th>
+            <th>Transaction Type</th>
+            <th>Points</th>
+            <th>Description</th>
           </tr>
         </thead>
         <tbody>
@@ -146,7 +146,7 @@
             <td class="description">{{ transaction.description || '-' }}</td>
           </tr>
           <tr v-if="transactions.length === 0">
-            <td colspan="5" class="no-data">Không có dữ liệu</td>
+            <td colspan="5" class="no-data">No data available</td>
           </tr>
         </tbody>
       </table>
@@ -226,7 +226,7 @@ const loadTransactions = async () => {
     
     transactions.value = await pointTransactionService.getAllTransactions(params)
   } catch (err: any) {
-    error.value = err.message || 'Không thể tải dữ liệu giao dịch'
+    error.value = err.message || 'Unable to load transaction data'
     console.error('Error loading transactions:', err)
   } finally {
     loading.value = false
@@ -250,7 +250,7 @@ const handleAdjustPoints = async () => {
   if (!selectedUser.value) {
     adjustResult.value = {
       type: 'error',
-      message: 'Vui lòng chọn user từ danh sách tìm kiếm'
+      message: 'Please select a user from the search list'
     }
     return
   }
@@ -258,7 +258,7 @@ const handleAdjustPoints = async () => {
   if (!adjustForm.value.reason || adjustForm.value.reason.trim() === '') {
     adjustResult.value = {
       type: 'error',
-      message: 'Vui lòng nhập lý do điều chỉnh'
+      message: 'Please enter adjustment reason'
     }
     return
   }
@@ -271,7 +271,7 @@ const handleAdjustPoints = async () => {
     
     adjustResult.value = {
       type: 'success',
-      message: `Điều chỉnh thành công! Số dư mới: ${result.newBalance} điểm`
+      message: `Adjustment successful! New balance: ${result.newBalance} points`
     }
     
     // Reset form
@@ -295,7 +295,7 @@ const handleAdjustPoints = async () => {
   } catch (err: any) {
     adjustResult.value = {
       type: 'error',
-      message: err.message || 'Không thể điều chỉnh điểm'
+      message: err.message || 'Unable to adjust points'
     }
   } finally {
     adjusting.value = false
@@ -324,9 +324,9 @@ const formatDateTime = (dateString: string): string => {
 
 const getTypeLabel = (type: string): string => {
   const typeMap: Record<string, string> = {
-    'deposit': 'Nạp điểm',
-    'service_usage': 'Sử dụng dịch vụ',
-    'adjustment': 'Điều chỉnh'
+    'deposit': 'Deposit',
+    'service_usage': 'Service Usage',
+    'adjustment': 'Adjustment'
   }
   return typeMap[type] || type
 }
