@@ -67,6 +67,31 @@ public class PaymentsController : ControllerBase
     }
 
     /// <summary>
+    /// Cancel pending payment
+    /// </summary>
+    [HttpPost("cancel/{transactionId}")]
+    [Authorize]
+    public async Task<ActionResult> CancelPayment(string transactionId)
+    {
+        try
+        {
+            var result = await _paymentService.CancelPaymentAsync(transactionId);
+            
+            if (result)
+            {
+                return Ok(new { success = true, message = "Payment cancelled successfully" });
+            }
+            
+            return BadRequest(new { success = false, message = "Failed to cancel payment" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error cancelling payment {transactionId}");
+            return BadRequest(new { success = false, error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Get all payments (Admin only)
     /// </summary>
     [HttpGet("admin/all")]

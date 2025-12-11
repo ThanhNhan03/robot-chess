@@ -98,11 +98,26 @@ public class PaymentService : IPaymentService
             _context.PaymentHistories.Add(paymentHistory);
             await _context.SaveChangesAsync();
 
+            // Sanitize description - remove special characters and limit length
+            var description = $"Mua {package.Name} - {package.Points} diem"
+                .Replace("đ", "d")
+                .Replace("Đ", "D");
+            
+            // PayOS description max 25 characters
+            if (description.Length > 25)
+            {
+                description = description.Substring(0, 25);
+            }
+
+            _logger.LogInformation("Package details - ID: {Id}, Name: {Name}, Points: {Points}, Price: {Price}", 
+                package.Id, package.Name, package.Points, package.Price);
+            _logger.LogInformation("Payment description: {Description}", description);
+
             var paymentRequest = new
             {
                 orderCode = orderCodeLong,
                 amount = (int)package.Price,
-                description = $"Mua {package.Name} - {package.Points} diem",
+                description = description,
                 cancelUrl = _cancelUrl,
                 returnUrl = _returnUrl
             };
@@ -393,6 +408,92 @@ public class PaymentService : IPaymentService
         var paymentRepo = new PaymentHistoryRepository(_context);
         return await paymentRepo.GetByUserIdAsync(userId);
     }
+
+    public async Task<bool> CancelPaymentAsync(string transactionId)
+    {
+        try
+        {
+            // Find payment by TransactionId or OrderCode
+            var payment = await _context.PaymentHistories
+                .FirstOrDefaultAsync(p => p.TransactionId == transactionId || p.OrderCode == transactionId);
+
+            if (payment == null)
+            {
+                _logger.LogWarning($"Payment not found for transaction: {transactionId}");
+                return false;
+            }
+
+            // Only cancel if payment is still pending
+            if (payment.Status != "pending")
+            {
+                _logger.LogWarning($"Cannot cancel payment {transactionId} with status: {payment.Status}");
+                return false;
+            }
+
+            // Call PayOS API to cancel payment
+            try
+            {
+                var payOsOrderCode = payment.OrderCode ?? transactionId;
+                var request = new HttpRequestMessage(HttpMethod.Post, $"{_payOsBaseUrl}/v2/payment-requests/{payOsOrderCode}/cancel");
+                request.Headers.Add("x-client-id", _payOsClientId);
+                request.Headers.Add("x-api-key", _payOsApiKey);
+                
+                // Add body with cancellation reason
+                var cancelRequest = new { cancellationReason = "User cancelled payment" };
+                var jsonContent = JsonSerializer.Serialize(cancelRequest, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                });
+                request.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.SendAsync(request);
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                _logger.LogInformation("PayOS Cancel Payment Response for OrderCode {OrderCode}: Status={StatusCode}, Content={Content}", 
+                    payOsOrderCode, response.StatusCode, responseContent);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    // Parse PayOS response
+                    var payOsResponse = JsonSerializer.Deserialize<PayOsCancelPaymentResponse>(responseContent, new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    });
+
+                    // Check if cancellation was successful
+                    if (payOsResponse?.code == "00" && payOsResponse?.data?.status == "CANCELLED")
+                    {
+                        payment.Status = "cancelled";
+                        await _context.SaveChangesAsync();
+                        _logger.LogInformation($"Payment {transactionId} successfully cancelled on PayOS");
+                        return true;
+                    }
+                }
+
+                // If PayOS API call failed or returned error, still mark as cancelled locally
+                // to allow user to try again
+                _logger.LogWarning($"PayOS cancel API returned non-success response for {transactionId}, marking as cancelled locally");
+                payment.Status = "cancelled";
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error calling PayOS cancel API for {transactionId}, marking as cancelled locally");
+                
+                // Still mark as cancelled locally even if PayOS API fails
+                // This allows user to try creating a new payment
+                payment.Status = "cancelled";
+                await _context.SaveChangesAsync();
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error cancelling payment {transactionId}");
+            return false;
+        }
+    }
 }
 
 // PayOS Response Models
@@ -401,6 +502,27 @@ public class PayOsCreatePaymentResponse
     public string? code { get; set; }
     public string? desc { get; set; }
     public PayOsPaymentData? data { get; set; }
+}
+
+public class PayOsCancelPaymentResponse
+{
+    public string? code { get; set; }
+    public string? desc { get; set; }
+    public PayOsCancelPaymentData? data { get; set; }
+    public string? signature { get; set; }
+}
+
+public class PayOsCancelPaymentData
+{
+    public string? id { get; set; }
+    public long? orderCode { get; set; }
+    public int? amount { get; set; }
+    public int? amountPaid { get; set; }
+    public int? amountRemaining { get; set; }
+    public string? status { get; set; }
+    public string? createdAt { get; set; }
+    public string? canceledAt { get; set; }
+    public string? cancellationReason { get; set; }
 }
 
 public class PayOsPaymentData

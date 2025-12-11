@@ -7,6 +7,7 @@ public interface IPaymentService
 {
     Task<PaymentResponseDto> CreatePaymentAsync(Guid userId, int packageId);
     Task<PaymentStatusDto> CheckPaymentStatusAsync(string transactionId);
+    Task<bool> CancelPaymentAsync(string transactionId);
     Task<bool> ProcessWebhookAsync(PaymentWebhookDto webhookData);
     Task<IEnumerable<PaymentHistory>> GetAllPaymentsAsync(DateTime? startDate = null, DateTime? endDate = null, string? status = null);
     Task<PaymentStatisticsDto> GetPaymentStatisticsAsync(DateTime? startDate = null, DateTime? endDate = null);
