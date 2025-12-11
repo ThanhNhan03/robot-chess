@@ -119,21 +119,22 @@
             </div>
             
             <!-- Last Response Preview -->
-            <div v-if="ai.lastResponse" class="last-response">
-              <div class="response-label">Last Response:</div>
-              <div class="response-content">
-                <div v-if="ai.lastResponse.fen_str" class="response-item">
-                  <span class="response-key">FEN:</span>
-                  <span class="response-value">{{ ai.lastResponse.fen_str }}</span>
+            <!-- Last Response Visual -->
+            <div v-if="ai.lastResponse" class="last-response-visual">
+              <div class="response-main">
+                <div class="move-display">
+                  <span class="move-label">Best Move</span>
+                  <span class="move-value">{{ formatMove(ai.lastResponse.best_move || ai.lastResponse.move) }}</span>
                 </div>
-                <div v-if="ai.lastResponse.move" class="response-item">
-                  <span class="response-key">Move:</span>
-                  <span class="response-value">{{ formatMove(ai.lastResponse.move) }}</span>
+                <div class="eval-display">
+                  <span class="eval-label">Eval</span>
+                  <span class="eval-value" :class="getEvalClass(ai.lastResponse.evaluation)">
+                    {{ formatEvaluation(ai.lastResponse.evaluation) }}
+                  </span>
                 </div>
-                <div v-if="ai.lastResponse.best_move" class="response-item">
-                  <span class="response-key">Best Move:</span>
-                  <span class="response-value">{{ ai.lastResponse.best_move }} (Eval: {{ ai.lastResponse.evaluation }})</span>
-                </div>
+              </div>
+              <div class="response-meta">
+                <span :title="ai.lastResponse.fen_str">FEN: {{ truncate(ai.lastResponse.fen_str || 'N/A', 25) }}</span>
               </div>
             </div>
           </div>
@@ -184,24 +185,24 @@
           </thead>
           <tbody>
             <tr v-for="(log, index) in displayedLogs" :key="index">
-              <td>{{ log.time }}</td>
-              <td><strong>{{ log.aiId }}</strong></td>
+              <td style="font-size: 0.85em; color: #64748b;">{{ log.time }}</td>
+              <td><code style="background: #f1f5f9; padding: 2px 4px; border-radius: 4px; font-size: 0.85em;">{{ log.aiId }}</code></td>
               <td>
                 <span class="badge-flat" :class="getBadgeClass(log.type)">
-                  {{ log.type }}
+                  {{ log.type.replace('AI_', '').replace('_EXECUTED', '').replace('_SENT', '') }}
                 </span>
               </td>
               <td>
-                <div class="log-details">
-                  <div v-if="log.fenStr" class="log-item">
-                    <strong>FEN:</strong> {{ truncate(log.fenStr, 50) }}
-                  </div>
-                  <div v-if="log.move" class="log-item">
-                    <strong>Move:</strong> {{ formatMove(log.move) }}
-                  </div>
-                  <div v-if="log.bestMove" class="log-item">
-                    <strong>Best Move:</strong> {{ log.bestMove }} (Eval: {{ log.evaluation }})
-                  </div>
+                <div class="log-row-visual">
+                  <span v-if="log.bestMove || log.move" class="metric-pill">
+                    Move: <strong>{{ formatMove(log.bestMove || log.move) }}</strong>
+                  </span>
+                  <span v-if="log.evaluation" class="metric-pill">
+                    Eval: <strong>{{ formatEvaluation(log.evaluation) }}</strong>
+                  </span>
+                  <span v-if="log.fenStr" class="text-xs text-muted" :title="log.fenStr">
+                    FEN: {{ truncate(log.fenStr, 30) }}
+                  </span>
                 </div>
               </td>
             </tr>
@@ -485,6 +486,22 @@ const getBadgeClass = (type: string) => {
   return classes[type] || 'badge-secondary'
 }
 
+const formatEvaluation = (evalVal: any) => {
+  if (evalVal === undefined || evalVal === null) return '--'
+  const num = parseFloat(evalVal)
+  if (isNaN(num)) return evalVal
+  return num > 0 ? `+${num.toFixed(2)}` : num.toFixed(2)
+}
+
+const getEvalClass = (evalVal: any) => {
+  if (evalVal === undefined || evalVal === null) return ''
+  const num = parseFloat(evalVal)
+  if (isNaN(num)) return ''
+  if (num > 0.5) return 'text-success'
+  if (num < -0.5) return 'text-danger'
+  return 'text-neutral'
+}
+
 // Lifecycle
 onMounted(() => {
   connectWebSocket()
@@ -499,4 +516,78 @@ onUnmounted(() => {
 
 <style scoped>
 @import '../../assets/styles/AIManagement.css';
+
+/* Response Visuals */
+.last-response-visual {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.response-main {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.move-display, .eval-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.move-label, .eval-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.move-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #0f172a;
+  font-family: monospace;
+}
+
+.eval-value {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.text-success { color: #10b981; }
+.text-danger { color: #ef4444; }
+.text-neutral { color: #64748b; }
+
+.response-meta {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Log Visuals */
+.log-row-visual {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.metric-pill {
+  background: #e2e8f0;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  color: #475569;
+}
+
+.text-muted { color: #94a3b8; font-family: 'Consolas', monospace; }
 </style>
