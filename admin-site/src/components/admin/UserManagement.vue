@@ -120,7 +120,13 @@
             >
               <td>
                 <div class="user-avatar">
-                  {{ user.avatarUrl || getUserInitial(user.username) }}
+                  <img 
+                    v-if="user.avatarUrl" 
+                    :src="user.avatarUrl" 
+                    :alt="user.username"
+                    @error="handleImageError"
+                  />
+                  <span v-else>{{ getUserInitial(user.username) }}</span>
                 </div>
               </td>
               <td><strong>{{ user.username }}</strong></td>
@@ -391,6 +397,11 @@ const filterUsers = () => {
 
 const getUserInitial = (username: string) => {
   return username.charAt(0).toUpperCase()
+}
+
+const handleImageError = (event: Event) => {
+  const img = event.target as HTMLImageElement
+  img.style.display = 'none'
 }
 
 const formatDate = (dateStr?: string) => {
