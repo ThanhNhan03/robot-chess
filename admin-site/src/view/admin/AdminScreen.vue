@@ -40,6 +40,13 @@
             <span class="nav-label">Robot Management</span>
           </button>
           <button 
+            :class="['nav-item', { active: activeTab === 'manual' }]"
+            @click="activeTab = 'manual'"
+          >
+            <span class="material-icons nav-icon">videogame_asset</span>
+            <span class="nav-label">Manual Control</span>
+          </button>
+          <button 
             :class="['nav-item', { active: activeTab === 'ai' }]"
             @click="activeTab = 'ai'"
           >
@@ -82,6 +89,13 @@
             <span class="nav-label">FAQ Management</span>
           </button>
           <button 
+            :class="['nav-item', { active: activeTab === 'feedback' }]"
+            @click="activeTab = 'feedback'"
+          >
+            <span class="material-icons nav-icon">feedback</span>
+            <span class="nav-label">User Feedback</span>
+          </button>
+          <button 
             :class="['nav-item', { active: activeTab === 'notification' }]"
             @click="activeTab = 'notification'"
           >
@@ -98,6 +112,9 @@
         
         <!-- Robot Management -->
         <RobotManagement v-if="activeTab === 'robot'" />
+        
+        <!-- Robot Manual Control -->
+        <RobotManualControl v-if="activeTab === 'manual'" />
         
         <!-- AI Management -->
         <AIManagement v-if="activeTab === 'ai'" />
@@ -117,6 +134,9 @@
         <!-- FAQ Management -->
         <FAQManagement v-if="activeTab === 'faq'" />
         
+        <!-- Feedback Management -->
+        <FeedbackManagement v-if="activeTab === 'feedback'" />
+        
         <!-- Notification Management -->
         <NotificationManagement v-if="activeTab === 'notification'" />
       </main>
@@ -130,9 +150,11 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../store/auth'
 import OverviewDashboard from '../../components/admin/OverviewDashboard.vue'
 import RobotManagement from '../../components/admin/RobotManagement.vue'
+import RobotManualControl from '../../components/admin/RobotManualControl.vue'
 import AIManagement from '../../components/admin/AIManagement.vue'
 import UserManagement from '../../components/admin/UserManagement.vue'
 import FAQManagement from '../../components/admin/FAQManagement.vue'
+import FeedbackManagement from '../../components/admin/FeedbackManagement.vue'
 import NotificationManagement from '../../components/admin/NotificationManagement.vue'
 import PointPackageManagement from '../../components/admin/PointPackageManagement.vue'
 import PaymentManagement from './PaymentManagement.vue'
@@ -141,7 +163,7 @@ import PointManagement from './PointManagement.vue'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const activeTab = ref<'overview' | 'robot' | 'ai' | 'user' | 'points' | 'payments' | 'transactions' | 'faq' | 'notification'>('overview')
+const activeTab = ref<'overview' | 'robot' | 'manual' | 'ai' | 'user' | 'points' | 'payments' | 'transactions' | 'faq' | 'feedback' | 'notification'>('overview')
 
 const userName = computed(() => {
   return authStore.user.value?.fullName || authStore.user.value?.username || 'Admin'

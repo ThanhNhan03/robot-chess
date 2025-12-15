@@ -9,10 +9,10 @@
         <button 
           class="btn-flat btn-success" 
           @click="handleRefresh"
-          :disabled="isLoading || isLoadingCommands"
+          :disabled="isLoading"
         >
-          <RefreshCw :size="18" :class="{ 'spin': isLoading || isLoadingCommands }" /> 
-          {{ isLoading || isLoadingCommands ? 'Refreshing...' : 'Refresh' }}
+          <RefreshCw :size="18" :class="{ 'spin': isLoading }" /> 
+          {{ isLoading ? 'Refreshing...' : 'Refresh' }}
         </button>
         <button class="btn-flat btn-primary">
           <Plus :size="18" /> Add New Robot
@@ -34,20 +34,6 @@
         <div class="stat-content">
           <div class="stat-value">{{ robotStats.offlineRobots }}</div>
           <div class="stat-label">Offline Robots</div>
-        </div>
-      </div>
-      <div class="stat-card stat-info">
-        <div class="stat-icon"><BarChart3 :size="32" /></div>
-        <div class="stat-content">
-          <div class="stat-value">{{ robotStats.totalMoves }}</div>
-          <div class="stat-label">Total Moves</div>
-        </div>
-      </div>
-      <div class="stat-card stat-primary">
-        <div class="stat-icon"><TrendingUp :size="32" /></div>
-        <div class="stat-content">
-          <div class="stat-value">{{ robotStats.avgSuccessRate.toFixed(1) }}%</div>
-          <div class="stat-label">Success Rate</div>
         </div>
       </div>
     </div>
@@ -123,45 +109,6 @@
             </button>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Command Queue -->
-    <div class="panel-section">
-      <h3 class="section-title">Command Queue</h3>
-      <div v-if="isLoadingCommands" class="loading-message">Loading commands...</div>
-      <div v-else-if="commandHistory.length === 0" class="empty-message">No command history</div>
-      <div v-else class="command-queue">
-        <table class="table-flat">
-          <thead>
-            <tr>
-              <th>Sent At</th>
-              <th>Robot</th>
-              <th>Command Type</th>
-              <th>Status</th>
-              <th>Execution Time</th>
-              <th>Executed By</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="command in commandHistory" :key="command.id">
-              <td>{{ formatDate(command.sentAt) }}</td>
-              <td>{{ getRobotName(command.robotId) }}</td>
-              <td>{{ command.commandType }}</td>
-              <td>
-                <span class="badge-flat" :class="getStatusBadgeClass(command.status)">
-                  {{ command.status?.toUpperCase() || 'UNKNOWN' }}
-                </span>
-              </td>
-              <td>{{ command.executionTimeMs ? `${command.executionTimeMs}ms` : '-' }}</td>
-              <td>{{ command.executedByUsername || 'System' }}</td>
-              <td>
-                <button class="btn-flat btn-sm"><Info :size="14" /> Details</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
       </div>
     </div>
 
@@ -342,7 +289,7 @@ import {
   PlayCircle, AlertTriangle, MapPin, Gamepad2, Power,
   Settings, RefreshCw, Zap, Activity, Info
 } from 'lucide-vue-next'
-import { robotService, type Robot, type RobotStats, type UpdateRobotConfigRequest, type RobotCommandHistory } from '../../services/robotService'
+import { robotService, type Robot, type RobotStats, type UpdateRobotConfigRequest } from '../../services/robotService'
 
 // State
 const robots = ref<Robot[]>([])
@@ -355,9 +302,7 @@ const robotStats = ref<RobotStats>({
   totalMoves: 0,
   avgSuccessRate: 0,
 })
-const commandHistory = ref<RobotCommandHistory[]>([])
 const isLoading = ref(false)
-const isLoadingCommands = ref(false)
 const error = ref<string | null>(null)
 
 // Temporary config state for editing (before saving)
@@ -488,28 +433,6 @@ const loadRobots = async () => {
   }
 }
 
-const loadCommandHistory = async () => {
-  try {
-    isLoadingCommands.value = true
-    // Load command history for all robots and merge them
-    const allCommands: RobotCommandHistory[] = []
-    for (const robot of robots.value) {
-      const commands = await robotService.getCommandHistory(robot.id, 10)
-      allCommands.push(...commands)
-    }
-    // Sort by sentAt descending
-    commandHistory.value = allCommands.sort((a, b) => {
-      const dateA = new Date(a.sentAt || 0).getTime()
-      const dateB = new Date(b.sentAt || 0).getTime()
-      return dateB - dateA
-    }).slice(0, 20) // Take top 20
-  } catch (err) {
-    console.error('Error loading command history:', err)
-  } finally {
-    isLoadingCommands.value = false
-  }
-}
-
 // Robot actions
 const handleControl = (robotId: string) => {
   console.log('Control robot:', robotId)
@@ -632,22 +555,14 @@ const getRobotCardClass = (isOnline?: boolean) => {
   return isOnline ? '' : 'robot-offline'
 }
 
-// Get robot name by ID
-const getRobotName = (robotId: string) => {
-  const robot = robots.value.find(r => r.id === robotId)
-  return robot?.robotCode || 'Unknown'
-}
-
 // Manual refresh function
 const handleRefresh = async () => {
   await loadRobots()
-  await loadCommandHistory()
 }
 
 // Mount - only load once on initial mount
 onMounted(async () => {
   await loadRobots()
-  await loadCommandHistory()
   // No auto-refresh - user must click refresh button manually
 })
 </script>

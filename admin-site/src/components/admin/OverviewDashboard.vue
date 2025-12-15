@@ -236,21 +236,6 @@
         </button>
       </div>
     </div>
-
-    <!-- Recent Activity -->
-    <div class="activity-section">
-      <h3 class="section-title">📝 Recent System Activity</h3>
-      <div class="activity-list">
-        <div v-for="activity in recentActivities" :key="activity.id" class="activity-item">
-          <div class="activity-icon" :class="`activity-${activity.type}`">{{ activity.icon }}</div>
-          <div class="activity-content">
-            <div class="activity-title">{{ activity.title }}</div>
-            <div class="activity-description">{{ activity.description }}</div>
-          </div>
-          <div class="activity-time">{{ activity.time }}</div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -318,50 +303,6 @@ const updateDateTime = () => {
     day: 'numeric'
   })
 }
-
-// Recent Activities
-const recentActivities = ref([
-  {
-    id: 1,
-    icon: '👤',
-    type: 'user',
-    title: 'New User Registered',
-    description: 'User "chess_master" joined the system',
-    time: '2 min ago'
-  },
-  {
-    id: 2,
-    icon: '♟️',
-    type: 'game',
-    title: 'Game Completed',
-    description: 'Player "john_doe" won against Robot #2',
-    time: '5 min ago'
-  },
-  {
-    id: 3,
-    icon: '🤖',
-    type: 'robot',
-    title: 'Robot Status Changed',
-    description: 'Robot #1 is now idle',
-    time: '10 min ago'
-  },
-  {
-    id: 4,
-    icon: '🔧',
-    type: 'system',
-    title: 'System Update',
-    description: 'Database backup completed successfully',
-    time: '15 min ago'
-  },
-  {
-    id: 5,
-    icon: '⚠️',
-    type: 'warning',
-    title: 'Warning',
-    description: 'Robot #3 battery low (15%)',
-    time: '20 min ago'
-  }
-])
 
 // Methods
 const toggleWebSocket = () => {
