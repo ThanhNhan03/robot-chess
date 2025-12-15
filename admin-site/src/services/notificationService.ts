@@ -5,6 +5,7 @@ export interface CreateNotificationRequest {
   message: string;
   type: 'info' | 'warning' | 'maintenance' | 'success' | 'error';
   userIds?: string[]; // null hoặc undefined = gửi cho tất cả players
+  userEmails?: string[]; // có thể dùng emails thay vì IDs
   sendEmail: boolean;
 }
 

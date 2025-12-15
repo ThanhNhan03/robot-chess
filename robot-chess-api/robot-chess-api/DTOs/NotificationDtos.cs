@@ -6,6 +6,7 @@ public class CreateNotificationDto
     public string Message { get; set; } = string.Empty;
     public string Type { get; set; } = "info"; // info, warning, maintenance, success, error
     public List<Guid>? UserIds { get; set; } // null = gửi cho tất cả players
+    public List<string>? UserEmails { get; set; } // null = gửi cho tất cả players, có thể dùng emails thay vì IDs
     public bool SendEmail { get; set; } = true;
 }
 

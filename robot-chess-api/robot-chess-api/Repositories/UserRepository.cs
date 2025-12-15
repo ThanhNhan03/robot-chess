@@ -158,6 +158,13 @@ public class UserRepository : IUserRepository
             .ToListAsync();
     }
 
+    public async Task<List<AppUser>> GetUsersByEmailsAsync(List<string> emails)
+    {
+        return await _context.AppUsers
+            .Where(u => emails.Contains(u.Email) && u.IsActive && u.EmailVerified)
+            .ToListAsync();
+    }
+
     public async Task<List<AppUser>> GetAllPlayersAsync()
     {
         return await _context.AppUsers

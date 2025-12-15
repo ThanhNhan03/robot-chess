@@ -40,6 +40,12 @@ public class NotificationsController : ControllerBase
                 return BadRequest(new { message = "Message is required" });
             }
 
+            // Validate: không thể dùng cả UserIds và UserEmails cùng lúc
+            if (dto.UserIds != null && dto.UserIds.Any() && dto.UserEmails != null && dto.UserEmails.Any())
+            {
+                return BadRequest(new { message = "Cannot specify both UserIds and UserEmails. Please use one." });
+            }
+
             var validTypes = new[] { "info", "warning", "maintenance", "success", "error" };
             if (!validTypes.Contains(dto.Type.ToLower()))
             {

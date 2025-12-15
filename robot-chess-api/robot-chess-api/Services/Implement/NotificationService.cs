@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Mail;
 using Microsoft.Extensions.Configuration;
 using robot_chess_api.DTOs;
+using robot_chess_api.Models;
 using robot_chess_api.Repositories;
 using robot_chess_api.Services.Interface;
 
@@ -26,9 +27,23 @@ public class NotificationService : INotificationService
     public async Task<(NotificationResponseDto notification, NotificationStatsDto stats)> SendNotificationAsync(CreateNotificationDto dto)
     {
         // Lấy danh sách users cần gửi
-        var users = dto.UserIds != null && dto.UserIds.Any()
-            ? await _userRepository.GetUsersByIdsAsync(dto.UserIds)
-            : await _userRepository.GetAllPlayersAsync();
+        List<AppUser> users;
+        
+        if (dto.UserEmails != null && dto.UserEmails.Any())
+        {
+            // Ưu tiên dùng emails nếu có
+            users = await _userRepository.GetUsersByEmailsAsync(dto.UserEmails);
+        }
+        else if (dto.UserIds != null && dto.UserIds.Any())
+        {
+            // Fallback sang UserIds nếu không có emails
+            users = await _userRepository.GetUsersByIdsAsync(dto.UserIds);
+        }
+        else
+        {
+            // Gửi cho tất cả players
+            users = await _userRepository.GetAllPlayersAsync();
+        }
 
         var notification = new NotificationResponseDto
         {

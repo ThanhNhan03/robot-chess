@@ -60,7 +60,7 @@
             <option value="">All Roles</option>
             <option value="admin">Admin</option>
             <option value="player">Player</option>
-            <option value="viewer">Viewer</option>
+            <!-- <option value="viewer">Viewer</option> -->
           </select>
           <select class="select-flat" v-model="filterStatus" @change="filterUsers">
             <option value="">All Status</option>

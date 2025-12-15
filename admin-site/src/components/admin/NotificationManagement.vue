@@ -62,17 +62,67 @@
               </label>
               <label>
                 <input type="radio" v-model="recipientType" value="specific" />
-                Specific Users (Enter User IDs)
+                Specific Users (Select from list)
               </label>
             </div>
             
-            <textarea
-              v-if="recipientType === 'specific'"
-              v-model="userIdsText"
-              rows="3"
-              placeholder="Enter user IDs separated by commas or new lines"
-              class="user-ids-input"
-            ></textarea>
+            <!-- Email Selection with Tags -->
+            <div v-if="recipientType === 'specific'" class="email-selector">
+              <!-- Selected Emails as Tags -->
+              <div class="selected-emails">
+                <span 
+                  v-for="email in selectedEmails" 
+                  :key="email" 
+                  class="email-tag"
+                >
+                  {{ email }}
+                  <button type="button" @click="removeEmail(email)" class="remove-tag">×</button>
+                </span>
+              </div>
+
+              <!-- Search Input -->
+              <div class="search-input-wrapper">
+                <input
+                  v-model="emailSearchQuery"
+                  @input="searchUsers"
+                  @focus="showDropdown = true"
+                  type="text"
+                  placeholder="Search users by email or name..."
+                  class="email-search-input"
+                />
+                <span class="search-icon">🔍</span>
+              </div>
+
+              <!-- Dropdown List -->
+              <div v-if="showDropdown && filteredUsers.length > 0" class="user-dropdown">
+                <div
+                  v-for="user in filteredUsers"
+                  :key="user.id"
+                  @click="addEmail(user.email)"
+                  class="user-item"
+                  :class="{ selected: selectedEmails.includes(user.email) }"
+                >
+                  <div class="user-info">
+                    <span class="user-avatar">{{ getUserInitial(user) }}</span>
+                    <div class="user-details">
+                      <div class="user-name">{{ user.fullName || user.username }}</div>
+                      <div class="user-email">{{ user.email }}</div>
+                    </div>
+                  </div>
+                  <span v-if="selectedEmails.includes(user.email)" class="check-icon">✓</span>
+                </div>
+              </div>
+
+              <!-- No Results -->
+              <div v-if="showDropdown && emailSearchQuery && filteredUsers.length === 0" class="no-results">
+                No users found
+              </div>
+
+              <!-- Selected Count -->
+              <div v-if="selectedEmails.length > 0" class="selected-count">
+                {{ selectedEmails.length }} user(s) selected
+              </div>
+            </div>
           </div>
 
           <div class="form-actions">
@@ -135,8 +185,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import notificationService, { type CreateNotificationRequest } from '../../services/notificationService';
+import { userService, type User } from '../../services/userService';
 
 const form = ref<CreateNotificationRequest>({
   title: '',
@@ -146,7 +197,10 @@ const form = ref<CreateNotificationRequest>({
 });
 
 const recipientType = ref<'all' | 'specific'>('all');
-const userIdsText = ref('');
+const selectedEmails = ref<string[]>([]);
+const emailSearchQuery = ref('');
+const showDropdown = ref(false);
+const allUsers = ref<User[]>([]);
 const loading = ref(false);
 const successMessage = ref('');
 const errorMessage = ref('');
@@ -154,9 +208,69 @@ const notificationHistory = ref<any[]>([]);
 
 const STORAGE_KEY = 'admin_notification_history';
 
-onMounted(() => {
-  loadNotificationHistory();
+const filteredUsers = computed(() => {
+  if (!emailSearchQuery.value.trim()) {
+    return allUsers.value.filter(u => u.role === 'player' && u.isActive).slice(0, 10);
+  }
+  
+  const query = emailSearchQuery.value.toLowerCase();
+  return allUsers.value
+    .filter(u => 
+      u.role === 'player' && 
+      u.isActive &&
+      (u.email.toLowerCase().includes(query) ||
+       u.username.toLowerCase().includes(query) ||
+       (u.fullName && u.fullName.toLowerCase().includes(query)))
+    )
+    .slice(0, 10);
 });
+
+onMounted(async () => {
+  loadNotificationHistory();
+  await loadUsers();
+  
+  // Click outside to close dropdown
+  document.addEventListener('click', handleClickOutside);
+});
+
+const loadUsers = async () => {
+  try {
+    allUsers.value = await userService.getAllUsers(false);
+  } catch (error) {
+    console.error('Failed to load users:', error);
+  }
+};
+
+const handleClickOutside = (event: MouseEvent) => {
+  const target = event.target as HTMLElement;
+  if (!target.closest('.email-selector')) {
+    showDropdown.value = false;
+  }
+};
+
+const searchUsers = () => {
+  showDropdown.value = true;
+};
+
+const addEmail = (email: string) => {
+  if (!selectedEmails.value.includes(email)) {
+    selectedEmails.value.push(email);
+  }
+  emailSearchQuery.value = '';
+  showDropdown.value = false;
+};
+
+const removeEmail = (email: string) => {
+  selectedEmails.value = selectedEmails.value.filter(e => e !== email);
+};
+
+const getUserInitial = (user: User): string => {
+  if (user.fullName) {
+    return user.fullName.charAt(0).toUpperCase();
+  }
+  return user.username.charAt(0).toUpperCase();
+};
+
 
 const loadNotificationHistory = () => {
   try {
@@ -201,19 +315,22 @@ const handleSendNotification = async () => {
       sendEmail: form.value.sendEmail
     };
 
-    // Parse user IDs if specific recipients selected
-    if (recipientType.value === 'specific' && userIdsText.value.trim()) {
-      const ids = userIdsText.value
-        .split(/[\n,]+/)
-        .map(id => id.trim())
-        .filter(id => id.length > 0);
-      
-      if (ids.length === 0) {
-        errorMessage.value = 'Please enter at least one user ID';
+    // Use selected emails if specific recipients selected
+    if (recipientType.value === 'specific') {
+      if (selectedEmails.value.length === 0) {
+        errorMessage.value = 'Please select at least one recipient';
         return;
       }
       
-      data.userIds = ids;
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const invalidEmails = selectedEmails.value.filter(email => !emailRegex.test(email));
+      if (invalidEmails.length > 0) {
+        errorMessage.value = `Invalid email(s): ${invalidEmails.join(', ')}`;
+        return;
+      }
+      
+      data.userEmails = selectedEmails.value;
     }
 
     const response = await notificationService.sendNotification(data);
@@ -237,7 +354,7 @@ const handleSendNotification = async () => {
       type: 'info',
       sendEmail: true
     };
-    userIdsText.value = '';
+    selectedEmails.value = [];
     recipientType.value = 'all';
 
     setTimeout(() => {
@@ -424,7 +541,7 @@ const formatDate = (dateString: string) => {
   font-weight: normal;
 }
 
-.user-ids-input {
+.user-emails-input {
   margin-top: 10px;
 }
 
@@ -601,6 +718,187 @@ const formatDate = (dateString: string) => {
   }
 }
 
+/* Email Selector Dropdown Styles */
+.email-selector {
+  position: relative;
+  width: 100%;
+}
+
+.selected-emails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  min-height: 36px;
+}
+
+.email-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  animation: fadeIn 0.2s ease;
+}
+
+.remove-tag {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transition: background 0.2s;
+}
+
+.remove-tag:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.search-input-wrapper {
+  position: relative;
+}
+
+.search-input-wrapper input {
+  width: 100%;
+  padding: 12px 12px 12px 40px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.3s;
+}
+
+.search-input-wrapper input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #999;
+  pointer-events: none;
+}
+
+.user-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 300px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-top: 4px;
+  z-index: 100;
+  animation: slideDown 0.2s ease;
+}
+
+.user-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.user-item:hover {
+  background: #f8f9fa;
+}
+
+.user-item:last-child {
+  border-bottom: none;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.user-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-details strong {
+  display: block;
+  color: #333;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.user-details small {
+  color: #666;
+  font-size: 12px;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.check-icon {
+  color: #4caf50;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.no-results {
+  padding: 20px;
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+}
+
+.selected-count {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 768px) {
   .form-row {
     grid-template-columns: 1fr;
@@ -613,6 +911,10 @@ const formatDate = (dateString: string) => {
   .btn-primary,
   .btn-secondary {
     width: 100%;
+  }
+  
+  .user-dropdown {
+    max-height: 250px;
   }
 }
 </style>
