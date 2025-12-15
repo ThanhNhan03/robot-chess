@@ -88,20 +88,6 @@
             <span class="material-icons nav-icon">notifications</span>
             <span class="nav-label">Notifications</span>
           </button>
-          <button 
-            :class="['nav-item', { active: activeTab === 'settings' }]"
-            @click="activeTab = 'settings'"
-          >
-            <span class="material-icons nav-icon">settings</span>
-            <span class="nav-label">Settings</span>
-          </button>
-          <button 
-            :class="['nav-item', { active: activeTab === 'logs' }]"
-            @click="activeTab = 'logs'"
-          >
-            <span class="material-icons nav-icon">description</span>
-            <span class="nav-label">System Logs</span>
-          </button>
         </nav>
       </aside>
 
@@ -133,18 +119,6 @@
         
         <!-- Notification Management -->
         <NotificationManagement v-if="activeTab === 'notification'" />
-        
-        <!-- Settings -->
-        <div v-if="activeTab === 'settings'" class="panel">
-          <h2 class="panel-title">System Settings</h2>
-          <p class="panel-placeholder">Settings panel - Coming soon...</p>
-        </div>
-        
-        <!-- Logs -->
-        <div v-if="activeTab === 'logs'" class="panel">
-          <h2 class="panel-title">System Logs</h2>
-          <p class="panel-placeholder">Logs panel - Coming soon...</p>
-        </div>
       </main>
     </div>
   </div>
@@ -167,7 +141,7 @@ import PointManagement from './PointManagement.vue'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const activeTab = ref<'overview' | 'robot' | 'ai' | 'user' | 'points' | 'payments' | 'transactions' | 'faq' | 'notification' | 'settings' | 'logs'>('overview')
+const activeTab = ref<'overview' | 'robot' | 'ai' | 'user' | 'points' | 'payments' | 'transactions' | 'faq' | 'notification'>('overview')
 
 const userName = computed(() => {
   return authStore.user.value?.fullName || authStore.user.value?.username || 'Admin'
