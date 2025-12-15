@@ -90,7 +90,6 @@
                   placeholder="Search users by email or name..."
                   class="email-search-input"
                 />
-                <span class="search-icon">🔍</span>
               </div>
 
               <!-- Dropdown List -->
@@ -767,7 +766,7 @@ const formatDate = (dateString: string) => {
 
 .search-input-wrapper input {
   width: 100%;
-  padding: 12px 12px 12px 40px;
+  padding: 12px;
   border: 2px solid #ddd;
   border-radius: 8px;
   font-size: 14px;
@@ -777,15 +776,6 @@ const formatDate = (dateString: string) => {
 .search-input-wrapper input:focus {
   outline: none;
   border-color: #667eea;
-}
-
-.search-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #999;
-  pointer-events: none;
 }
 
 .user-dropdown {
