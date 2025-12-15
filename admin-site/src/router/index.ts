@@ -3,6 +3,7 @@ import AdminScreen from '../view/admin/AdminScreen.vue'
 import Login from '../view/admin/Login.vue'
 import PaymentManagement from '../view/admin/PaymentManagement.vue'
 import PointManagement from '../view/admin/PointManagement.vue'
+import NotificationManagement from '../view/admin/NotificationManagement.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -33,6 +34,12 @@ const router = createRouter({
       path: '/admin/points',
       name: 'PointManagement',
       component: PointManagement,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/admin/notifications',
+      name: 'NotificationManagement',
+      component: NotificationManagement,
       meta: { requiresAuth: true }
     },
     // Redirect any unknown routes to admin

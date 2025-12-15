@@ -149,6 +149,7 @@ builder.Services.AddScoped<ITrainingPuzzleService, TrainingPuzzleService>();
 builder.Services.AddScoped<IPointPackageService, PointPackageService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IAiSuggestionService, AiSuggestionService>();
+builder.Services.AddScoped<INotificationService, robot_chess_api.Services.Implement.NotificationService>();
 
 // Register Helpers
 builder.Services.AddScoped<robot_chess_api.Helpers.ChessEngineHelper>();

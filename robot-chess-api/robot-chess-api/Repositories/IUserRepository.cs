@@ -19,4 +19,6 @@ public interface IUserRepository
     Task<AppUser?> GetUserByVerificationTokenAsync(string token);
     Task UpdateEmailVerificationAsync(Guid userId, bool verified);
     Task<AppUser?> GetUserByPasswordResetTokenAsync(string token);
+    Task<List<AppUser>> GetUsersByIdsAsync(List<Guid> userIds);
+    Task<List<AppUser>> GetAllPlayersAsync();
 }

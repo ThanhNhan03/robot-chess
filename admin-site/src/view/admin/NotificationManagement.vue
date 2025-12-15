@@ -1,135 +1,133 @@
 <template>
-  <div class="notification-component">
-    <div class="notification-management">
-      <div class="header">
-        <h1>📢 Notification Management</h1>
-        <p>Send notifications to players via email and in-app alerts</p>
-      </div>
+  <div class="notification-management">
+    <div class="header">
+      <h1>📢 Notification Management</h1>
+      <p>Send notifications to players via email and in-app alerts</p>
+    </div>
 
-      <!-- Create Notification Form -->
-      <div class="notification-form-card">
-        <h2>Create New Notification</h2>
-        
-        <form @submit.prevent="handleSendNotification">
+    <!-- Create Notification Form -->
+    <div class="notification-form-card">
+      <h2>Create New Notification</h2>
+      
+      <form @submit.prevent="handleSendNotification">
+        <div class="form-group">
+          <label for="title">Title *</label>
+          <input
+            id="title"
+            v-model="form.title"
+            type="text"
+            placeholder="Enter notification title"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="message">Message *</label>
+          <textarea
+            id="message"
+            v-model="form.message"
+            rows="5"
+            placeholder="Enter notification message"
+            required
+          ></textarea>
+        </div>
+
+        <div class="form-row">
           <div class="form-group">
-            <label for="title">Title *</label>
-            <input
-              id="title"
-              v-model="form.title"
-              type="text"
-              placeholder="Enter notification title"
-              required
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="message">Message *</label>
-            <textarea
-              id="message"
-              v-model="form.message"
-              rows="5"
-              placeholder="Enter notification message"
-              required
-            ></textarea>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="type">Type *</label>
-              <select id="type" v-model="form.type" required>
-                <option value="info">ℹ️ Info</option>
-                <option value="warning">⚠️ Warning</option>
-                <option value="maintenance">🔧 Maintenance</option>
-                <option value="success">✅ Success</option>
-                <option value="error">❌ Error</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label>
-                <input type="checkbox" v-model="form.sendEmail" />
-                Send Email to Users
-              </label>
-            </div>
+            <label for="type">Type *</label>
+            <select id="type" v-model="form.type" required>
+              <option value="info">ℹ️ Info</option>
+              <option value="warning">⚠️ Warning</option>
+              <option value="maintenance">🔧 Maintenance</option>
+              <option value="success">✅ Success</option>
+              <option value="error">❌ Error</option>
+            </select>
           </div>
 
           <div class="form-group">
-            <label>Recipients</label>
-            <div class="recipient-options">
-              <label>
-                <input type="radio" v-model="recipientType" value="all" />
-                All Active Players
-              </label>
-              <label>
-                <input type="radio" v-model="recipientType" value="specific" />
-                Specific Users (Enter User IDs)
-              </label>
-            </div>
-            
-            <textarea
-              v-if="recipientType === 'specific'"
-              v-model="userIdsText"
-              rows="3"
-              placeholder="Enter user IDs separated by commas or new lines"
-              class="user-ids-input"
-            ></textarea>
+            <label>
+              <input type="checkbox" v-model="form.sendEmail" />
+              Send Email to Users
+            </label>
           </div>
+        </div>
 
-          <div class="form-actions">
-            <button type="button" class="btn-secondary" @click="handleTestNotification">
-              🧪 Send Test
-            </button>
-            <button type="submit" class="btn-primary" :disabled="loading">
-              {{ loading ? 'Sending...' : '📤 Send Notification' }}
-            </button>
+        <div class="form-group">
+          <label>Recipients</label>
+          <div class="recipient-options">
+            <label>
+              <input type="radio" v-model="recipientType" value="all" />
+              All Active Players
+            </label>
+            <label>
+              <input type="radio" v-model="recipientType" value="specific" />
+              Specific Users (Enter User IDs)
+            </label>
           </div>
-        </form>
-      </div>
+          
+          <textarea
+            v-if="recipientType === 'specific'"
+            v-model="userIdsText"
+            rows="3"
+            placeholder="Enter user IDs separated by commas or new lines"
+            class="user-ids-input"
+          ></textarea>
+        </div>
 
-      <!-- Notification History (from localStorage) -->
-      <div class="notification-history-card">
-        <div class="history-header">
-          <h2>Recent Notifications</h2>
-          <button class="btn-danger" @click="clearHistory">
-            🗑️ Clear History
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" @click="handleTestNotification">
+            🧪 Send Test
+          </button>
+          <button type="submit" class="btn-primary" :disabled="loading">
+            {{ loading ? 'Sending...' : '📤 Send Notification' }}
           </button>
         </div>
+      </form>
+    </div>
 
-        <div v-if="notificationHistory.length === 0" class="empty-state">
-          <p>No notifications sent yet</p>
-        </div>
+    <!-- Notification History (from localStorage) -->
+    <div class="notification-history-card">
+      <div class="history-header">
+        <h2>Recent Notifications</h2>
+        <button class="btn-danger" @click="clearHistory">
+          🗑️ Clear History
+        </button>
+      </div>
 
-        <div v-else class="notification-list">
-          <div
-            v-for="notification in notificationHistory"
-            :key="notification.id"
-            class="notification-item"
-            :class="`type-${notification.type}`"
-          >
-            <div class="notification-header">
-              <span class="notification-type">{{ getTypeIcon(notification.type) }} {{ notification.type }}</span>
-              <span class="notification-date">{{ formatDate(notification.createdAt) }}</span>
-            </div>
-            <h3>{{ notification.title }}</h3>
-            <p>{{ notification.message }}</p>
-            <div class="notification-stats">
-              <span>👥 {{ notification.recipientCount }} recipients</span>
-              <span v-if="notification.emailSent">📧 {{ notification.stats?.successCount || 0 }} emails sent</span>
-              <span v-if="notification.stats?.failedCount > 0" class="failed">
-                ⚠️ {{ notification.stats.failedCount }} failed
-              </span>
-            </div>
+      <div v-if="notificationHistory.length === 0" class="empty-state">
+        <p>No notifications sent yet</p>
+      </div>
+
+      <div v-else class="notification-list">
+        <div
+          v-for="notification in notificationHistory"
+          :key="notification.id"
+          class="notification-item"
+          :class="`type-${notification.type}`"
+        >
+          <div class="notification-header">
+            <span class="notification-type">{{ getTypeIcon(notification.type) }} {{ notification.type }}</span>
+            <span class="notification-date">{{ formatDate(notification.createdAt) }}</span>
+          </div>
+          <h3>{{ notification.title }}</h3>
+          <p>{{ notification.message }}</p>
+          <div class="notification-stats">
+            <span>👥 {{ notification.recipientCount }} recipients</span>
+            <span v-if="notification.emailSent">📧 {{ notification.stats?.successCount || 0 }} emails sent</span>
+            <span v-if="notification.stats?.failedCount > 0" class="failed">
+              ⚠️ {{ notification.stats.failedCount }} failed
+            </span>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Success/Error Messages -->
-      <div v-if="successMessage" class="alert alert-success">
-        {{ successMessage }}
-      </div>
-      <div v-if="errorMessage" class="alert alert-error">
-        {{ errorMessage }}
-      </div>
+    <!-- Success/Error Messages -->
+    <div v-if="successMessage" class="alert alert-success">
+      {{ successMessage }}
+    </div>
+    <div v-if="errorMessage" class="alert alert-error">
+      {{ errorMessage }}
     </div>
   </div>
 </template>
@@ -221,9 +219,6 @@ const handleSendNotification = async () => {
     // Save to localStorage
     saveNotificationToHistory(response.notification, response.stats);
     
-    // Broadcast notification to web app localStorage
-    broadcastNotificationToWebApp(response.notification);
-    
     successMessage.value = `✅ Notification sent successfully! ${response.stats.successCount} emails sent to ${response.notification.recipientCount} users.`;
     
     if (response.stats.failedCount > 0) {
@@ -282,29 +277,6 @@ const handleTestNotification = async () => {
   }
 };
 
-const broadcastNotificationToWebApp = (notification: any) => {
-  // This will be picked up by the web app through localStorage sync
-  const webAppNotifications = localStorage.getItem('chess_robot_notifications');
-  let notifications = [];
-  
-  try {
-    if (webAppNotifications) {
-      notifications = JSON.parse(webAppNotifications);
-    }
-  } catch (error) {
-    console.error('Error parsing web app notifications:', error);
-  }
-  
-  notifications.unshift(notification);
-  
-  // Keep only last 20 notifications
-  if (notifications.length > 20) {
-    notifications = notifications.slice(0, 20);
-  }
-  
-  localStorage.setItem('chess_robot_notifications', JSON.stringify(notifications));
-};
-
 const clearHistory = () => {
   if (confirm('Are you sure you want to clear notification history?')) {
     localStorage.removeItem(STORAGE_KEY);
@@ -336,12 +308,6 @@ const formatDate = (dateString: string) => {
 </script>
 
 <style scoped>
-.notification-component {
-  width: 100%;
-  height: 100%;
-  overflow-y: auto;
-}
-
 .notification-management {
   padding: 20px;
   max-width: 1200px;

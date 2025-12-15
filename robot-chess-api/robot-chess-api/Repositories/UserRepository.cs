@@ -150,4 +150,18 @@ public class UserRepository : IUserRepository
         return await _context.AppUsers
             .FirstOrDefaultAsync(u => u.PasswordResetToken == token);
     }
+
+    public async Task<List<AppUser>> GetUsersByIdsAsync(List<Guid> userIds)
+    {
+        return await _context.AppUsers
+            .Where(u => userIds.Contains(u.Id) && u.IsActive)
+            .ToListAsync();
+    }
+
+    public async Task<List<AppUser>> GetAllPlayersAsync()
+    {
+        return await _context.AppUsers
+            .Where(u => u.Role == "player" && u.IsActive && u.EmailVerified)
+            .ToListAsync();
+    }
 }
