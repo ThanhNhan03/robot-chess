@@ -165,31 +165,6 @@
             <div class="config-row">
               <div class="config-slider-group">
                 <div class="config-label-row">
-                  <span class="config-label">Max Speed</span>
-                  <span class="config-value" :class="{ 'value-changed': getTempConfig(robot.id).maxSpeed !== (robot.config?.maxSpeed || 100) }">
-                    {{ getTempConfig(robot.id).maxSpeed }} <span class="config-unit">mm/s</span>
-                  </span>
-                </div>
-                <input 
-                  type="range" 
-                  class="config-slider"
-                  :value="getTempConfig(robot.id).maxSpeed"
-                  @input="(e) => updateTempConfig(robot.id, 'maxSpeed', Number((e.target as HTMLInputElement).value))"
-                  min="10" 
-                  max="150" 
-                  step="5"
-                  :disabled="!robot.isOnline"
-                  title="Maximum speed limit"
-                />
-                <div class="slider-labels">
-                  <span>Slow (10)</span>
-                  <span>Very Fast (150)</span>
-                </div>
-              </div>
-            </div>
-            <div class="config-row">
-              <div class="config-slider-group">
-                <div class="config-label-row">
                   <span class="config-label">Gripper Force</span>
                   <span class="config-value" :class="{ 'value-changed': getTempConfig(robot.id).gripperForce !== (robot.config?.gripperForce || 50) }">
                     {{ getTempConfig(robot.id).gripperForce }} <span class="config-unit">%</span>
@@ -235,22 +210,6 @@
                   <span>Slow (10)</span>
                   <span>Fast (100)</span>
                 </div>
-              </div>
-            </div>
-            <div class="config-row">
-              <span class="config-label">Emergency Stop</span>
-              <div class="config-value-group">
-                <span class="badge-flat" :class="robot.config?.emergencyStop ? 'badge-danger' : 'badge-success'">
-                  {{ robot.config?.emergencyStop ? 'ENABLED' : 'DISABLED' }}
-                </span>
-                <button 
-                  class="btn-flat btn-sm" 
-                  :class="robot.config?.emergencyStop ? 'btn-success' : 'btn-danger'"
-                  @click="handleToggleEmergencyStop(robot.id)"
-                  :disabled="!robot.isOnline"
-                >
-                  {{ robot.config?.emergencyStop ? 'Disable' : 'Enable' }}
-                </button>
               </div>
             </div>
           </div>

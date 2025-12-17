@@ -173,6 +173,11 @@ class FEN():
 
         board = chess.Board(self.FEN_last)
         
+        # If game is over, no move can be generated
+        if board.is_game_over():
+            print("[WARNING] Game is over - cannot generate move")
+            return None
+        
         # Configure Stockfish with difficulty settings
         stockfish.configure({"Skill Level": self.skill_level})
         
@@ -180,6 +185,11 @@ class FEN():
         limit = chess.engine.Limit(time=self.analysis_time, depth=self.depth_limit)
         result = stockfish.analyse(board, limit)
 
+        # Check if result has 'pv' key (principal variation)
+        if "pv" not in result or len(result["pv"]) == 0:
+            print("[WARNING] No best move found - game may be over or position invalid")
+            return None
+            
         bestmove = result["pv"][0]
         
         # Determine move type
@@ -627,12 +637,16 @@ class FEN():
             elif self.side == "b":
                 payload = {"fen_str": self.FEN_last}
                 # payload = self.sendOutput(stockfish)
-            if payload != self.last_payload:
-                await self.send_move_to_server(payload, tcp_client, game_id)
+            
+            # Only send if payload is not None (game not over)
+            if payload is not None:
+                if payload != self.last_payload:
+                    await self.send_move_to_server(payload, tcp_client, game_id)
+                else:
+                    print("[MOVE] Same payload detected - skipping send")
+                self.last_payload = payload
             else:
-                print("[MOVE] Same payload detected - skipping send")
-
-            self.last_payload = payload
+                print("[INFO] No move to send - game may be over")
         
         # Send illegal move notification (only for human player - white)
         elif illegal_move_info is not None:
