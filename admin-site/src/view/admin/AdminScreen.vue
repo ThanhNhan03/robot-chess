@@ -26,13 +26,6 @@
       <aside class="admin-sidebar">
         <nav class="admin-nav">
           <button 
-            :class="['nav-item', { active: activeTab === 'overview' }]"
-            @click="activeTab = 'overview'"
-            >
-            <span class="material-icons nav-icon">dashboard</span>
-            <span class="nav-label">Overview</span>
-            </button>
-          <button 
             :class="['nav-item', { active: activeTab === 'robot' }]"
             @click="activeTab = 'robot'"
           >
@@ -107,9 +100,6 @@
 
       <!-- Main Panel -->
       <main class="admin-main">
-        <!-- Overview Dashboard -->
-        <OverviewDashboard v-if="activeTab === 'overview'" />
-        
         <!-- Robot Management -->
         <RobotManagement v-if="activeTab === 'robot'" />
         
@@ -148,7 +138,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../store/auth'
-import OverviewDashboard from '../../components/admin/OverviewDashboard.vue'
 import RobotManagement from '../../components/admin/RobotManagement.vue'
 import RobotManualControl from '../../components/admin/RobotManualControl.vue'
 import AIManagement from '../../components/admin/AIManagement.vue'
@@ -163,7 +152,7 @@ import PointManagement from './PointManagement.vue'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const activeTab = ref<'overview' | 'robot' | 'manual' | 'ai' | 'user' | 'points' | 'payments' | 'transactions' | 'faq' | 'feedback' | 'notification'>('overview')
+const activeTab = ref<'robot' | 'manual' | 'ai' | 'user' | 'points' | 'payments' | 'transactions' | 'faq' | 'feedback' | 'notification'>('robot')
 
 const userName = computed(() => {
   return authStore.user.value?.fullName || authStore.user.value?.username || 'Admin'

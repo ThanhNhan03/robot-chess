@@ -93,26 +93,33 @@ namespace robot_chess_api.Services.Implement
                 user.PointsBalance -= SUGGESTION_COST;
                 await _context.SaveChangesAsync();
 
-                // 6. Create point transaction record ONLY (không lưu vào ai_suggestions table)
+                // 6. Get game info to include game type in description
+                var game = await _context.Games
+                    .Include(g => g.GameType)
+                    .FirstOrDefaultAsync(g => g.Id == request.GameId);
+                
+                string gameTypeName = game?.GameType?.Name ?? "Unknown Game";
+                
+                // 7. Create point transaction record ONLY (không lưu vào ai_suggestions table)
                 var pointTransaction = new PointTransaction
                 {
                     Id = Guid.NewGuid(),
                     UserId = userId,
                     Amount = -SUGGESTION_COST,
                     TransactionType = "service_usage",
-                    Description = $"Gợi ý AI cho game {request.GameId}",
+                    Description = $"AI Hint for {gameTypeName}",
                     CreatedAt = DateTime.UtcNow
                 };
                 await _pointTransactionRepository.CreateAsync(pointTransaction);
 
-                // 7. Set rate limit cache (user must wait 3 seconds)
+                // 8. Set rate limit cache (user must wait 3 seconds)
                 SetRateLimit(userId);
 
                 await transaction.CommitAsync();
 
                 _logger.LogInformation($"AI suggestion provided to user {userId}, new balance: {user.PointsBalance}");
 
-                // 8. Return response (suggestion ID is temporary, not saved to DB)
+                // 9. Return response (suggestion ID is temporary, not saved to DB)
                 return new SuggestionResponseDto
                 {
                     SuggestionId = Guid.NewGuid(), // Temporary ID for frontend reference
